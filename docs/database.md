@@ -4,11 +4,10 @@
 
 ### 1.1 数据库选择
 - **主数据库**: MySQL 8.0 - 关系型数据存储
-- **缓存数据库**: Redis 6.x - 会话存储和性能优化
-- **搜索引擎**: Elasticsearch 7.x - 全文搜索和分析
+- **文件存储**: Amazon S3 - 文档和图片存储
 
 ### 1.2 数据安全
-- **数据加密**: AES-256 加密敏感信息（身份证、银行卡等）
+- **数据加密**: AES-256 加密敏感信息（姓名、身份证、银行卡、电话等）
 - **传输加密**: TLS 1.3 保护数据传输
 - **访问控制**: 基于角色的数据库访问权限
 - **审计日志**: 完整的数据操作审计跟踪
@@ -120,17 +119,22 @@ CREATE TABLE `employees` (
   `employee_id` VARCHAR(36) PRIMARY KEY COMMENT '员工ID (UUID)',
   `employee_number` VARCHAR(20) NOT NULL UNIQUE COMMENT '工号',
   `user_id` VARCHAR(36) UNIQUE COMMENT '关联用户ID',
-  `name` VARCHAR(50) NOT NULL COMMENT '姓名',
+  `name_encrypted` TEXT NOT NULL COMMENT '姓名（加密）',
+  `name_hash` VARCHAR(64) COMMENT '姓名哈希（用于搜索）',
   `name_en` VARCHAR(100) COMMENT '英文姓名',
   `gender` ENUM('male', 'female') NOT NULL COMMENT '性别',
-  `birth_date` DATE COMMENT '出生日期',
+  `birth_date_encrypted` TEXT COMMENT '出生日期（加密）',
   `id_card_encrypted` TEXT COMMENT '身份证号（加密）',
-  `phone` VARCHAR(20) COMMENT '手机号',
+  `phone_encrypted` TEXT COMMENT '手机号（加密）',
+  `phone_hash` VARCHAR(64) COMMENT '手机号哈希（用于搜索）',
   `email` VARCHAR(100) COMMENT '邮箱',
+  `bank_card_encrypted` TEXT COMMENT '银行卡号（加密）',
   `emergency_contact` VARCHAR(50) COMMENT '紧急联系人',
-  `emergency_phone` VARCHAR(20) COMMENT '紧急联系电话',
+  `emergency_phone_encrypted` TEXT COMMENT '紧急联系电话（加密）',
   `address` TEXT COMMENT '家庭住址',
   `avatar_url` VARCHAR(255) COMMENT '头像URL',
+  `id_card_front_s3_path` VARCHAR(500) COMMENT '身份证正面S3路径',
+  `id_card_back_s3_path` VARCHAR(500) COMMENT '身份证背面S3路径',
   `hire_date` DATE NOT NULL COMMENT '入职日期',
   `probation_end_date` DATE COMMENT '试用期结束日期',
   `department_id` VARCHAR(36) NOT NULL COMMENT '部门ID',
@@ -152,7 +156,8 @@ CREATE TABLE `employees` (
   FOREIGN KEY (`position_id`) REFERENCES `positions`(`position_id`) ON DELETE RESTRICT,
   FOREIGN KEY (`manager_id`) REFERENCES `employees`(`employee_id`) ON DELETE SET NULL,
   INDEX `idx_employee_number` (`employee_number`),
-  INDEX `idx_name` (`name`),
+  INDEX `idx_name_hash` (`name_hash`),
+  INDEX `idx_phone_hash` (`phone_hash`),
   INDEX `idx_department_id` (`department_id`),
   INDEX `idx_position_id` (`position_id`),
   INDEX `idx_manager_id` (`manager_id`),
@@ -257,25 +262,31 @@ CREATE TABLE `onboarding_steps` (
 CREATE TABLE `employee_documents` (
   `document_id` VARCHAR(36) PRIMARY KEY COMMENT '文档ID (UUID)',
   `employee_id` VARCHAR(36) NOT NULL COMMENT '员工ID',
-  `document_type` ENUM('id_card', 'diploma', 'certificate', 'contract', 'photo', 'resume', 'other') NOT NULL COMMENT '文档类型',
+  `document_type` ENUM('id_card_front', 'id_card_back', 'diploma', 'certificate', 'contract', 'photo', 'resume', 'other') NOT NULL COMMENT '文档类型',
   `document_name` VARCHAR(255) NOT NULL COMMENT '文档名称',
-  `file_path` VARCHAR(500) NOT NULL COMMENT '文件路径',
+  `s3_bucket` VARCHAR(100) NOT NULL COMMENT 'S3存储桶名称',
+  `s3_key` VARCHAR(500) NOT NULL COMMENT 'S3对象键值',
+  `s3_url` VARCHAR(1000) COMMENT 'S3访问URL',
   `file_size` BIGINT COMMENT '文件大小(字节)',
   `file_type` VARCHAR(50) COMMENT '文件MIME类型',
-  `is_encrypted` BOOLEAN DEFAULT FALSE COMMENT '是否加密',
+  `file_hash` VARCHAR(64) COMMENT '文件MD5哈希值',
+  `is_encrypted` BOOLEAN DEFAULT TRUE COMMENT '是否加密存储',
+  `encryption_key_id` VARCHAR(100) COMMENT '加密密钥ID',
   `is_required` BOOLEAN DEFAULT FALSE COMMENT '是否必需',
   `status` ENUM('pending', 'reviewing', 'approved', 'rejected') NOT NULL DEFAULT 'pending' COMMENT '审核状态',
   `reviewed_by` VARCHAR(36) COMMENT '审核人ID',
   `reviewed_at` DATETIME COMMENT '审核时间',
   `review_notes` TEXT COMMENT '审核备注',
   `uploaded_by` VARCHAR(36) COMMENT '上传人ID',
+  `retention_expires_at` DATETIME COMMENT '保留期过期时间',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   FOREIGN KEY (`employee_id`) REFERENCES `employees`(`employee_id`) ON DELETE CASCADE,
   INDEX `idx_employee_id` (`employee_id`),
   INDEX `idx_document_type` (`document_type`),
   INDEX `idx_status` (`status`),
-  INDEX `idx_reviewed_by` (`reviewed_by`)
+  INDEX `idx_reviewed_by` (`reviewed_by`),
+  INDEX `idx_s3_bucket_key` (`s3_bucket`, `s3_key`)
 ) ENGINE=InnoDB COMMENT='员工文档表';
 ```
 
@@ -726,62 +737,94 @@ export const databaseConfig = {
     reconnect: true,            // 自动重连
     charset: 'utf8mb4',         // 字符集
     timezone: 'Z'               // 时区
-  },
-  
-  // 连接选项
-  options: {
-    encrypt: false,
-    trustServerCertificate: true
-  },
-  
-  // 日志配置
-  logging: process.env.NODE_ENV === 'development' ? 'all' : ['error'],
-  
-  // 实体和迁移
-  entities: ['dist/models/entities/*.js'],
-  migrations: ['dist/migrations/*.js'],
-  
-  // 开发环境自动同步
-  synchronize: process.env.NODE_ENV === 'development',
-  
-  // 缓存配置
-  cache: {
-    type: 'redis',
-    options: {
-      host: process.env.REDIS_HOST,
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD
-    },
-    duration: 30000 // 缓存30秒
-  }
-};
+## 10. 数据库连接池配置
+
+### 10.1 MySQL连接池
+```python
+# database.py
+from sqlalchemy import create_engine
+from sqlalchemy.pool import QueuePool
+from sqlalchemy.orm import sessionmaker
+import os
+
+# 数据库配置
+DATABASE_CONFIG = {
+    'host': os.getenv('DB_HOST', 'localhost'),
+    'port': int(os.getenv('DB_PORT', '3306')),
+    'username': os.getenv('DB_USERNAME', 'root'),
+    'password': os.getenv('DB_PASSWORD', ''),
+    'database': os.getenv('DB_DATABASE', 'hrsystem'),
+    'charset': 'utf8mb4'
+}
+
+# 连接池配置
+ENGINE_CONFIG = {
+    'pool_size': 20,                    # 连接池大小
+    'max_overflow': 30,                 # 超过连接池大小的连接数
+    'pool_timeout': 30,                 # 获取连接超时时间
+    'pool_recycle': 3600,              # 连接回收时间(秒)
+    'pool_pre_ping': True,             # 连接前ping检查
+    'echo': os.getenv('DB_ECHO', 'false').lower() == 'true'  # SQL日志
+}
+
+# 创建数据库引擎
+DATABASE_URL = f"mysql+pymysql://{DATABASE_CONFIG['username']}:{DATABASE_CONFIG['password']}@{DATABASE_CONFIG['host']}:{DATABASE_CONFIG['port']}/{DATABASE_CONFIG['database']}?charset={DATABASE_CONFIG['charset']}"
+
+engine = create_engine(
+    DATABASE_URL,
+    poolclass=QueuePool,
+    **ENGINE_CONFIG
+)
+
+# 创建会话工厂
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# 数据库依赖
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 ```
 
-### 10.2 Redis配置
-```typescript
-// redis.config.ts
-export const redisConfig = {
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-  password: process.env.REDIS_PASSWORD,
-  db: 0,
-  
-  // 连接选项
-  connectTimeout: 10000,
-  commandTimeout: 5000,
-  retryDelayOnFailover: 100,
-  maxRetriesPerRequest: 3,
-  
-  // 连接池
-  lazyConnect: true,
-  keepAlive: 30000,
-  
-  // 集群配置（如果需要）
-  cluster: {
-    enableReadyCheck: false,
-    redisOptions: {
-      password: process.env.REDIS_PASSWORD
-    }
-  }
-};
+### 10.2 S3存储配置
+```python
+# s3_config.py
+import boto3
+from botocore.config import Config
+import os
+
+S3_CONFIG = {
+    'aws_access_key_id': os.getenv('AWS_ACCESS_KEY_ID'),
+    'aws_secret_access_key': os.getenv('AWS_SECRET_ACCESS_KEY'),
+    'region_name': os.getenv('AWS_DEFAULT_REGION', 'us-east-1'),
+    'bucket_name': os.getenv('S3_BUCKET_NAME', 'hrsystem-documents')
+}
+
+# S3客户端配置
+s3_config = Config(
+    region_name=S3_CONFIG['region_name'],
+    retries={
+        'max_attempts': 3,
+        'mode': 'adaptive'
+    },
+    max_pool_connections=50
+)
+
+# 创建S3客户端
+s3_client = boto3.client(
+    's3',
+    aws_access_key_id=S3_CONFIG['aws_access_key_id'],
+    aws_secret_access_key=S3_CONFIG['aws_secret_access_key'],
+    config=s3_config
+)
+
+# S3资源
+s3_resource = boto3.resource(
+    's3',
+    aws_access_key_id=S3_CONFIG['aws_access_key_id'],
+    aws_secret_access_key=S3_CONFIG['aws_secret_access_key'],
+    config=s3_config
+)
 ```

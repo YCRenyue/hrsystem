@@ -283,10 +283,11 @@ export const baseApi = createApi({
       if (token) {
         headers.set('Authorization', `Bearer ${token}`);
       }
+      headers.set('Content-Type', 'application/json');
       return headers;
     },
   }),
-  tagTypes: ['Employee', 'Department', 'User'],
+  tagTypes: ['Employee', 'Department', 'User', 'Document'],
   endpoints: () => ({}),
 });
 ```
@@ -296,31 +297,62 @@ export const baseApi = createApi({
 import { baseApi } from './base';
 
 export interface Employee {
-  employeeId: string;
+  employee_id: string;
+  employee_number: string;
   name: string;
-  phone: string;
-  email: string;
-  department: string;
-  position: string;
-  hireDate: string;
-  status: 'active' | 'inactive' | 'pending';
+  name_en?: string;
+  gender: 'male' | 'female';
+  phone?: string;  // 可能被脱敏
+  email?: string;
+  hire_date: string;
+  employment_status: 'pending' | 'probation' | 'regular' | 'resigned' | 'terminated';
+  department_name?: string;
+  position_name?: string;
+  data_complete: boolean;
+  created_at: string;
+}
+
+export interface EmployeeCreateRequest {
+  employee_number: string;
+  name: string;
+  name_en?: string;
+  gender: 'male' | 'female';
+  birth_date?: string;
+  id_card?: string;
+  phone?: string;
+  email?: string;
+  bank_card?: string;
+  emergency_contact?: string;
+  emergency_phone?: string;
+  address?: string;
+  hire_date: string;
+  probation_end_date?: string;
+  department_id: string;
+  position_id: string;
+  manager_id?: string;
+  work_location?: string;
+  employment_type?: 'full_time' | 'part_time' | 'intern' | 'contractor';
+  remarks?: string;
 }
 
 export interface EmployeeListResponse {
-  list: Employee[];
+  employees: Employee[];
   total: number;
-  page: number;
-  size: number;
+  skip: number;
+  limit: number;
+}
+
+export interface FileUploadResponse {
+  success: boolean;
+  message?: string;
+  file_url?: string;
 }
 
 export const employeeApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getEmployees: builder.query<EmployeeListResponse, {
-      page?: number;
-      size?: number;
-      department?: string;
-      status?: string;
-      keyword?: string;
+      skip?: number;
+      limit?: number;
     }>({
       query: (params) => ({
         url: '/employees',
@@ -329,7 +361,7 @@ export const employeeApi = baseApi.injectEndpoints({
       providesTags: ['Employee'],
     }),
     
-    createEmployee: builder.mutation<Employee, Partial<Employee>>({
+    createEmployee: builder.mutation<Employee, EmployeeCreateRequest>({
       query: (body) => ({
         url: '/employees',
         method: 'POST',
@@ -338,9 +370,9 @@ export const employeeApi = baseApi.injectEndpoints({
       invalidatesTags: ['Employee'],
     }),
     
-    updateEmployee: builder.mutation<Employee, { id: string; data: Partial<Employee> }>({
-      query: ({ id, data }) => ({
-        url: `/employees/${id}`,
+    updateEmployee: builder.mutation<Employee, { employee_id: string; data: Partial<EmployeeCreateRequest> }>({
+      query: ({ employee_id, data }) => ({
+        url: `/employees/${employee_id}`,
         method: 'PUT',
         body: data,
       }),
@@ -348,18 +380,46 @@ export const employeeApi = baseApi.injectEndpoints({
     }),
     
     deleteEmployee: builder.mutation<void, string>({
-      query: (id) => ({
-        url: `/employees/${id}`,
+      query: (employee_id) => ({
+        url: `/employees/${employee_id}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['Employee'],
     }),
     
-    importEmployees: builder.mutation<any, FormData>({
-      query: (formData) => ({
-        url: '/employees/import',
-        method: 'POST',
-        body: formData,
+    uploadIdCard: builder.mutation<FileUploadResponse, {
+      employee_id: string;
+      file: File;
+      file_type: 'front' | 'back';
+    }>({
+      query: ({ employee_id, file, file_type }) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('file_type', file_type);
+        return {
+          url: `/employees/${employee_id}/id-card`,
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: ['Employee', 'Document'],
+    }),
+    
+    importEmployees: builder.mutation<{
+      total_count: number;
+      success_count: number;
+      fail_count: number;
+      fail_list: Array<{ row: number; name: string; error: string }>;
+    }, File>({
+      query: (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return {
+          url: '/employees/import',
+          method: 'POST',
+          body: formData,
+        };
+      },
       }),
       invalidatesTags: ['Employee'],
     }),
