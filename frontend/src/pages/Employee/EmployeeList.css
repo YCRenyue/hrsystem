@@ -1,0 +1,19 @@
+.employee-list-container {
+  padding: 0;
+}
+
+.employee-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .employee-list-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
