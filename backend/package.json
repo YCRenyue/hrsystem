@@ -7,6 +7,12 @@
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
     "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:db": "jest src/__tests__/database.test.js",
+    "test:verbose": "jest --verbose",
+    "check:db": "node src/__tests__/checkConnection.js",
+    "check:mysql": "node src/__tests__/testMySQLConnection.js",
     "db:migrate": "node src/db/migrate.js",
     "db:seed": "node src/db/seed.js"
   },

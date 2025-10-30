@@ -29,24 +29,26 @@ app.use(express.urlencoded({ extended: true }));
 // Logging
 app.use(morgan('combined'));
 
+// Database connection
+const { testConnection } = require('./config/database');
+
+// Test database connection on startup
+testConnection();
+
 // Routes
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// API routes (to be added)
-// app.use('/api/auth', require('./routes/auth'));
-// app.use('/api/employees', require('./routes/employees'));
-// app.use('/api/departments', require('./routes/departments'));
+// API routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/employees', require('./routes/employees'));
+app.use('/api/departments', require('./routes/departments'));
+app.use('/api/onboarding', require('./routes/onboarding'));
 
 // Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ 
-    error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
-  });
-});
+const { errorHandler } = require('./middleware/errorHandler');
+app.use(errorHandler);
 
 // 404 handler
 app.use((req, res) => {

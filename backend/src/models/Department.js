@@ -164,7 +164,7 @@ Department.init(
     modelName: 'Department',
     tableName: 'departments',
     timestamps: true,
-    underscored: false,
+    underscored: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
     comment: '部门信息表',
