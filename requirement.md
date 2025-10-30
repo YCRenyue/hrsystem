@@ -4,8 +4,8 @@
 
 ### 1.1 技术栈选择
 
-- **前端**：React + Ant Design / Vue.js + Element UI
-- **后端**：Node.js/Express 或 Java/Spring Boot
+- **前端**：React + Ant Design + Element UI
+- **后端**：Node.js/Express
 - **数据库**：MySQL 8.0+
 - **文件处理**：SheetJS (xlsx解析)
 - **钉钉集成**：钉钉开放平台API
@@ -90,7 +90,6 @@ hrsystem/
   - form_link (登记表链接)
   - reminder_count (提醒次数)
   - created_at, updated_at
-
 - [ ] 创建权限管理表(user_permissions)
 
   - permission_id (主键)
@@ -99,7 +98,6 @@ hrsystem/
   - department_scope (部门权限范围)
   - function_permissions (功能权限JSON)
   - created_at, updated_at
-
 - [ ] 创建数据加密配置表(encryption_config)
 
   - config_id (主键)
@@ -141,6 +139,7 @@ hrsystem/
 ### 阶段三：数据安全和权限系统（估时：2-3天）
 
 #### 3.1 数据加密系统
+
 - [ ] 实现AES-256加密工具类
 - [ ] 配置敏感字段加密规则
 - [ ] 实现身份证号码加密存储
@@ -149,6 +148,7 @@ hrsystem/
 - [ ] 设置加密密钥管理
 
 #### 3.2 三级权限系统
+
 - [ ] 设计权限模型和角色定义
 - [ ] 实现用户角色分配功能
 - [ ] 实现权限验证中间件
@@ -157,6 +157,7 @@ hrsystem/
 - [ ] 实现权限继承和覆盖逻辑
 
 #### 3.3 操作审计系统
+
 - [ ] 实现操作日志记录
 - [ ] 设计敏感操作拦截
 - [ ] 实现数据变更追踪
@@ -441,6 +442,7 @@ const DingTalkAPI = {
 ```
 
 ### 3.6 数据加密核心实现
+
 ```javascript
 // 预期实现结构
 const EncryptionService = {
@@ -458,6 +460,7 @@ const EncryptionService = {
 ```
 
 ### 3.7 权限验证中间件
+
 ```javascript
 // 预期实现结构
 const PermissionMiddleware = {
@@ -478,6 +481,7 @@ const PermissionMiddleware = {
 ```
 
 ### 3.8 多渠道消息推送
+
 ```javascript
 // 预期实现结构
 const NotificationService = {
@@ -531,6 +535,7 @@ const NotificationService = {
 ## 六、成功标准
 
 ### 6.1 功能性指标
+
 - [ ] HR预录入成功率 > 98%
 - [ ] 入职登记表推送成功率 > 95%
 - [ ] 员工自主完善率 > 85%
@@ -540,6 +545,7 @@ const NotificationService = {
 - [ ] 定时任务执行准确率 > 99%
 
 ### 6.2 安全性指标
+
 - [ ] 敏感数据加密率 100%
 - [ ] 权限验证覆盖率 100%
 - [ ] 零SQL注入漏洞
@@ -547,12 +553,14 @@ const NotificationService = {
 - [ ] 操作审计日志完整性 100%
 
 ### 6.3 性能指标
+
 - [ ] 系统响应时间 < 2秒
 - [ ] 大文件上传处理时间 < 30秒
 - [ ] 并发用户支持 > 100人
 - [ ] 数据库查询优化 > 95%
 
 ### 6.4 用户体验指标
+
 - [ ] 用户满意度 > 90%
 - [ ] 界面易用性评分 > 4.5/5
 - [ ] 移动端适配完成度 100%

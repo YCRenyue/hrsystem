@@ -1,0 +1,46 @@
+{
+  "name": "hr-management-system",
+  "version": "1.0.0",
+  "description": "Enterprise HR Management System with DingTalk integration",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm start",
+    "build": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "test": "concurrently \"npm run test:backend\" \"npm run test:frontend\"",
+    "test:backend": "cd backend && npm test",
+    "test:frontend": "cd frontend && npm test -- --watchAll=false",
+    "db:migrate": "cd backend && npm run db:migrate",
+    "db:seed": "cd backend && npm run db:seed",
+    "docker:up": "cd docker && docker-compose up -d",
+    "docker:down": "cd docker && docker-compose down",
+    "docker:build": "cd docker && docker-compose build",
+    "docker:logs": "cd docker && docker-compose logs -f",
+    "setup": "npm run install:all && npm run setup:env",
+    "setup:env": "node scripts/setup-env.js",
+    "lint": "concurrently \"npm run lint:backend\" \"npm run lint:frontend\"",
+    "lint:backend": "cd backend && npm run lint",
+    "lint:frontend": "cd frontend && npm run lint"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "hr",
+    "management",
+    "system",
+    "dingtalk",
+    "react",
+    "express",
+    "mysql"
+  ],
+  "author": "",
+  "license": "MIT"
+}

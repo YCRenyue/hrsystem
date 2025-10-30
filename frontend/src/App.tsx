@@ -10,6 +10,9 @@ import MainLayout from './components/Layout/MainLayout';
 import Login from './pages/Login/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
 import EmployeeList from './pages/Employee/EmployeeList';
+import EmployeeForm from './pages/Employee/EmployeeForm';
+import OnboardingForm from './pages/Onboarding/OnboardingForm';
+import DepartmentList from './pages/Department/DepartmentList';
 import './App.css';
 
 function App() {
@@ -37,13 +40,13 @@ function App() {
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="employees" element={<EmployeeList />} />
-              <Route
-                path="departments"
-                element={<div>Department Management (Coming Soon)</div>}
-              />
+              <Route path="employees/new" element={<EmployeeForm />} />
+              <Route path="employees/:id/edit" element={<EmployeeForm />} />
+              <Route path="departments" element={<DepartmentList />} />
               <Route path="profile" element={<div>User Profile (Coming Soon)</div>} />
               <Route path="settings" element={<div>Settings (Coming Soon)</div>} />
             </Route>
+            <Route path="/onboarding/:token" element={<OnboardingForm />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Router>
