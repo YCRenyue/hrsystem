@@ -135,7 +135,7 @@ async function seed() {
       position: '高级工程师',
       employment_type: 'full_time',
       entry_date: new Date('2023-01-15'),
-      status: 'regular',
+      status: 'active',
       gender: 'male',
       address: '北京市朝阳区',
       emergency_contact: '李四',
@@ -145,7 +145,7 @@ async function seed() {
     employee1.setName('张三');
     employee1.setPhone('13900000001');
     employee1.setIdCard('110101199001011234');
-    employee1.setBirthDate(new Date('1990-01-01'));
+    employee1.setBirthDate('1990-01-01');
     await employee1.save();
 
     const employee2 = Employee.build({
@@ -156,7 +156,7 @@ async function seed() {
       position: 'HR专员',
       employment_type: 'full_time',
       entry_date: new Date('2023-03-20'),
-      status: 'regular',
+      status: 'active',
       gender: 'female',
       address: '北京市海淀区',
       emergency_contact: '王五',
@@ -166,7 +166,7 @@ async function seed() {
     employee2.setName('李四');
     employee2.setPhone('13900000002');
     employee2.setIdCard('110101199102021234');
-    employee2.setBirthDate(new Date('1991-02-02'));
+    employee2.setBirthDate('1991-02-02');
     await employee2.save();
 
     console.log('创建了 2 个示例员工');

@@ -171,8 +171,9 @@ User.init(
           args: [3, 50],
           msg: 'Username must be between 3 and 50 characters'
         },
-        isAlphanumeric: {
-          msg: 'Username must contain only letters and numbers'
+        is: {
+          args: /^[a-zA-Z0-9_]+$/,
+          msg: 'Username must contain only letters, numbers, and underscores'
         }
       }
     },
