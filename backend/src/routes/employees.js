@@ -3,9 +3,31 @@
  */
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const employeeController = require('../controllers/employeeController');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
+
+// Configure multer for file upload
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept only Excel files
+    const allowedMimes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel'
+    ];
+
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only Excel files are allowed'));
+    }
+  }
+});
 
 // All routes require authentication
 router.use(authenticateToken);
@@ -65,6 +87,7 @@ router.delete(
 router.post(
   '/import',
   requireRole('hr', 'admin'),
+  upload.single('file'),
   asyncHandler(employeeController.importFromExcel)
 );
 

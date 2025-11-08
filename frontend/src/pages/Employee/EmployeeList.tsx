@@ -51,7 +51,7 @@ const EmployeeList: React.FC = () => {
       setEmployees(response.items);
       setTotal(response.total);
     } catch (error) {
-      message.error('Failed to fetch employees');
+      message.error('获取员工列表失败');
     } finally {
       setLoading(false);
     }
@@ -71,18 +71,18 @@ const EmployeeList: React.FC = () => {
 
   const handleDelete = (employeeId: string) => {
     Modal.confirm({
-      title: 'Are you sure you want to delete this employee?',
-      content: 'This action cannot be undone.',
-      okText: 'Yes',
+      title: '确定要删除此员工吗？',
+      content: '此操作无法撤销。',
+      okText: '确定',
       okType: 'danger',
-      cancelText: 'No',
+      cancelText: '取消',
       onOk: async () => {
         try {
           await employeeService.deleteEmployee(employeeId);
-          message.success('Employee deleted successfully');
+          message.success('员工删除成功');
           fetchEmployees();
         } catch (error) {
-          message.error('Failed to delete employee');
+          message.error('删除员工失败');
         }
       },
     });
@@ -91,10 +91,10 @@ const EmployeeList: React.FC = () => {
   const handleImport = async (file: File) => {
     try {
       const result = await employeeService.importFromExcel(file);
-      message.success(`Import completed: ${result.data?.success_count} succeeded`);
+      message.success(`导入完成：成功 ${result.data?.success_count} 条`);
       fetchEmployees();
     } catch (error) {
-      message.error('Failed to import employees');
+      message.error('导入员工数据失败');
     }
     return false; // Prevent default upload behavior
   };
@@ -105,11 +105,11 @@ const EmployeeList: React.FC = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `employees_${new Date().toISOString().split('T')[0]}.xlsx`;
+      a.download = `员工列表_${new Date().toISOString().split('T')[0]}.xlsx`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      message.error('Failed to export employees');
+      message.error('导出员工数据失败');
     }
   };
 
@@ -126,37 +126,37 @@ const EmployeeList: React.FC = () => {
 
   const columns: ColumnsType<Employee> = [
     {
-      title: 'Employee #',
+      title: '员工编号',
       dataIndex: 'employee_number',
       key: 'employee_number',
       width: 120,
     },
     {
-      title: 'Name',
+      title: '姓名',
       dataIndex: 'name',
       key: 'name',
       width: 150,
     },
     {
-      title: 'Email',
+      title: '邮箱',
       dataIndex: 'email',
       key: 'email',
       width: 200,
     },
     {
-      title: 'Phone',
+      title: '手机号',
       dataIndex: 'phone',
       key: 'phone',
       width: 150,
     },
     {
-      title: 'Department',
+      title: '部门',
       dataIndex: ['department', 'department_name'],
       key: 'department',
       width: 150,
     },
     {
-      title: 'Status',
+      title: '状态',
       dataIndex: 'employment_status',
       key: 'employment_status',
       width: 120,
@@ -165,14 +165,14 @@ const EmployeeList: React.FC = () => {
       ),
     },
     {
-      title: 'Hire Date',
+      title: '入职日期',
       dataIndex: 'hire_date',
       key: 'hire_date',
       width: 120,
       render: (date: string) => new Date(date).toLocaleDateString(),
     },
     {
-      title: 'Actions',
+      title: '操作',
       key: 'actions',
       width: 150,
       fixed: 'right',
@@ -183,7 +183,7 @@ const EmployeeList: React.FC = () => {
             icon={<EditOutlined />}
             onClick={() => navigate(`/employees/${record.employee_id}/edit`)}
           >
-            Edit
+            编辑
           </Button>
           <Button
             type="link"
@@ -191,7 +191,7 @@ const EmployeeList: React.FC = () => {
             icon={<DeleteOutlined />}
             onClick={() => handleDelete(record.employee_id)}
           >
-            Delete
+            删除
           </Button>
         </Space>
       ),
@@ -203,38 +203,38 @@ const EmployeeList: React.FC = () => {
       <div className="employee-list-header">
         <Space size="middle" wrap>
           <Search
-            placeholder="Search by name, email, or employee number"
+            placeholder="按姓名、邮箱或员工编号搜索"
             allowClear
             enterButton={<SearchOutlined />}
             onSearch={handleSearch}
             style={{ width: 300 }}
           />
           <Select
-            placeholder="Filter by status"
+            placeholder="按状态筛选"
             allowClear
             style={{ width: 150 }}
             onChange={handleStatusFilter}
           >
-            <Option value="pending">Pending</Option>
-            <Option value="probation">Probation</Option>
-            <Option value="regular">Regular</Option>
-            <Option value="resigned">Resigned</Option>
-            <Option value="terminated">Terminated</Option>
+            <Option value="pending">待入职</Option>
+            <Option value="probation">试用期</Option>
+            <Option value="regular">正式</Option>
+            <Option value="resigned">已离职</Option>
+            <Option value="terminated">已终止</Option>
           </Select>
         </Space>
         <Space size="middle">
           <Upload beforeUpload={handleImport} accept=".xlsx,.xls" showUploadList={false}>
-            <Button icon={<UploadOutlined />}>Import Excel</Button>
+            <Button icon={<UploadOutlined />}>导入 Excel</Button>
           </Upload>
           <Button icon={<DownloadOutlined />} onClick={handleExport}>
-            Export Excel
+            导出 Excel
           </Button>
           <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => navigate('/employees/new')}
           >
-            Add Employee
+            添加员工
           </Button>
         </Space>
       </div>
@@ -250,7 +250,7 @@ const EmployeeList: React.FC = () => {
           pageSize: queryParams.size,
           total: total,
           showSizeChanger: true,
-          showTotal: (total) => `Total ${total} employees`,
+          showTotal: (total) => `共 ${total} 名员工`,
           onChange: handlePageChange,
         }}
       />

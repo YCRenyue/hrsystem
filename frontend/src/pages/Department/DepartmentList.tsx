@@ -34,7 +34,7 @@ const DepartmentList: React.FC = () => {
       const data = await departmentService.getDepartments();
       setDepartments(data);
     } catch (error) {
-      message.error('Failed to fetch departments');
+      message.error('获取部门列表失败');
     } finally {
       setLoading(false);
     }
@@ -56,18 +56,18 @@ const DepartmentList: React.FC = () => {
 
   const handleDelete = (departmentId: string) => {
     Modal.confirm({
-      title: 'Are you sure you want to delete this department?',
-      content: 'This action cannot be undone.',
-      okText: 'Yes',
+      title: '确定要删除此部门吗？',
+      content: '此操作无法撤销。',
+      okText: '确定',
       okType: 'danger',
-      cancelText: 'No',
+      cancelText: '取消',
       onOk: async () => {
         try {
           await departmentService.deleteDepartment(departmentId);
-          message.success('Department deleted successfully');
+          message.success('部门删除成功');
           fetchDepartments();
         } catch (error) {
-          message.error('Failed to delete department');
+          message.error('删除部门失败');
         }
       },
     });
@@ -82,33 +82,33 @@ const DepartmentList: React.FC = () => {
           editingDepartment.department_id,
           values
         );
-        message.success('Department updated successfully');
+        message.success('部门更新成功');
       } else {
         await departmentService.createDepartment(values);
-        message.success('Department created successfully');
+        message.success('部门创建成功');
       }
 
       setModalVisible(false);
       fetchDepartments();
     } catch (error) {
-      message.error('Failed to save department');
+      message.error('保存部门失败');
     }
   };
 
   const columns: ColumnsType<Department> = [
     {
-      title: 'Department Name',
+      title: '部门名称',
       dataIndex: 'department_name',
       key: 'department_name',
     },
     {
-      title: 'Created At',
+      title: '创建时间',
       dataIndex: 'created_at',
       key: 'created_at',
       render: (date: string) => new Date(date).toLocaleString(),
     },
     {
-      title: 'Actions',
+      title: '操作',
       key: 'actions',
       width: 200,
       render: (_, record) => (
@@ -118,7 +118,7 @@ const DepartmentList: React.FC = () => {
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
           >
-            Edit
+            编辑
           </Button>
           <Button
             type="link"
@@ -126,7 +126,7 @@ const DepartmentList: React.FC = () => {
             icon={<DeleteOutlined />}
             onClick={() => handleDelete(record.department_id)}
           >
-            Delete
+            删除
           </Button>
         </Space>
       ),
@@ -136,10 +136,10 @@ const DepartmentList: React.FC = () => {
   return (
     <div>
       <Card
-        title="Department Management"
+        title="部门管理"
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-            Add Department
+            添加部门
           </Button>
         }
       >
@@ -152,19 +152,20 @@ const DepartmentList: React.FC = () => {
       </Card>
 
       <Modal
-        title={editingDepartment ? 'Edit Department' : 'Add Department'}
+        title={editingDepartment ? '编辑部门' : '添加部门'}
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
-        okText={editingDepartment ? 'Update' : 'Create'}
+        okText={editingDepartment ? '更新' : '创建'}
+        cancelText="取消"
       >
         <Form form={form} layout="vertical">
           <Form.Item
-            label="Department Name"
+            label="部门名称"
             name="department_name"
-            rules={[{ required: true, message: 'Please input department name!' }]}
+            rules={[{ required: true, message: '请输入部门名称！' }]}
           >
-            <Input placeholder="e.g., Engineering, HR, Sales" />
+            <Input placeholder="例如：研发部、人力资源部、销售部" />
           </Form.Item>
         </Form>
       </Modal>

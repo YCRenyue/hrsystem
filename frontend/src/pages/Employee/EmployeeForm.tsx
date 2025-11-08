@@ -54,7 +54,7 @@ const EmployeeForm: React.FC = () => {
       const data = await departmentService.getDepartments();
       setDepartments(data);
     } catch (error) {
-      message.error('Failed to load departments');
+      message.error('加载部门列表失败');
     }
   };
 
@@ -75,7 +75,7 @@ const EmployeeForm: React.FC = () => {
         birth_date: data.birth_date ? dayjs(data.birth_date) : null,
       });
     } catch (error) {
-      message.error('Failed to load employee data');
+      message.error('加载员工数据失败');
     }
   };
 
@@ -91,17 +91,17 @@ const EmployeeForm: React.FC = () => {
 
       if (isEditMode && id) {
         await employeeService.updateEmployee(id, formData);
-        message.success('Employee updated successfully');
+        message.success('员工信息更新成功');
       } else {
         await employeeService.createEmployee(formData);
-        message.success('Employee created successfully');
+        message.success('员工创建成功');
       }
 
       navigate('/employees');
     } catch (error: any) {
       message.error(
         error.response?.data?.message ||
-          `Failed to ${isEditMode ? 'update' : 'create'} employee`
+          `${isEditMode ? '更新' : '创建'}员工失败`
       );
     } finally {
       setLoading(false);
@@ -115,10 +115,10 @@ const EmployeeForm: React.FC = () => {
         onClick={() => navigate('/employees')}
         style={{ marginBottom: 16 }}
       >
-        Back to List
+        返回列表
       </Button>
 
-      <Card title={isEditMode ? 'Edit Employee' : 'Add New Employee'}>
+      <Card title={isEditMode ? '编辑员工信息' : '添加新员工'}>
         <Form
           form={form}
           layout="vertical"
@@ -132,41 +132,41 @@ const EmployeeForm: React.FC = () => {
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <Form.Item
-                label="Employee Number"
+                label="员工编号"
                 name="employee_number"
                 rules={[
-                  { required: true, message: 'Please input employee number!' },
+                  { required: true, message: '请输入员工编号！' },
                 ]}
               >
-                <Input placeholder="e.g., EMP001" disabled={isEditMode} />
+                <Input placeholder="例如：EMP001" disabled={isEditMode} />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
               <Form.Item
-                label="Full Name"
+                label="姓名"
                 name="name"
-                rules={[{ required: true, message: 'Please input name!' }]}
+                rules={[{ required: true, message: '请输入姓名！' }]}
               >
-                <Input placeholder="Full Name" />
+                <Input placeholder="姓名" />
               </Form.Item>
             </Col>
           </Row>
 
           <Row gutter={16}>
             <Col xs={24} md={12}>
-              <Form.Item label="English Name" name="name_en">
-                <Input placeholder="English Name (Optional)" />
+              <Form.Item label="英文名" name="name_en">
+                <Input placeholder="英文名（选填）" />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
               <Form.Item
-                label="Gender"
+                label="性别"
                 name="gender"
-                rules={[{ required: true, message: 'Please select gender!' }]}
+                rules={[{ required: true, message: '请选择性别！' }]}
               >
                 <Select>
-                  <Option value={Gender.MALE}>Male</Option>
-                  <Option value={Gender.FEMALE}>Female</Option>
+                  <Option value={Gender.MALE}>男</Option>
+                  <Option value={Gender.FEMALE}>女</Option>
                 </Select>
               </Form.Item>
             </Col>
@@ -174,22 +174,22 @@ const EmployeeForm: React.FC = () => {
 
           <Row gutter={16}>
             <Col xs={24} md={12}>
-              <Form.Item label="Birth Date" name="birth_date">
+              <Form.Item label="出生日期" name="birth_date">
                 <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
               <Form.Item
-                label="ID Card Number"
+                label="身份证号"
                 name="id_card"
                 rules={[
                   {
                     pattern: /^[0-9]{17}[0-9Xx]$/,
-                    message: 'Invalid ID card format',
+                    message: '身份证号格式不正确',
                   },
                 ]}
               >
-                <Input placeholder="18-digit ID card number" />
+                <Input placeholder="18位身份证号" />
               </Form.Item>
             </Col>
           </Row>
@@ -197,23 +197,23 @@ const EmployeeForm: React.FC = () => {
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <Form.Item
-                label="Phone"
+                label="手机号"
                 name="phone"
                 rules={[
                   {
                     pattern: /^1[3-9]\d{9}$/,
-                    message: 'Invalid phone number format',
+                    message: '手机号格式不正确',
                   },
                 ]}
               >
-                <Input placeholder="11-digit phone number" />
+                <Input placeholder="11位手机号" />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
               <Form.Item
-                label="Email"
+                label="邮箱"
                 name="email"
-                rules={[{ type: 'email', message: 'Invalid email format' }]}
+                rules={[{ type: 'email', message: '邮箱格式不正确' }]}
               >
                 <Input placeholder="email@example.com" />
               </Form.Item>
@@ -223,15 +223,15 @@ const EmployeeForm: React.FC = () => {
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <Form.Item
-                label="Hire Date"
+                label="入职日期"
                 name="hire_date"
-                rules={[{ required: true, message: 'Please select hire date!' }]}
+                rules={[{ required: true, message: '请选择入职日期！' }]}
               >
                 <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item label="Probation End Date" name="probation_end_date">
+              <Form.Item label="试用期结束日期" name="probation_end_date">
                 <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
               </Form.Item>
             </Col>
@@ -240,11 +240,11 @@ const EmployeeForm: React.FC = () => {
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <Form.Item
-                label="Department"
+                label="部门"
                 name="department_id"
-                rules={[{ required: true, message: 'Please select department!' }]}
+                rules={[{ required: true, message: '请选择部门！' }]}
               >
-                <Select placeholder="Select Department">
+                <Select placeholder="选择部门">
                   {departments.map((dept) => (
                     <Option key={dept.department_id} value={dept.department_id}>
                       {dept.department_name}
@@ -255,11 +255,11 @@ const EmployeeForm: React.FC = () => {
             </Col>
             <Col xs={24} md={12}>
               <Form.Item
-                label="Position"
+                label="职位"
                 name="position_id"
-                rules={[{ required: true, message: 'Please input position!' }]}
+                rules={[{ required: true, message: '请输入职位！' }]}
               >
-                <Input placeholder="Position/Title" />
+                <Input placeholder="职位/职称" />
               </Form.Item>
             </Col>
           </Row>
@@ -267,26 +267,26 @@ const EmployeeForm: React.FC = () => {
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <Form.Item
-                label="Employment Type"
+                label="雇佣类型"
                 name="employment_type"
-                rules={[{ required: true, message: 'Please select employment type!' }]}
+                rules={[{ required: true, message: '请选择雇佣类型！' }]}
               >
                 <Select>
-                  <Option value={EmploymentType.FULL_TIME}>Full Time</Option>
-                  <Option value={EmploymentType.PART_TIME}>Part Time</Option>
-                  <Option value={EmploymentType.INTERN}>Intern</Option>
-                  <Option value={EmploymentType.CONTRACTOR}>Contractor</Option>
+                  <Option value={EmploymentType.FULL_TIME}>全职</Option>
+                  <Option value={EmploymentType.PART_TIME}>兼职</Option>
+                  <Option value={EmploymentType.INTERN}>实习</Option>
+                  <Option value={EmploymentType.CONTRACTOR}>合同工</Option>
                 </Select>
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item label="Employment Status" name="employment_status">
+              <Form.Item label="在职状态" name="employment_status">
                 <Select>
-                  <Option value={EmploymentStatus.PENDING}>Pending</Option>
-                  <Option value={EmploymentStatus.PROBATION}>Probation</Option>
-                  <Option value={EmploymentStatus.REGULAR}>Regular</Option>
-                  <Option value={EmploymentStatus.RESIGNED}>Resigned</Option>
-                  <Option value={EmploymentStatus.TERMINATED}>Terminated</Option>
+                  <Option value={EmploymentStatus.PENDING}>待入职</Option>
+                  <Option value={EmploymentStatus.PROBATION}>试用期</Option>
+                  <Option value={EmploymentStatus.REGULAR}>正式</Option>
+                  <Option value={EmploymentStatus.RESIGNED}>已离职</Option>
+                  <Option value={EmploymentStatus.TERMINATED}>已终止</Option>
                 </Select>
               </Form.Item>
             </Col>
@@ -294,44 +294,44 @@ const EmployeeForm: React.FC = () => {
 
           <Row gutter={16}>
             <Col xs={24} md={12}>
-              <Form.Item label="Work Location" name="work_location">
-                <Input placeholder="Office Location" />
+              <Form.Item label="工作地点" name="work_location">
+                <Input placeholder="办公地点" />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item label="Emergency Contact" name="emergency_contact">
-                <Input placeholder="Emergency Contact Name" />
+              <Form.Item label="紧急联系人" name="emergency_contact">
+                <Input placeholder="紧急联系人姓名" />
               </Form.Item>
             </Col>
           </Row>
 
           <Row gutter={16}>
             <Col xs={24} md={12}>
-              <Form.Item label="Emergency Phone" name="emergency_phone">
-                <Input placeholder="Emergency Contact Phone" />
+              <Form.Item label="紧急联系电话" name="emergency_phone">
+                <Input placeholder="紧急联系人电话" />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item label="DingTalk User ID" name="dingtalk_user_id">
-                <Input placeholder="DingTalk User ID" />
+              <Form.Item label="钉钉用户ID" name="dingtalk_user_id">
+                <Input placeholder="钉钉用户ID" />
               </Form.Item>
             </Col>
           </Row>
 
-          <Form.Item label="Address" name="address">
-            <TextArea rows={2} placeholder="Home Address" />
+          <Form.Item label="家庭地址" name="address">
+            <TextArea rows={2} placeholder="家庭地址" />
           </Form.Item>
 
-          <Form.Item label="Remarks" name="remarks">
-            <TextArea rows={3} placeholder="Additional Notes" />
+          <Form.Item label="备注" name="remarks">
+            <TextArea rows={3} placeholder="其他备注信息" />
           </Form.Item>
 
           <Form.Item>
             <Space>
               <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading}>
-                {isEditMode ? 'Update' : 'Create'} Employee
+                {isEditMode ? '更新' : '创建'}员工信息
               </Button>
-              <Button onClick={() => navigate('/employees')}>Cancel</Button>
+              <Button onClick={() => navigate('/employees')}>取消</Button>
             </Space>
           </Form.Item>
         </Form>

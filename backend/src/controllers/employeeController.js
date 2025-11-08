@@ -240,16 +240,205 @@ const deleteEmployee = async (req, res) => {
  * Import employees from Excel
  */
 const importFromExcel = async (req, res) => {
-  // TODO: Implement Excel import logic
-  throw new Error('Excel import not yet implemented');
+  const ExcelJS = require('exceljs');
+
+  if (!req.file) {
+    throw new ValidationError('No file uploaded');
+  }
+
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(req.file.buffer);
+
+  const worksheet = workbook.getWorksheet(1);
+  if (!worksheet) {
+    throw new ValidationError('Excel file is empty');
+  }
+
+  const results = {
+    success_count: 0,
+    error_count: 0,
+    errors: []
+  };
+
+  // Skip header row
+  for (let rowNum = 2; rowNum <= worksheet.rowCount; rowNum++) {
+    const row = worksheet.getRow(rowNum);
+
+    try {
+      const employeeData = {
+        employee_number: row.getCell(1).value?.toString().trim(),
+        name: row.getCell(2).value?.toString().trim(),
+        email: row.getCell(3).value?.toString().trim(),
+        phone: row.getCell(4).value?.toString().trim(),
+        id_card: row.getCell(5).value?.toString().trim(),
+        gender: row.getCell(6).value?.toString().trim(),
+        birth_date: row.getCell(7).value,
+        department_id: row.getCell(8).value?.toString().trim(),
+        position: row.getCell(9).value?.toString().trim(),
+        employment_type: row.getCell(10).value?.toString().trim(),
+        entry_date: row.getCell(11).value,
+        status: row.getCell(12).value?.toString().trim() || 'pending'
+      };
+
+      // Skip empty rows
+      if (!employeeData.employee_number && !employeeData.name) {
+        continue;
+      }
+
+      // Validate required fields
+      if (!employeeData.employee_number || !employeeData.name) {
+        results.errors.push({
+          row: rowNum,
+          message: 'Employee number and name are required'
+        });
+        results.error_count++;
+        continue;
+      }
+
+      // Check if employee already exists
+      const existing = await Employee.findOne({
+        where: { employee_number: employeeData.employee_number }
+      });
+
+      if (existing) {
+        results.errors.push({
+          row: rowNum,
+          message: `Employee ${employeeData.employee_number} already exists`
+        });
+        results.error_count++;
+        continue;
+      }
+
+      // Create employee
+      const employee = Employee.build({
+        employee_number: employeeData.employee_number,
+        email: employeeData.email,
+        department_id: employeeData.department_id,
+        position: employeeData.position,
+        employment_type: employeeData.employment_type,
+        entry_date: employeeData.entry_date,
+        status: employeeData.status,
+        gender: employeeData.gender,
+        created_by: req.user?.user_id
+      });
+
+      // Set encrypted fields
+      if (employeeData.name) employee.setName(employeeData.name);
+      if (employeeData.phone) employee.setPhone(employeeData.phone);
+      if (employeeData.id_card) employee.setIdCard(employeeData.id_card);
+      if (employeeData.birth_date) employee.setBirthDate(employeeData.birth_date);
+
+      await employee.save();
+      results.success_count++;
+    } catch (error) {
+      results.errors.push({
+        row: rowNum,
+        message: error.message
+      });
+      results.error_count++;
+    }
+  }
+
+  res.json({
+    success: true,
+    data: results
+  });
 };
 
 /**
  * Export employees to Excel
  */
 const exportToExcel = async (req, res) => {
-  // TODO: Implement Excel export logic
-  throw new Error('Excel export not yet implemented');
+  const ExcelJS = require('exceljs');
+
+  const {
+    department_id,
+    status,
+    employment_type
+  } = req.query;
+
+  // Build where clause
+  const where = {};
+  if (department_id) where.department_id = department_id;
+  if (status) where.status = status;
+  if (employment_type) where.employment_type = employment_type;
+
+  // Fetch all employees
+  const employees = await Employee.findAll({
+    where,
+    include: [
+      {
+        model: Department,
+        as: 'department',
+        attributes: ['department_id', 'name', 'code']
+      }
+    ],
+    order: [['created_at', 'DESC']]
+  });
+
+  // Create workbook and worksheet
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('员工列表');
+
+  // Define columns
+  worksheet.columns = [
+    { header: '员工编号', key: 'employee_number', width: 15 },
+    { header: '姓名', key: 'name', width: 15 },
+    { header: '邮箱', key: 'email', width: 25 },
+    { header: '手机号', key: 'phone', width: 15 },
+    { header: '身份证号', key: 'id_card', width: 20 },
+    { header: '性别', key: 'gender', width: 10 },
+    { header: '出生日期', key: 'birth_date', width: 15 },
+    { header: '部门', key: 'department', width: 20 },
+    { header: '职位', key: 'position', width: 20 },
+    { header: '雇佣类型', key: 'employment_type', width: 15 },
+    { header: '入职日期', key: 'entry_date', width: 15 },
+    { header: '状态', key: 'status', width: 15 }
+  ];
+
+  // Check if user can view sensitive data
+  const canViewSensitive = req.user?.role === 'admin' || req.user?.role === 'hr';
+
+  // Add rows
+  employees.forEach(employee => {
+    const safeData = employee.toSafeObject(canViewSensitive);
+    worksheet.addRow({
+      employee_number: employee.employee_number,
+      name: canViewSensitive ? employee.getName() : safeData.name,
+      email: employee.email,
+      phone: canViewSensitive ? employee.getPhone() : safeData.phone,
+      id_card: canViewSensitive ? employee.getIdCard() : safeData.id_card,
+      gender: employee.gender,
+      birth_date: employee.getBirthDate(),
+      department: employee.department?.name || '',
+      position: employee.position,
+      employment_type: employee.employment_type,
+      entry_date: employee.entry_date,
+      status: employee.status
+    });
+  });
+
+  // Style header row
+  worksheet.getRow(1).font = { bold: true };
+  worksheet.getRow(1).fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFE0E0E0' }
+  };
+
+  // Set response headers
+  res.setHeader(
+    'Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  );
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename=employees_${new Date().toISOString().split('T')[0]}.xlsx`
+  );
+
+  // Write to response
+  await workbook.xlsx.write(res);
+  res.end();
 };
 
 module.exports = {

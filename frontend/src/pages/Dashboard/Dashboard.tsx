@@ -14,12 +14,12 @@ const Dashboard: React.FC = () => {
   // TODO: Fetch real statistics from API
   return (
     <div>
-      <h2 style={{ marginBottom: 24 }}>Dashboard</h2>
+      <h2 style={{ marginBottom: 24 }}>仪表板</h2>
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Total Employees"
+              title="员工总数"
               value={128}
               prefix={<UserOutlined />}
               valueStyle={{ color: '#3f8600' }}
@@ -29,7 +29,7 @@ const Dashboard: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Departments"
+              title="部门数量"
               value={15}
               prefix={<TeamOutlined />}
               valueStyle={{ color: '#1890ff' }}
@@ -39,7 +39,7 @@ const Dashboard: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Onboarding"
+              title="待入职"
               value={8}
               prefix={<ClockCircleOutlined />}
               valueStyle={{ color: '#faad14' }}
@@ -49,7 +49,7 @@ const Dashboard: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="Completed"
+              title="完成率"
               value={95}
               suffix="%"
               prefix={<CheckCircleOutlined />}
@@ -61,13 +61,13 @@ const Dashboard: React.FC = () => {
 
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         <Col xs={24} lg={12}>
-          <Card title="Recent Activities">
-            <p>Activity feed coming soon...</p>
+          <Card title="最近活动">
+            <p>活动动态即将推出...</p>
           </Card>
         </Col>
         <Col xs={24} lg={12}>
-          <Card title="Pending Tasks">
-            <p>Task list coming soon...</p>
+          <Card title="待办任务">
+            <p>任务列表即将推出...</p>
           </Card>
         </Col>
       </Row>

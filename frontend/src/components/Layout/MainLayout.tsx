@@ -36,13 +36,13 @@ const MainLayout: React.FC = () => {
     {
       key: 'profile',
       icon: <UserOutlined />,
-      label: 'Profile',
+      label: '个人资料',
       onClick: () => navigate('/profile'),
     },
     {
       key: 'settings',
       icon: <SettingOutlined />,
-      label: 'Settings',
+      label: '设置',
       onClick: () => navigate('/settings'),
     },
     {
@@ -51,7 +51,7 @@ const MainLayout: React.FC = () => {
     {
       key: 'logout',
       icon: <LogoutOutlined />,
-      label: 'Logout',
+      label: '退出登录',
       onClick: handleLogout,
       danger: true,
     },
@@ -62,19 +62,19 @@ const MainLayout: React.FC = () => {
     {
       key: '/dashboard',
       icon: <DashboardOutlined />,
-      label: 'Dashboard',
+      label: '仪表板',
       onClick: () => navigate('/dashboard'),
     },
     {
       key: '/employees',
       icon: <TeamOutlined />,
-      label: 'Employees',
+      label: '员工管理',
       onClick: () => navigate('/employees'),
     },
     {
       key: '/departments',
       icon: <ApartmentOutlined />,
-      label: 'Departments',
+      label: '部门管理',
       onClick: () => navigate('/departments'),
     },
   ];
@@ -93,7 +93,7 @@ const MainLayout: React.FC = () => {
             fontWeight: 'bold',
           }}
         >
-          {collapsed ? 'HR' : 'HR System'}
+          {collapsed ? '人事' : '人事管理系统'}
         </div>
         <Menu
           theme="dark"
@@ -113,14 +113,14 @@ const MainLayout: React.FC = () => {
           }}
         >
           <div style={{ fontSize: 18, fontWeight: 500 }}>
-            {location.pathname === '/dashboard' && 'Dashboard'}
-            {location.pathname === '/employees' && 'Employee Management'}
-            {location.pathname === '/departments' && 'Department Management'}
+            {location.pathname === '/dashboard' && '仪表板'}
+            {location.pathname === '/employees' && '员工管理'}
+            {location.pathname === '/departments' && '部门管理'}
           </div>
           <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
             <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
               <Avatar icon={<UserOutlined />} style={{ marginRight: 8 }} />
-              <span>{user?.username || 'User'}</span>
+              <span>{user?.username || '用户'}</span>
             </div>
           </Dropdown>
         </Header>
