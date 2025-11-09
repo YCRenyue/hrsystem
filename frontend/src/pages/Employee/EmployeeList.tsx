@@ -151,25 +151,30 @@ const EmployeeList: React.FC = () => {
     },
     {
       title: '部门',
-      dataIndex: ['department', 'department_name'],
+      dataIndex: ['department', 'name'],
       key: 'department',
       width: 150,
     },
     {
       title: '状态',
-      dataIndex: 'employment_status',
-      key: 'employment_status',
+      dataIndex: 'status',
+      key: 'status',
       width: 120,
-      render: (status: EmploymentStatus) => (
-        <Tag color={getStatusColor(status)}>{status.toUpperCase()}</Tag>
-      ),
+      render: (status: string) => {
+        const colorMap: Record<string, string> = {
+          pending: 'orange',
+          active: 'green',
+          inactive: 'red',
+        };
+        return <Tag color={colorMap[status] || 'default'}>{status}</Tag>;
+      },
     },
     {
       title: '入职日期',
-      dataIndex: 'hire_date',
-      key: 'hire_date',
+      dataIndex: 'entry_date',
+      key: 'entry_date',
       width: 120,
-      render: (date: string) => new Date(date).toLocaleDateString(),
+      render: (date: string) => date ? new Date(date).toLocaleDateString() : '-',
     },
     {
       title: '操作',

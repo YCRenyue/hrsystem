@@ -19,6 +19,125 @@ Avoid building functionality on speculation. Implement features only when they a
 - **Single Responsibility**: Each function, class, and module should have one clear purpose.
 - **Fail Fast**: Check for potential errors early and throw exceptions immediately when issues occur.
 
+## ⚠️ MANDATORY Development Workflow
+
+**CRITICAL**: This workflow is REQUIRED for all feature development. Do NOT skip any step.
+
+### Test-Driven Development (TDD) Process
+
+Every feature MUST follow this workflow:
+
+1. **Write Tests First**
+   - Before writing any implementation code, write comprehensive tests
+   - Tests should cover: happy path, edge cases, error cases, validation
+   - Include unit tests for individual functions/methods
+   - Include integration tests for API endpoints
+
+2. **Run Tests (They Should Fail)**
+   - Run the test suite: `npm run test:all` or `npm test`
+   - Verify tests fail with expected errors
+   - This confirms tests are actually testing something
+
+3. **Implement the Feature**
+   - Write minimal code to make tests pass
+   - Follow KISS and YAGNI principles
+   - Adhere to code style guidelines (ESLint)
+
+4. **Run Tests Again (They Should Pass)**
+   - Run: `npm run test:all`
+   - ALL tests must pass before proceeding
+   - Fix any failing tests before moving forward
+
+5. **Check Code Quality**
+   - Run linter: `npm run lint`
+   - Fix all linting errors: `npm run lint:fix`
+   - Ensure code coverage meets minimum threshold (50%+)
+
+6. **ONLY THEN: Commit Changes**
+   - Stage changes: `git add .`
+   - Commit with descriptive message
+   - **NEVER commit code with failing tests**
+   - **NEVER commit code with linting errors**
+
+### Example TDD Workflow
+
+```bash
+# 1. Create test file first
+touch backend/src/__tests__/newFeature.test.js
+
+# 2. Write tests (they will fail)
+# ... edit newFeature.test.js ...
+
+# 3. Run tests (confirm they fail)
+cd backend && npm run test:all
+
+# 4. Implement feature
+# ... edit implementation files ...
+
+# 5. Run tests (confirm they pass)
+npm run test:all
+
+# 6. Check code quality
+npm run lint
+
+# 7. Only if all pass: commit
+git add .
+git commit -m "feat(module): add new feature with tests"
+```
+
+### Automated Test Commands
+
+```bash
+# Run all tests with detailed report
+cd backend && npm run test:all
+
+# Run specific test file
+npx jest src/__tests__/employees.test.js
+
+# Run tests in watch mode (for development)
+npm run test:watch
+
+# Generate coverage report
+npm run test:coverage
+
+# Check code style
+npm run lint
+npm run lint:fix  # Auto-fix style issues
+```
+
+### Test Coverage Requirements
+
+- **Minimum coverage**: 50% for all metrics (lines, functions, branches, statements)
+- **Target coverage**: 80%+ for critical business logic
+- Coverage report is generated at `backend/coverage/index.html`
+- CI/CD should enforce coverage thresholds
+
+### What to Test
+
+**MUST test:**
+- All API endpoints (request/response, status codes, error cases)
+- Data validation logic
+- Authentication and authorization
+- Database operations (CRUD)
+- Data encryption/decryption
+- Business logic functions
+- Error handling
+
+**Optional (but recommended):**
+- Edge cases (empty inputs, very large inputs, special characters)
+- Performance (for critical paths)
+- Concurrent operations
+
+### When Tests Can Be Skipped
+
+**NEVER**. Tests are mandatory for:
+- New features
+- Bug fixes (add regression test)
+- Refactoring (ensure no regression)
+- API changes
+
+The ONLY exception is documentation-only changes.
+
 ## Project Overview
 
 This is an enterprise HR Management System with deep DingTalk integration, featuring employee onboarding automation, intelligent Q&A, and comprehensive reporting. The system uses a full-stack JavaScript architecture with React frontend and Node.js/Express backend.

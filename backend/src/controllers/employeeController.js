@@ -260,11 +260,51 @@ const importFromExcel = async (req, res) => {
     errors: []
   };
 
+  /**
+   * Parse date value from Excel cell
+   * @param {any} value - Cell value
+   * @returns {string|null} - Formatted date string or null
+   */
+  const parseExcelDate = (value) => {
+    if (!value) return null;
+
+    // If value is already a Date object
+    if (value instanceof Date) {
+      return value.toISOString().split('T')[0];
+    }
+
+    // If value is a number (Excel serial date)
+    if (typeof value === 'number') {
+      const date = new Date((value - 25569) * 86400 * 1000);
+      return date.toISOString().split('T')[0];
+    }
+
+    // If value is a string, try to parse it
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      // Skip non-date strings like "离职", "在职" etc.
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed) && !/^\d{4}\/\d{2}\/\d{2}$/.test(trimmed)) {
+        return null;
+      }
+      const date = new Date(trimmed);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
+      }
+    }
+
+    return null;
+  };
+
   // Skip header row
   for (let rowNum = 2; rowNum <= worksheet.rowCount; rowNum++) {
     const row = worksheet.getRow(rowNum);
 
     try {
+      const statusValue = row.getCell(12).value?.toString().trim()?.toLowerCase() || 'pending';
+      // Validate status value
+      const validStatuses = ['pending', 'active', 'inactive'];
+      const status = validStatuses.includes(statusValue) ? statusValue : 'pending';
+
       const employeeData = {
         employee_number: row.getCell(1).value?.toString().trim(),
         name: row.getCell(2).value?.toString().trim(),
@@ -272,12 +312,12 @@ const importFromExcel = async (req, res) => {
         phone: row.getCell(4).value?.toString().trim(),
         id_card: row.getCell(5).value?.toString().trim(),
         gender: row.getCell(6).value?.toString().trim(),
-        birth_date: row.getCell(7).value,
+        birth_date: parseExcelDate(row.getCell(7).value),
         department_id: row.getCell(8).value?.toString().trim(),
         position: row.getCell(9).value?.toString().trim(),
         employment_type: row.getCell(10).value?.toString().trim(),
-        entry_date: row.getCell(11).value,
-        status: row.getCell(12).value?.toString().trim() || 'pending'
+        entry_date: parseExcelDate(row.getCell(11).value),
+        status
       };
 
       // Skip empty rows
