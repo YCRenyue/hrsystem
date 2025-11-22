@@ -49,7 +49,7 @@ const DepartmentList: React.FC = () => {
   const handleEdit = (department: Department) => {
     setEditingDepartment(department);
     form.setFieldsValue({
-      department_name: department.department_name,
+      department_name: department.name,
     });
     setModalVisible(true);
   };

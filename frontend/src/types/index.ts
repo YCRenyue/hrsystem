@@ -37,9 +37,11 @@ export enum UserRole {
 
 export interface Department {
   department_id: string;
-  department_name: string;
+  name: string; // Backend uses 'name', not 'department_name'
+  code?: string;
   parent_department_id?: string;
   manager_id?: string;
+  description?: string;
   created_at: string;
   updated_at: string;
 }
@@ -58,20 +60,23 @@ export interface Employee {
   employee_number: string;
   name: string; // Decrypted on frontend
   name_en?: string;
-  gender: Gender;
+  gender?: Gender | string;
   birth_date?: string;
   phone?: string; // May be masked based on permissions
   email?: string;
   id_card?: string; // May be masked
-  hire_date: string;
+  bank_card?: string; // May be masked
+  entry_date?: string; // Backend uses entry_date, not hire_date
+  hire_date?: string; // Alias for entry_date
   probation_end_date?: string;
-  department_id: string;
+  department_id?: string;
   department?: Department;
-  position_id: string;
-  position?: Position;
+  position?: string; // Backend uses string, not Position object
+  position_id?: string;
   manager_id?: string;
-  employment_type: EmploymentType;
-  employment_status: EmploymentStatus;
+  employment_type?: EmploymentType | string;
+  employment_status?: EmploymentStatus;
+  status?: string; // Backend uses 'status' (active/pending/inactive)
   work_location?: string;
   address?: string;
   emergency_contact?: string;
@@ -80,11 +85,11 @@ export interface Employee {
   id_card_front_s3_path?: string;
   id_card_back_s3_path?: string;
   dingtalk_user_id?: string;
-  data_complete: boolean;
+  data_complete?: boolean;
   remarks?: string;
   created_by?: string;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface User {
@@ -187,8 +192,11 @@ export interface EmployeeQueryParams {
   size?: number;
   keyword?: string;
   department_id?: string;
+  status?: string; // Backend uses 'status' for active/pending/inactive
   employment_status?: EmploymentStatus;
   employment_type?: EmploymentType;
   hire_date_from?: string;
   hire_date_to?: string;
+  entry_date_start?: string; // For date range filtering
+  entry_date_end?: string;   // For date range filtering
 }

@@ -18,10 +18,10 @@ export const employeeService = {
   async getEmployees(
     params: EmployeeQueryParams = {}
   ): Promise<PaginatedResponse<Employee>> {
-    const response = await apiClient.get<PaginatedResponse<Employee>>('/employees', {
+    const response = await apiClient.get<ApiResponse<PaginatedResponse<Employee>>>('/employees', {
       params,
     });
-    return response.data;
+    return response.data.data!;
   },
 
   /**

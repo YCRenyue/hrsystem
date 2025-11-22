@@ -40,6 +40,29 @@ router.use(authenticateToken);
 router.get('/', asyncHandler(employeeController.getEmployees));
 
 /**
+ * @route   GET /api/employees/export
+ * @desc    Export employees to Excel
+ * @access  Private (HR, Admin)
+ */
+router.get(
+  '/export',
+  requireRole('hr', 'admin'),
+  asyncHandler(employeeController.exportToExcel)
+);
+
+/**
+ * @route   POST /api/employees/import
+ * @desc    Import employees from Excel
+ * @access  Private (HR, Admin)
+ */
+router.post(
+  '/import',
+  requireRole('hr', 'admin'),
+  upload.single('file'),
+  asyncHandler(employeeController.importFromExcel)
+);
+
+/**
  * @route   GET /api/employees/:id
  * @desc    Get single employee by ID
  * @access  Private
@@ -77,29 +100,6 @@ router.delete(
   '/:id',
   requireRole('admin'),
   asyncHandler(employeeController.deleteEmployee)
-);
-
-/**
- * @route   POST /api/employees/import
- * @desc    Import employees from Excel
- * @access  Private (HR, Admin)
- */
-router.post(
-  '/import',
-  requireRole('hr', 'admin'),
-  upload.single('file'),
-  asyncHandler(employeeController.importFromExcel)
-);
-
-/**
- * @route   GET /api/employees/export
- * @desc    Export employees to Excel
- * @access  Private (HR, Admin)
- */
-router.get(
-  '/export',
-  requireRole('hr', 'admin'),
-  asyncHandler(employeeController.exportToExcel)
 );
 
 module.exports = router;

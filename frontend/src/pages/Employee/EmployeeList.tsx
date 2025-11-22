@@ -12,6 +12,8 @@ import {
   Modal,
   message,
   Upload,
+  DatePicker,
+  Card,
 } from 'antd';
 import {
   PlusOutlined,
@@ -20,29 +22,47 @@ import {
   DownloadOutlined,
   EditOutlined,
   DeleteOutlined,
+  FilterOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
-import { Employee, EmploymentStatus, EmployeeQueryParams } from '../../types';
+import { Employee, EmploymentStatus, EmployeeQueryParams, Department } from '../../types';
 import { employeeService } from '../../services/employeeService';
+import { departmentService } from '../../services/departmentService';
+import dayjs, { Dayjs } from 'dayjs';
 import './EmployeeList.css';
 
 const { Search } = Input;
 const { Option } = Select;
+const { RangePicker } = DatePicker;
 
 const EmployeeList: React.FC = () => {
   const navigate = useNavigate();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [queryParams, setQueryParams] = useState<EmployeeQueryParams>({
     page: 1,
     size: 10,
   });
 
   useEffect(() => {
+    fetchDepartments();
+  }, []);
+
+  useEffect(() => {
     fetchEmployees();
   }, [queryParams]);
+
+  const fetchDepartments = async () => {
+    try {
+      const data = await departmentService.getDepartments();
+      setDepartments(data);
+    } catch (error) {
+      message.error('获取部门列表失败');
+    }
+  };
 
   const fetchEmployees = async () => {
     setLoading(true);
@@ -61,8 +81,26 @@ const EmployeeList: React.FC = () => {
     setQueryParams({ ...queryParams, keyword, page: 1 });
   };
 
-  const handleStatusFilter = (status: EmploymentStatus | undefined) => {
-    setQueryParams({ ...queryParams, employment_status: status, page: 1 });
+  const handleStatusFilter = (status: string | undefined) => {
+    setQueryParams({ ...queryParams, status, page: 1 });
+  };
+
+  const handleDepartmentFilter = (department_id: string | undefined) => {
+    setQueryParams({ ...queryParams, department_id, page: 1 });
+  };
+
+  const handleDateRangeFilter = (dates: [Dayjs | null, Dayjs | null] | null) => {
+    if (dates && dates[0] && dates[1]) {
+      setQueryParams({
+        ...queryParams,
+        entry_date_start: dates[0].format('YYYY-MM-DD'),
+        entry_date_end: dates[1].format('YYYY-MM-DD'),
+        page: 1,
+      });
+    } else {
+      const { entry_date_start, entry_date_end, ...rest } = queryParams;
+      setQueryParams({ ...rest, page: 1 });
+    }
   };
 
   const handlePageChange = (page: number, size: number) => {
@@ -205,8 +243,8 @@ const EmployeeList: React.FC = () => {
 
   return (
     <div className="employee-list-container">
-      <div className="employee-list-header">
-        <Space size="middle" wrap>
+      <Card className="employee-filter-card" title={<><FilterOutlined /> 筛选条件</>}>
+        <Space size="middle" wrap style={{ width: '100%' }}>
           <Search
             placeholder="按姓名、邮箱或员工编号搜索"
             allowClear
@@ -215,50 +253,77 @@ const EmployeeList: React.FC = () => {
             style={{ width: 300 }}
           />
           <Select
+            placeholder="按部门筛选"
+            allowClear
+            style={{ width: 200 }}
+            onChange={handleDepartmentFilter}
+            showSearch
+            optionFilterProp="children"
+          >
+            {departments.map(dept => (
+              <Option key={dept.department_id} value={dept.department_id}>
+                {dept.name}
+              </Option>
+            ))}
+          </Select>
+          <Select
             placeholder="按状态筛选"
             allowClear
             style={{ width: 150 }}
             onChange={handleStatusFilter}
           >
-            <Option value="pending">待入职</Option>
-            <Option value="probation">试用期</Option>
-            <Option value="regular">正式</Option>
-            <Option value="resigned">已离职</Option>
-            <Option value="terminated">已终止</Option>
+            <Option value="pending">待完善</Option>
+            <Option value="active">在职</Option>
+            <Option value="inactive">离职</Option>
           </Select>
+          <RangePicker
+            placeholder={['入职开始日期', '入职结束日期']}
+            format="YYYY-MM-DD"
+            onChange={handleDateRangeFilter}
+            style={{ width: 300 }}
+          />
         </Space>
-        <Space size="middle">
-          <Upload beforeUpload={handleImport} accept=".xlsx,.xls" showUploadList={false}>
-            <Button icon={<UploadOutlined />}>导入 Excel</Button>
-          </Upload>
-          <Button icon={<DownloadOutlined />} onClick={handleExport}>
-            导出 Excel
-          </Button>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => navigate('/employees/new')}
-          >
-            添加员工
-          </Button>
-        </Space>
-      </div>
+      </Card>
 
-      <Table
-        columns={columns}
-        dataSource={employees}
-        rowKey="employee_id"
-        loading={loading}
-        scroll={{ x: 1200 }}
-        pagination={{
-          current: queryParams.page,
-          pageSize: queryParams.size,
-          total: total,
-          showSizeChanger: true,
-          showTotal: (total) => `共 ${total} 名员工`,
-          onChange: handlePageChange,
-        }}
-      />
+      <Card
+        className="employee-actions-card"
+        style={{ marginTop: 16 }}
+        extra={
+          <Space size="middle">
+            <Upload beforeUpload={handleImport} accept=".xlsx,.xls" showUploadList={false}>
+              <Button icon={<UploadOutlined />}>导入 Excel</Button>
+            </Upload>
+            <Button icon={<DownloadOutlined />} onClick={handleExport}>
+              导出 Excel
+            </Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => navigate('/employees/new')}
+            >
+              添加员工
+            </Button>
+          </Space>
+        }
+      >
+
+        <Table
+          columns={columns}
+          dataSource={employees}
+          rowKey="employee_id"
+          loading={loading}
+          scroll={{ x: 1200 }}
+          pagination={{
+            current: queryParams.page,
+            pageSize: queryParams.size,
+            total: total,
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 名员工`,
+            onChange: handlePageChange,
+            pageSizeOptions: ['10', '20', '50', '100'],
+          }}
+        />
+      </Card>
     </div>
   );
 };

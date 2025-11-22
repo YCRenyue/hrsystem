@@ -247,7 +247,7 @@ const EmployeeForm: React.FC = () => {
                 <Select placeholder="选择部门">
                   {departments.map((dept) => (
                     <Option key={dept.department_id} value={dept.department_id}>
-                      {dept.department_name}
+                      {dept.name}
                     </Option>
                   ))}
                 </Select>

@@ -1,0 +1,24 @@
+{
+  "total": 0,
+  "passed": 0,
+  "failed": 0,
+  "skipped": 0,
+  "duration": 0,
+  "tests": [
+    {
+      "name": "认证模块测试",
+      "error": "Unexpected token : in JSON at position 0",
+      "success": false
+    },
+    {
+      "name": "员工管理模块测试",
+      "error": "Unexpected token : in JSON at position 0",
+      "success": false
+    },
+    {
+      "name": "部门管理模块测试",
+      "error": "Unexpected token : in JSON at position 0",
+      "success": false
+    }
+  ]
+}

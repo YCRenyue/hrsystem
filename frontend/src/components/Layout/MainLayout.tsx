@@ -62,7 +62,7 @@ const MainLayout: React.FC = () => {
     {
       key: '/dashboard',
       icon: <DashboardOutlined />,
-      label: '仪表板',
+      label: '系统概览',
       onClick: () => navigate('/dashboard'),
     },
     {
@@ -93,7 +93,7 @@ const MainLayout: React.FC = () => {
             fontWeight: 'bold',
           }}
         >
-          {collapsed ? '人事' : '人事管理系统'}
+          {collapsed ? '越祥' : '越祥生物科技'}
         </div>
         <Menu
           theme="dark"
@@ -113,7 +113,7 @@ const MainLayout: React.FC = () => {
           }}
         >
           <div style={{ fontSize: 18, fontWeight: 500 }}>
-            {location.pathname === '/dashboard' && '仪表板'}
+            {location.pathname === '/dashboard' && '系统概览'}
             {location.pathname === '/employees' && '员工管理'}
             {location.pathname === '/departments' && '部门管理'}
           </div>

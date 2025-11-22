@@ -14,7 +14,7 @@ const Dashboard: React.FC = () => {
   // TODO: Fetch real statistics from API
   return (
     <div>
-      <h2 style={{ marginBottom: 24 }}>仪表板</h2>
+      <h2 style={{ marginBottom: 24 }}>系统概览</h2>
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
           <Card>
