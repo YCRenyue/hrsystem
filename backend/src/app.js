@@ -48,6 +48,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/employees', require('./routes/employees'));
 app.use('/api/departments', require('./routes/departments'));
 app.use('/api/onboarding', require('./routes/onboarding'));
+app.use('/api/dashboard', require('./routes/dashboard'));
 
 // Error handling middleware
 const { errorHandler } = require('./middleware/errorHandler');

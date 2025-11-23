@@ -232,6 +232,7 @@ class Employee extends Model {
       id_card: this.getMaskedIdCard(),
       bank_card: this.getMaskedBankCard(),
       department_id: this.department_id,
+      department: this.department, // Include department object if loaded
       position: this.position,
       employment_type: this.employment_type,
       entry_date: this.entry_date,

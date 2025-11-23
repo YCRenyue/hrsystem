@@ -42,7 +42,22 @@ describe('Department Management API', () => {
   });
 
   describe('GET /api/departments', () => {
-    it('should return all departments', async () => {
+    it('should return all departments with employee count', async () => {
+      const response = await request(app)
+        .get('/api/departments')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(Array.isArray(response.body.data)).toBe(true);
+
+      // Check if employee_count is included
+      if (response.body.data.length > 0) {
+        expect(response.body.data[0]).toHaveProperty('employee_count');
+      }
+    });
+
+    it('should return departments sorted by name', async () => {
       const response = await request(app)
         .get('/api/departments')
         .set('Authorization', `Bearer ${authToken}`);

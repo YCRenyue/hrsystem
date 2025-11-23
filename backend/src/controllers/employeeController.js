@@ -15,7 +15,9 @@ const getEmployees = async (req, res) => {
     keyword,
     department_id,
     status,
-    employment_type
+    employment_type,
+    sort_by = 'employee_number',
+    sort_order = 'ASC'
   } = req.query;
 
   const offset = (parseInt(page) - 1) * parseInt(size);
@@ -44,6 +46,28 @@ const getEmployees = async (req, res) => {
     where.employment_type = employment_type;
   }
 
+  // Build order clause
+  let orderClause;
+  const validSortFields = ['employee_number', 'email', 'status', 'entry_date', 'created_at'];
+  const sortField = validSortFields.includes(sort_by) ? sort_by : 'employee_number';
+  const sortDirection = sort_order.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+
+  // Special handling for department sorting
+  if (sort_by === 'department') {
+    orderClause = [[{ model: Department, as: 'department' }, 'name', sortDirection]];
+  } else {
+    orderClause = [[sortField, sortDirection]];
+  }
+
+  // For name sorting, we need to fetch all and sort in memory since name is encrypted
+  let fetchLimit = limit;
+  let fetchOffset = offset;
+  if (sort_by === 'name') {
+    // Fetch all for sorting
+    fetchLimit = 1000; // Reasonable limit
+    fetchOffset = 0;
+  }
+
   const { count, rows } = await Employee.findAndCountAll({
     where,
     include: [
@@ -53,16 +77,28 @@ const getEmployees = async (req, res) => {
         attributes: ['department_id', 'name', 'code']
       }
     ],
-    offset,
-    limit,
-    order: [['created_at', 'DESC']]
+    offset: fetchOffset,
+    limit: fetchLimit,
+    order: orderClause
   });
 
   // Check if user has permission to view sensitive data
   const canViewSensitive = req.user?.role === 'admin' || req.user?.role === 'hr';
 
   // Convert to safe objects
-  const safeRows = rows.map(emp => emp.toSafeObject(canViewSensitive));
+  let safeRows = rows.map(emp => emp.toSafeObject(canViewSensitive));
+
+  // Sort by name in memory if needed
+  if (sort_by === 'name') {
+    safeRows.sort((a, b) => {
+      const nameA = (a.name || '').toLowerCase();
+      const nameB = (b.name || '').toLowerCase();
+      const comparison = nameA.localeCompare(nameB, 'zh-CN');
+      return sortDirection === 'DESC' ? -comparison : comparison;
+    });
+    // Apply pagination after sorting
+    safeRows = safeRows.slice(offset, offset + limit);
+  }
 
   res.json({
     success: true,
@@ -300,24 +336,69 @@ const importFromExcel = async (req, res) => {
     const row = worksheet.getRow(rowNum);
 
     try {
-      const statusValue = row.getCell(12).value?.toString().trim()?.toLowerCase() || 'pending';
-      // Validate status value
-      const validStatuses = ['pending', 'active', 'inactive'];
-      const status = validStatuses.includes(statusValue) ? statusValue : 'pending';
+      // Map status from Chinese to English
+      const statusValue = row.getCell(11).value?.toString().trim() || '在职';
+      const statusMap = {
+        '待完善': 'pending',
+        '在职': 'active',
+        '离职': 'inactive',
+        'pending': 'pending',
+        'active': 'active',
+        'inactive': 'inactive'
+      };
+      const status = statusMap[statusValue] || 'active';
+
+      // Map employment type from Chinese to English
+      const employmentTypeValue = row.getCell(12).value?.toString().trim() || '';
+      const employmentTypeMap = {
+        '全职': 'full_time',
+        '兼职': 'part_time',
+        '实习': 'intern',
+        '合同工': 'contractor',
+        'full_time': 'full_time',
+        'part_time': 'part_time',
+        'intern': 'intern',
+        'contractor': 'contractor'
+      };
+      const employment_type = employmentTypeMap[employmentTypeValue] || 'full_time';
+
+      // Map gender from Chinese to English
+      const genderValue = row.getCell(3).value?.toString().trim() || '';
+      const genderMap = {
+        '男': 'male',
+        '女': 'female',
+        'male': 'male',
+        'female': 'female'
+      };
+      const gender = genderMap[genderValue];
+
+      // Get department name and look up department_id
+      const departmentName = row.getCell(8).value?.toString().trim();
+      let department_id = null;
+      if (departmentName) {
+        const department = await Department.findOne({
+          where: { name: departmentName }
+        });
+        department_id = department?.department_id;
+      }
 
       const employeeData = {
         employee_number: row.getCell(1).value?.toString().trim(),
         name: row.getCell(2).value?.toString().trim(),
-        email: row.getCell(3).value?.toString().trim(),
-        phone: row.getCell(4).value?.toString().trim(),
+        gender: gender,
+        birth_date: parseExcelDate(row.getCell(4).value),
         id_card: row.getCell(5).value?.toString().trim(),
-        gender: row.getCell(6).value?.toString().trim(),
-        birth_date: parseExcelDate(row.getCell(7).value),
-        department_id: row.getCell(8).value?.toString().trim(),
+        phone: row.getCell(6).value?.toString().trim(),
+        email: row.getCell(7).value?.toString().trim(),
+        department_id: department_id,
         position: row.getCell(9).value?.toString().trim(),
-        employment_type: row.getCell(10).value?.toString().trim(),
-        entry_date: parseExcelDate(row.getCell(11).value),
-        status
+        entry_date: parseExcelDate(row.getCell(10).value),
+        status: status,
+        employment_type: employment_type,
+        bank_card: row.getCell(13).value?.toString().trim(),
+        address: row.getCell(14).value?.toString().trim(),
+        emergency_contact: row.getCell(15).value?.toString().trim(),
+        emergency_phone: row.getCell(16).value?.toString().trim()
       };
 
       // Skip empty rows
@@ -349,6 +430,16 @@ const importFromExcel = async (req, res) => {
         continue;
       }
 
+      // Validate department exists
+      if (!employeeData.department_id) {
+        results.errors.push({
+          row: rowNum,
+          message: `Department "${departmentName}" not found`
+        });
+        results.error_count++;
+        continue;
+      }
+
       // Create employee
       const employee = Employee.build({
         employee_number: employeeData.employee_number,
@@ -359,6 +450,9 @@ const importFromExcel = async (req, res) => {
         entry_date: employeeData.entry_date,
         status: employeeData.status,
         gender: employeeData.gender,
+        address: employeeData.address,
+        emergency_contact: employeeData.emergency_contact,
+        emergency_phone: employeeData.emergency_phone,
         created_by: req.user?.user_id
       });
 
@@ -366,6 +460,7 @@ const importFromExcel = async (req, res) => {
       if (employeeData.name) employee.setName(employeeData.name);
       if (employeeData.phone) employee.setPhone(employeeData.phone);
       if (employeeData.id_card) employee.setIdCard(employeeData.id_card);
+      if (employeeData.bank_card) employee.setBankCard(employeeData.bank_card);
       if (employeeData.birth_date) employee.setBirthDate(employeeData.birth_date);
 
       await employee.save();

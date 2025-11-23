@@ -5,10 +5,26 @@ const { Department } = require('../models');
 const { NotFoundError, ValidationError } = require('../middleware/errorHandler');
 
 /**
- * Get all departments
+ * Get all departments with employee count
  */
 const getDepartments = async (req, res) => {
+  const { Employee } = require('../models');
+  const { sequelize } = require('../config/database');
+
   const departments = await Department.findAll({
+    attributes: {
+      include: [
+        [
+          sequelize.literal(`(
+            SELECT COUNT(*)
+            FROM employees AS e
+            WHERE e.department_id = Department.department_id
+            AND e.status = 'active'
+          )`),
+          'employee_count'
+        ]
+      ]
+    },
     order: [['name', 'ASC']]
   });
 

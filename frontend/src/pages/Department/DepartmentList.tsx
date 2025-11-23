@@ -9,26 +9,27 @@ import {
   Modal,
   Form,
   Input,
-  message,
   Card,
+  App,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { Department } from '../../types';
 import { departmentService } from '../../services/departmentService';
 
+interface DepartmentWithCount extends Department {
+  employee_count?: number;
+}
+
 const DepartmentList: React.FC = () => {
+  const { message } = App.useApp();
   const [form] = Form.useForm();
-  const [departments, setDepartments] = useState<Department[]>([]);
+  const [departments, setDepartments] = useState<DepartmentWithCount[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
 
-  useEffect(() => {
-    fetchDepartments();
-  }, []);
-
-  const fetchDepartments = async () => {
+  const fetchDepartments = React.useCallback(async () => {
     setLoading(true);
     try {
       const data = await departmentService.getDepartments();
@@ -38,7 +39,11 @@ const DepartmentList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [message]);
+
+  useEffect(() => {
+    fetchDepartments();
+  }, [fetchDepartments]);
 
   const handleAdd = () => {
     setEditingDepartment(null);
@@ -49,7 +54,9 @@ const DepartmentList: React.FC = () => {
   const handleEdit = (department: Department) => {
     setEditingDepartment(department);
     form.setFieldsValue({
-      department_name: department.name,
+      name: department.name,
+      code: department.code,
+      description: department.description,
     });
     setModalVisible(true);
   };
@@ -95,22 +102,44 @@ const DepartmentList: React.FC = () => {
     }
   };
 
-  const columns: ColumnsType<Department> = [
+  const columns: ColumnsType<DepartmentWithCount> = [
     {
       title: '部门名称',
-      dataIndex: 'department_name',
-      key: 'department_name',
+      dataIndex: 'name',
+      key: 'name',
+      width: 200,
+    },
+    {
+      title: '部门编码',
+      dataIndex: 'code',
+      key: 'code',
+      width: 120,
+    },
+    {
+      title: '部门人数',
+      dataIndex: 'employee_count',
+      key: 'employee_count',
+      width: 100,
+      render: (count: number | undefined) => count !== undefined ? count : '-',
+    },
+    {
+      title: '部门描述',
+      dataIndex: 'description',
+      key: 'description',
+      ellipsis: true,
     },
     {
       title: '创建时间',
       dataIndex: 'created_at',
       key: 'created_at',
-      render: (date: string) => new Date(date).toLocaleString(),
+      width: 180,
+      render: (date: string) => new Date(date).toLocaleString('zh-CN'),
     },
     {
       title: '操作',
       key: 'actions',
-      width: 200,
+      width: 180,
+      fixed: 'right',
       render: (_, record) => (
         <Space size="small">
           <Button
@@ -148,6 +177,12 @@ const DepartmentList: React.FC = () => {
           dataSource={departments}
           rowKey="department_id"
           loading={loading}
+          scroll={{ x: 1000 }}
+          pagination={{
+            showSizeChanger: true,
+            showTotal: (total) => `共 ${total} 个部门`,
+            pageSizeOptions: ['10', '20', '50'],
+          }}
         />
       </Card>
 
@@ -162,10 +197,26 @@ const DepartmentList: React.FC = () => {
         <Form form={form} layout="vertical">
           <Form.Item
             label="部门名称"
-            name="department_name"
+            name="name"
             rules={[{ required: true, message: '请输入部门名称！' }]}
           >
-            <Input placeholder="例如：研发部、人力资源部、销售部" />
+            <Input placeholder="例如：技术部、人力资源部、销售部" />
+          </Form.Item>
+          <Form.Item
+            label="部门编码"
+            name="code"
+            rules={[{ required: true, message: '请输入部门编码！' }]}
+          >
+            <Input placeholder="例如：TECH、HR、SALES" />
+          </Form.Item>
+          <Form.Item
+            label="部门描述"
+            name="description"
+          >
+            <Input.TextArea
+              rows={3}
+              placeholder="请输入部门职责描述"
+            />
           </Form.Item>
         </Form>
       </Modal>

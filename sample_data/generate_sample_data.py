@@ -83,7 +83,7 @@ def random_date(start_date, end_date):
 
 # ==================== 1. 员工信息表 ====================
 
-def generate_employees(count=20):
+def generate_employees(count=40):
     """生成员工信息样本数据"""
     employees = []
     
@@ -422,7 +422,7 @@ def main():
     
     try:
         # 生成各类表格
-        generate_employees(20)
+        generate_employees(60)
         generate_departments()
         generate_attendance(20)
         generate_annual_leaves(20)
@@ -437,7 +437,7 @@ def main():
         print("=" * 60)
         print()
         print("生成的文件列表：")
-        print("  1. 员工信息表.xlsx (20条)")
+        print("  1. 员工信息表.xlsx (60条)")
         print("  2. 部门信息表.xlsx (8条)")
         print("  3. 考勤记录表.xlsx (20条)")
         print("  4. 年假管理表.xlsx (20条)")

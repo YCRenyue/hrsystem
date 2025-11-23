@@ -199,4 +199,6 @@ export interface EmployeeQueryParams {
   hire_date_to?: string;
   entry_date_start?: string; // For date range filtering
   entry_date_end?: string;   // For date range filtering
+  sort_by?: string;          // Sort field name
+  sort_order?: 'ASC' | 'DESC'; // Sort direction
 }

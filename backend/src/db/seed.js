@@ -72,6 +72,12 @@ async function seed() {
         code: 'SALES',
         description: '负责销售和客户关系管理',
         created_by: 'system'
+      },
+      {
+        name: '客服部',
+        code: 'CS',
+        description: '负责客户服务和售后支持',
+        created_by: 'system'
       }
     ]);
 

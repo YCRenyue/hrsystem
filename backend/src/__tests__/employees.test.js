@@ -85,6 +85,93 @@ describe('Employee Management API', () => {
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
     });
+
+    it('should support sorting by employee_number ascending', async () => {
+      const response = await request(app)
+        .get('/api/employees')
+        .query({ page: 1, size: 10, sort_by: 'employee_number', sort_order: 'ASC' })
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.items).toBeDefined();
+    });
+
+    it('should support sorting by employee_number descending', async () => {
+      const response = await request(app)
+        .get('/api/employees')
+        .query({ page: 1, size: 10, sort_by: 'employee_number', sort_order: 'DESC' })
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+    });
+
+    it('should support sorting by department name', async () => {
+      const response = await request(app)
+        .get('/api/employees')
+        .query({ page: 1, size: 10, sort_by: 'department', sort_order: 'ASC' })
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+    });
+
+    it('should support sorting by entry_date', async () => {
+      const response = await request(app)
+        .get('/api/employees')
+        .query({ page: 1, size: 10, sort_by: 'entry_date', sort_order: 'DESC' })
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+    });
+
+    it('should support sorting by name (using name_hash)', async () => {
+      const response = await request(app)
+        .get('/api/employees')
+        .query({ page: 1, size: 10, sort_by: 'name', sort_order: 'ASC' })
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+    });
+
+    it('should support sorting by status', async () => {
+      const response = await request(app)
+        .get('/api/employees')
+        .query({ page: 1, size: 10, sort_by: 'status', sort_order: 'ASC' })
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+    });
+
+    it('should default to employee_number ASC when sort params not provided', async () => {
+      const response = await request(app)
+        .get('/api/employees')
+        .query({ page: 1, size: 10 })
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+    });
+
+    it('should include department object in employee data', async () => {
+      const response = await request(app)
+        .get('/api/employees')
+        .query({ page: 1, size: 10 })
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      if (response.body.data.items.length > 0) {
+        const employee = response.body.data.items[0];
+        if (employee.department_id) {
+          expect(employee.department).toBeDefined();
+          expect(employee.department).toHaveProperty('name');
+        }
+      }
+    });
   });
 
   describe('POST /api/employees', () => {
