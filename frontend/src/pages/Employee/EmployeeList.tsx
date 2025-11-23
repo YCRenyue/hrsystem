@@ -29,6 +29,8 @@ import { useNavigate } from 'react-router-dom';
 import { Employee, EmploymentStatus, EmployeeQueryParams, Department } from '../../types';
 import { employeeService } from '../../services/employeeService';
 import { departmentService } from '../../services/departmentService';
+import { usePermission } from '../../hooks/usePermission';
+import { Can } from '../../components/Permission';
 import { Dayjs } from 'dayjs';
 import './EmployeeList.css';
 
@@ -39,6 +41,16 @@ const { RangePicker } = DatePicker;
 const EmployeeList: React.FC = () => {
   const navigate = useNavigate();
   const { message } = App.useApp();
+  const {
+    canCreateEmployee,
+    canDeleteEmployee,
+    canUpdateEmployee,
+    canExportEmployees,
+    canImportEmployees,
+    shouldShowDepartmentFilter,
+    canViewSensitive,
+  } = usePermission();
+
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -262,6 +274,14 @@ const EmployeeList: React.FC = () => {
       dataIndex: 'phone',
       key: 'phone',
       width: 150,
+      render: (phone: string) => {
+        // Mask phone number if user doesn't have permission to view sensitive data
+        if (!canViewSensitive() && phone) {
+          // Show first 3 and last 4 digits, mask middle with ****
+          return phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
+        }
+        return phone || '-';
+      },
     },
     {
       title: '部门',
@@ -304,21 +324,28 @@ const EmployeeList: React.FC = () => {
       fixed: 'right',
       render: (_, record) => (
         <Space size="small">
-          <Button
-            type="link"
-            icon={<EditOutlined />}
-            onClick={() => navigate(`/employees/${record.employee_id}/edit`)}
-          >
-            编辑
-          </Button>
-          <Button
-            type="link"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record.employee_id)}
-          >
-            删除
-          </Button>
+          {/* Edit button - only show for users with update permission */}
+          {canUpdateEmployee() && (
+            <Button
+              type="link"
+              icon={<EditOutlined />}
+              onClick={() => navigate(`/employees/${record.employee_id}/edit`)}
+            >
+              编辑
+            </Button>
+          )}
+
+          {/* Delete button - only show for users with delete permission */}
+          {canDeleteEmployee() && (
+            <Button
+              type="link"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record.employee_id)}
+            >
+              删除
+            </Button>
+          )}
         </Space>
       ),
     },
@@ -335,20 +362,25 @@ const EmployeeList: React.FC = () => {
             onSearch={handleSearch}
             style={{ width: 300 }}
           />
-          <Select
-            placeholder="按部门筛选"
-            allowClear
-            style={{ width: 200 }}
-            onChange={handleDepartmentFilter}
-            showSearch
-            optionFilterProp="children"
-          >
-            {departments.map(dept => (
-              <Option key={dept.department_id} value={dept.department_id}>
-                {dept.name}
-              </Option>
-            ))}
-          </Select>
+
+          {/* Department filter - only show for admin and hr_admin */}
+          {shouldShowDepartmentFilter() && (
+            <Select
+              placeholder="按部门筛选"
+              allowClear
+              style={{ width: 200 }}
+              onChange={handleDepartmentFilter}
+              showSearch
+              optionFilterProp="children"
+            >
+              {departments.map(dept => (
+                <Option key={dept.department_id} value={dept.department_id}>
+                  {dept.name}
+                </Option>
+              ))}
+            </Select>
+          )}
+
           <Select
             placeholder="按状态筛选"
             allowClear
@@ -373,19 +405,30 @@ const EmployeeList: React.FC = () => {
         style={{ marginTop: 16 }}
         extra={
           <Space size="middle">
-            <Upload beforeUpload={handleImport} accept=".xlsx,.xls" showUploadList={false}>
-              <Button icon={<UploadOutlined />}>导入 Excel</Button>
-            </Upload>
-            <Button icon={<DownloadOutlined />} onClick={handleExport}>
-              导出 Excel
-            </Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => navigate('/employees/new')}
-            >
-              添加员工
-            </Button>
+            {/* Import - only for admin and hr_admin */}
+            <Can permission="employees.import">
+              <Upload beforeUpload={handleImport} accept=".xlsx,.xls" showUploadList={false}>
+                <Button icon={<UploadOutlined />}>导入 Excel</Button>
+              </Upload>
+            </Can>
+
+            {/* Export - based on permission */}
+            {canExportEmployees() && (
+              <Button icon={<DownloadOutlined />} onClick={handleExport}>
+                导出 Excel
+              </Button>
+            )}
+
+            {/* Create employee - only for admin and hr_admin */}
+            {canCreateEmployee() && (
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => navigate('/employees/new')}
+              >
+                添加员工
+              </Button>
+            )}
           </Space>
         }
       >

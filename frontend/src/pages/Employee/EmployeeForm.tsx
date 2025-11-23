@@ -13,8 +13,9 @@ import {
   Col,
   message,
   Space,
+  Alert,
 } from 'antd';
-import { SaveOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { SaveOutlined, ArrowLeftOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
@@ -26,6 +27,7 @@ import {
 } from '../../types';
 import { employeeService } from '../../services/employeeService';
 import { departmentService } from '../../services/departmentService';
+import { usePermission } from '../../hooks/usePermission';
 import type { Department } from '../../types';
 
 const { Option } = Select;
@@ -35,10 +37,28 @@ const EmployeeForm: React.FC = () => {
   const [form] = Form.useForm();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const { role, isAdmin, isDepartmentManager } = usePermission();
   const [loading, setLoading] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
 
   const isEditMode = !!id && id !== 'new';
+
+  // Determine which fields are editable based on role
+  const canEditField = (fieldName: string): boolean => {
+    // Admin and HR can edit all fields
+    if (isAdmin || role === 'hr_admin') {
+      return true;
+    }
+
+    // Department manager can only edit limited fields
+    if (isDepartmentManager) {
+      const editableFields = ['phone', 'email', 'position_id', 'emergency_contact', 'emergency_phone'];
+      return editableFields.includes(fieldName);
+    }
+
+    // Regular employees can't use this form
+    return false;
+  };
 
   const fetchDepartments = async () => {
     try {
@@ -116,6 +136,18 @@ const EmployeeForm: React.FC = () => {
         返回列表
       </Button>
 
+      {/* Show notice for department managers about limited editing */}
+      {isDepartmentManager && isEditMode && (
+        <Alert
+          message="编辑权限提示"
+          description="作为部门经理，您只能编辑员工的联系方式和职位信息。完整的员工信息需要HR管理员权限。"
+          type="info"
+          icon={<InfoCircleOutlined />}
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      )}
+
       <Card title={isEditMode ? '编辑员工信息' : '添加新员工'}>
         <Form
           form={form}
@@ -136,7 +168,7 @@ const EmployeeForm: React.FC = () => {
                   { required: true, message: '请输入员工编号！' },
                 ]}
               >
-                <Input placeholder="例如：EMP001" disabled={isEditMode} />
+                <Input placeholder="例如：EMP001" disabled={isEditMode || !canEditField('employee_number')} />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
@@ -145,7 +177,7 @@ const EmployeeForm: React.FC = () => {
                 name="name"
                 rules={[{ required: true, message: '请输入姓名！' }]}
               >
-                <Input placeholder="姓名" />
+                <Input placeholder="姓名" disabled={!canEditField('name')} />
               </Form.Item>
             </Col>
           </Row>
@@ -153,7 +185,7 @@ const EmployeeForm: React.FC = () => {
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <Form.Item label="英文名" name="name_en">
-                <Input placeholder="英文名（选填）" />
+                <Input placeholder="英文名（选填）" disabled={!canEditField('name_en')} />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
@@ -162,7 +194,7 @@ const EmployeeForm: React.FC = () => {
                 name="gender"
                 rules={[{ required: true, message: '请选择性别！' }]}
               >
-                <Select>
+                <Select disabled={!canEditField('gender')}>
                   <Option value={Gender.MALE}>男</Option>
                   <Option value={Gender.FEMALE}>女</Option>
                 </Select>
@@ -173,7 +205,7 @@ const EmployeeForm: React.FC = () => {
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <Form.Item label="出生日期" name="birth_date">
-                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" disabled={!canEditField('birth_date')} />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
@@ -187,7 +219,7 @@ const EmployeeForm: React.FC = () => {
                   },
                 ]}
               >
-                <Input placeholder="18位身份证号" />
+                <Input placeholder="18位身份证号" disabled={!canEditField('id_card')} />
               </Form.Item>
             </Col>
           </Row>
@@ -204,7 +236,7 @@ const EmployeeForm: React.FC = () => {
                   },
                 ]}
               >
-                <Input placeholder="11位手机号" />
+                <Input placeholder="11位手机号" disabled={!canEditField('phone')} />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
@@ -213,7 +245,7 @@ const EmployeeForm: React.FC = () => {
                 name="email"
                 rules={[{ type: 'email', message: '邮箱格式不正确' }]}
               >
-                <Input placeholder="email@example.com" />
+                <Input placeholder="email@example.com" disabled={!canEditField('email')} />
               </Form.Item>
             </Col>
           </Row>
@@ -225,12 +257,12 @@ const EmployeeForm: React.FC = () => {
                 name="hire_date"
                 rules={[{ required: true, message: '请选择入职日期！' }]}
               >
-                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" disabled={!canEditField('hire_date')} />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
               <Form.Item label="试用期结束日期" name="probation_end_date">
-                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" disabled={!canEditField('probation_end_date')} />
               </Form.Item>
             </Col>
           </Row>
@@ -242,7 +274,7 @@ const EmployeeForm: React.FC = () => {
                 name="department_id"
                 rules={[{ required: true, message: '请选择部门！' }]}
               >
-                <Select placeholder="选择部门">
+                <Select placeholder="选择部门" disabled={!canEditField('department_id')}>
                   {departments.map((dept) => (
                     <Option key={dept.department_id} value={dept.department_id}>
                       {dept.name}
@@ -257,7 +289,7 @@ const EmployeeForm: React.FC = () => {
                 name="position_id"
                 rules={[{ required: true, message: '请输入职位！' }]}
               >
-                <Input placeholder="职位/职称" />
+                <Input placeholder="职位/职称" disabled={!canEditField('position_id')} />
               </Form.Item>
             </Col>
           </Row>
@@ -269,7 +301,7 @@ const EmployeeForm: React.FC = () => {
                 name="employment_type"
                 rules={[{ required: true, message: '请选择雇佣类型！' }]}
               >
-                <Select>
+                <Select disabled={!canEditField('employment_type')}>
                   <Option value={EmploymentType.FULL_TIME}>全职</Option>
                   <Option value={EmploymentType.PART_TIME}>兼职</Option>
                   <Option value={EmploymentType.INTERN}>实习</Option>
@@ -279,7 +311,7 @@ const EmployeeForm: React.FC = () => {
             </Col>
             <Col xs={24} md={12}>
               <Form.Item label="在职状态" name="employment_status">
-                <Select>
+                <Select disabled={!canEditField('employment_status')}>
                   <Option value={EmploymentStatus.PENDING}>待入职</Option>
                   <Option value={EmploymentStatus.PROBATION}>试用期</Option>
                   <Option value={EmploymentStatus.REGULAR}>正式</Option>
@@ -293,12 +325,12 @@ const EmployeeForm: React.FC = () => {
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <Form.Item label="工作地点" name="work_location">
-                <Input placeholder="办公地点" />
+                <Input placeholder="办公地点" disabled={!canEditField('work_location')} />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
               <Form.Item label="紧急联系人" name="emergency_contact">
-                <Input placeholder="紧急联系人姓名" />
+                <Input placeholder="紧急联系人姓名" disabled={!canEditField('emergency_contact')} />
               </Form.Item>
             </Col>
           </Row>
@@ -306,22 +338,22 @@ const EmployeeForm: React.FC = () => {
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <Form.Item label="紧急联系电话" name="emergency_phone">
-                <Input placeholder="紧急联系人电话" />
+                <Input placeholder="紧急联系人电话" disabled={!canEditField('emergency_phone')} />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
               <Form.Item label="钉钉用户ID" name="dingtalk_user_id">
-                <Input placeholder="钉钉用户ID" />
+                <Input placeholder="钉钉用户ID" disabled={!canEditField('dingtalk_user_id')} />
               </Form.Item>
             </Col>
           </Row>
 
           <Form.Item label="家庭地址" name="address">
-            <TextArea rows={2} placeholder="家庭地址" />
+            <TextArea rows={2} placeholder="家庭地址" disabled={!canEditField('address')} />
           </Form.Item>
 
           <Form.Item label="备注" name="remarks">
-            <TextArea rows={3} placeholder="其他备注信息" />
+            <TextArea rows={3} placeholder="其他备注信息" disabled={!canEditField('remarks')} />
           </Form.Item>
 
           <Form.Item>

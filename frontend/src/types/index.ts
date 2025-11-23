@@ -30,9 +30,16 @@ export enum OnboardingStatus {
 }
 
 export enum UserRole {
-  SUPER_ADMIN = 'super_admin',
+  ADMIN = 'admin',
   HR_ADMIN = 'hr_admin',
+  DEPARTMENT_MANAGER = 'department_manager',
   EMPLOYEE = 'employee'
+}
+
+export enum DataScope {
+  ALL = 'all',
+  DEPARTMENT = 'department',
+  SELF = 'self'
 }
 
 export interface Department {
@@ -95,12 +102,21 @@ export interface Employee {
 export interface User {
   user_id: string;
   username: string;
+  display_name?: string;
   email?: string;
-  role: UserRole;
+  phone?: string;
+  role: UserRole | string; // Allow string for flexibility
   employee_id?: string;
   employee?: Employee;
+  department_id?: string; // For department managers
+  data_scope: DataScope | string; // 数据访问范围
+  can_view_sensitive: boolean; // 是否可查看敏感数据
+  permissions: string[]; // 权限列表
+  status: string; // active, inactive, locked
   is_active: boolean;
-  last_login?: string;
+  last_login_at?: string;
+  must_change_password?: boolean;
+  password_expires_at?: string;
   created_at: string;
   updated_at: string;
 }
