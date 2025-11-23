@@ -41,3 +41,12 @@ out/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# 测试覆盖率报告
+coverage/
+*.lcov
+.nyc_output/
+
+# Claude Code 本地配置
+.claude/settings.local.json
+.claude/.state/
