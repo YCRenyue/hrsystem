@@ -12,10 +12,9 @@ import {
   Row,
   Col,
   message,
-  Upload,
   Space,
 } from 'antd';
-import { UploadOutlined, SaveOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { SaveOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
@@ -38,16 +37,8 @@ const EmployeeForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [loading, setLoading] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [employee, setEmployee] = useState<Employee | null>(null);
 
   const isEditMode = !!id && id !== 'new';
-
-  useEffect(() => {
-    fetchDepartments();
-    if (isEditMode) {
-      fetchEmployee();
-    }
-  }, [id]);
 
   const fetchDepartments = async () => {
     try {
@@ -63,7 +54,6 @@ const EmployeeForm: React.FC = () => {
 
     try {
       const data = await employeeService.getEmployeeById(id);
-      setEmployee(data);
 
       // Populate form with employee data
       form.setFieldsValue({
@@ -78,6 +68,14 @@ const EmployeeForm: React.FC = () => {
       message.error('加载员工数据失败');
     }
   };
+
+  useEffect(() => {
+    fetchDepartments();
+    if (isEditMode) {
+      fetchEmployee();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const onFinish = async (values: any) => {
     setLoading(true);

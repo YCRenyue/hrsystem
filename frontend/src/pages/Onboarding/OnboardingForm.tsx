@@ -17,7 +17,6 @@ import {
   Spin,
 } from 'antd';
 import {
-  UploadOutlined,
   CheckCircleOutlined,
   InboxOutlined,
 } from '@ant-design/icons';
@@ -63,6 +62,7 @@ const OnboardingForm: React.FC = () => {
     if (token) {
       fetchOnboardingForm();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const fetchOnboardingForm = async () => {

@@ -222,17 +222,6 @@ const EmployeeList: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: EmploymentStatus): string => {
-    const colorMap: Record<EmploymentStatus, string> = {
-      pending: 'orange',
-      probation: 'blue',
-      regular: 'green',
-      resigned: 'red',
-      terminated: 'red',
-    };
-    return colorMap[status] || 'default';
-  };
-
   const getStatusText = (status: string): string => {
     const statusMap: Record<string, string> = {
       pending: '待完善',

@@ -3,7 +3,7 @@
  */
 import React, { useState } from 'react';
 import { Form, Input, Button, Card, message, Divider } from 'antd';
-import { UserOutlined, LockOutlined, DingdingOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, DingdingOutlined, WechatOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import './Login.css';
@@ -30,6 +30,12 @@ const Login: React.FC = () => {
     message.info('钉钉 OAuth 集成即将推出');
     // TODO: Implement DingTalk OAuth flow
     // window.location.href = DINGTALK_OAUTH_URL;
+  };
+
+  const handleWeChatLogin = () => {
+    message.info('微信 OAuth 集成即将推出');
+    // TODO: Implement WeChat OAuth flow
+    // window.location.href = WECHAT_OAUTH_URL;
   };
 
   return (
@@ -66,6 +72,16 @@ const Login: React.FC = () => {
           size="large"
         >
           使用钉钉登录
+        </Button>
+
+        <Button
+          icon={<WechatOutlined />}
+          onClick={handleWeChatLogin}
+          block
+          size="large"
+          style={{ marginTop: 12, backgroundColor: '#07C160', borderColor: '#07C160', color: '#fff' }}
+        >
+          使用微信登录
         </Button>
 
         <div style={{ textAlign: 'center', marginTop: 24, color: '#999' }}>
