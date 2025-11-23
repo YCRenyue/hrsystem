@@ -26,7 +26,7 @@ module.exports = {
 
       // 获取现有部门ID
       const [departments] = await queryInterface.sequelize.query(
-        `SELECT department_id, department_name FROM departments ORDER BY department_name`,
+        `SELECT department_id, name FROM departments ORDER BY name`,
         { transaction }
       );
 
@@ -34,15 +34,15 @@ module.exports = {
         throw new Error('至少需要3个部门才能创建测试数据。请先运行部门种子数据。');
       }
 
-      // 假设部门顺序：行政部、生产部、销售部
-      const adminDept = departments.find(d => d.department_name.includes('行政'));
-      const productionDept = departments.find(d => d.department_name.includes('生产'));
-      const salesDept = departments.find(d => d.department_name.includes('销售'));
+      // 使用实际存在的部门：技术部、产品部、销售部
+      const techDept = departments.find(d => d.name.includes('技术'));
+      const productDept = departments.find(d => d.name.includes('产品'));
+      const salesDept = departments.find(d => d.name.includes('销售'));
 
       console.log('找到部门:', {
-        admin: adminDept?.department_name,
-        production: productionDept?.department_name,
-        sales: salesDept?.department_name
+        tech: techDept?.name,
+        product: productDept?.name,
+        sales: salesDept?.name
       });
 
       // 密码哈希
@@ -82,7 +82,7 @@ module.exports = {
         employee_number: 'EMP2025001',
         name_encrypted: '系统管理员', // 简化：实际应加密
         name_hash: '系统管理员',
-        department_id: adminDept?.department_id || departments[0].department_id,
+        department_id: techDept?.department_id || departments[0].department_id,
         position: '系统管理员',
         employment_status: 'regular',
         email: 'admin@yuexiang.com',
@@ -122,7 +122,7 @@ module.exports = {
         employee_number: 'EMP2025002',
         name_encrypted: 'HR经理',
         name_hash: 'HR经理',
-        department_id: adminDept?.department_id || departments[0].department_id,
+        department_id: techDept?.department_id || departments[0].department_id,
         position: 'HR经理',
         employment_status: 'regular',
         email: 'hr@yuexiang.com',
@@ -150,7 +150,7 @@ module.exports = {
           'employees.export',
           'reports.view_department'
         ]),
-        department_id: productionDept?.department_id || departments[1].department_id,
+        department_id: productDept?.department_id || departments[1].department_id,
         data_scope: 'department',
         can_view_sensitive: true,
         status: 'active',
@@ -163,7 +163,7 @@ module.exports = {
         employee_number: 'EMP2025003',
         name_encrypted: '李明',
         name_hash: '李明',
-        department_id: productionDept?.department_id || departments[1].department_id,
+        department_id: productDept?.department_id || departments[1].department_id,
         position: '生产部经理',
         employment_status: 'regular',
         email: 'prod.manager@yuexiang.com',
@@ -242,7 +242,7 @@ module.exports = {
         employee_number: 'EMP2025005',
         name_encrypted: '张伟',
         name_hash: '张伟',
-        department_id: productionDept?.department_id || departments[1].department_id,
+        department_id: productDept?.department_id || departments[1].department_id,
         position: '生产专员',
         employment_status: 'regular',
         email: 'zhang.wei@yuexiang.com',
