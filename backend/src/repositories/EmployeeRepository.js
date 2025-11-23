@@ -125,6 +125,106 @@ class EmployeeRepository extends BaseRepository {
   }
 
   /**
+   * Find employees with data scope filtering
+   * @param {Object} user - User object with data_scope and department_id
+   * @param {Object} filters - Additional filters
+   * @param {Object} options - Query options (limit, offset, order, etc.)
+   * @returns {Promise<Array<Employee>>} Array of employees
+   */
+  async findByDataScope(user, filters = {}, options = {}) {
+    if (!user) {
+      throw new Error('User object is required for data scope filtering');
+    }
+
+    // Get data scope filter from user
+    const scopeFilter = user.getDataScopeFilter('employee');
+
+    // Merge with additional filters
+    const where = { ...scopeFilter, ...filters };
+
+    return await this.findAll(where, options);
+  }
+
+  /**
+   * Check if user can access specific employee
+   * @param {Object} user - User object
+   * @param {string} employeeId - Employee ID to check
+   * @returns {Promise<boolean>} True if user can access
+   */
+  async canUserAccessEmployee(user, employeeId) {
+    if (!user || !employeeId) {
+      return false;
+    }
+
+    // Admin and HR can access all employees
+    if (user.data_scope === 'all') {
+      return true;
+    }
+
+    // Get employee
+    const employee = await this.findById(employeeId);
+    if (!employee) {
+      return false;
+    }
+
+    // Department manager can access employees in their department
+    if (user.data_scope === 'department') {
+      return employee.department_id === user.department_id;
+    }
+
+    // Regular employee can only access their own record
+    if (user.data_scope === 'self') {
+      return employee.employee_id === user.employee_id;
+    }
+
+    return false;
+  }
+
+  /**
+   * Find employees by department with permission check
+   * @param {Object} user - User object
+   * @param {string} departmentId - Department ID
+   * @param {Object} options - Query options
+   * @returns {Promise<Array<Employee>>} Array of employees
+   */
+  async findByDepartmentWithPermission(user, departmentId, options = {}) {
+    // Check if user can access this department
+    if (!user.canAccessDepartment(departmentId)) {
+      throw new Error('Permission denied: Cannot access this department');
+    }
+
+    return await this.findByDepartment(departmentId, options);
+  }
+
+  /**
+   * Get employee statistics with data scope filtering
+   * @param {Object} user - User object
+   * @returns {Promise<Object>} Statistics object
+   */
+  async getStatisticsByDataScope(user) {
+    if (!user) {
+      throw new Error('User object is required');
+    }
+
+    const scopeFilter = user.getDataScopeFilter('employee');
+
+    const total = await this.count(scopeFilter);
+    const active = await this.count({ ...scopeFilter, employment_status: 'regular' });
+    const pending = await this.count({ ...scopeFilter, employment_status: 'pending' });
+    const probation = await this.count({ ...scopeFilter, employment_status: 'probation' });
+    const incompleteData = await this.count({ ...scopeFilter, data_complete: false });
+
+    return {
+      total,
+      active,
+      pending,
+      probation,
+      incompleteData,
+      dataScope: user.data_scope
+    };
+  }
+
+  /**
    * Create employee with encrypted fields
    * @param {Object} data - Employee data with plain text sensitive fields
    * @returns {Promise<Employee>} Created employee

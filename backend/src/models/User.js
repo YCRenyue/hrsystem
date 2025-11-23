@@ -116,6 +116,113 @@ class User extends Model {
   }
 
   /**
+   * Check if user can access specific department
+   * @param {string} departmentId - Department ID to check
+   * @returns {boolean} True if user can access department
+   */
+  canAccessDepartment(departmentId) {
+    // Admin and HR can access all departments
+    if (this.data_scope === 'all') {
+      return true;
+    }
+
+    // Department managers can only access their own department
+    if (this.data_scope === 'department') {
+      return this.department_id === departmentId;
+    }
+
+    // Regular employees can't access department-level data
+    return false;
+  }
+
+  /**
+   * Get data scope filter for queries
+   * @param {string} resourceType - Type of resource (e.g., 'employee', 'department')
+   * @returns {Object|null} Sequelize where clause for data filtering
+   */
+  getDataScopeFilter(resourceType = 'employee') {
+    if (this.data_scope === 'all') {
+      return {}; // No filter, can see all
+    }
+
+    if (this.data_scope === 'department') {
+      // Filter by department
+      return { department_id: this.department_id };
+    }
+
+    if (this.data_scope === 'self') {
+      // Filter by employee_id
+      if (resourceType === 'employee') {
+        return { employee_id: this.employee_id };
+      }
+      // For other resources, return employee_id filter
+      return { employee_id: this.employee_id };
+    }
+
+    return null;
+  }
+
+  /**
+   * Check if user can view sensitive data for a specific employee
+   * @param {string} targetEmployeeId - Employee ID to check
+   * @returns {boolean} True if user can view sensitive data
+   */
+  canViewSensitiveData(targetEmployeeId) {
+    // Must have can_view_sensitive flag
+    if (!this.can_view_sensitive) {
+      return false;
+    }
+
+    // Admin and HR can view all sensitive data
+    if (this.data_scope === 'all') {
+      return true;
+    }
+
+    // Department managers can view sensitive data for their department employees
+    // (This requires department check at query level)
+    if (this.data_scope === 'department') {
+      // Will be validated at query level with department check
+      return true;
+    }
+
+    // Employees can only view their own sensitive data
+    if (this.data_scope === 'self') {
+      return this.employee_id === targetEmployeeId;
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if user can edit specific employee fields
+   * @param {string} targetEmployeeId - Employee ID to check
+   * @param {Array<string>} fields - Fields to edit
+   * @returns {Object} { canEdit: boolean, editableFields: Array<string> }
+   */
+  canEditEmployeeFields(targetEmployeeId, fields = []) {
+    // Admin and HR can edit all fields for all employees
+    if (this.role === 'admin' || this.role === 'hr_admin') {
+      return { canEdit: true, editableFields: fields };
+    }
+
+    // Department managers can edit limited fields for their department
+    if (this.role === 'department_manager') {
+      const allowedFields = ['phone', 'email', 'position', 'emergency_contact'];
+      const editableFields = fields.filter(f => allowedFields.includes(f));
+      return { canEdit: editableFields.length > 0, editableFields };
+    }
+
+    // Employees can only edit their own limited fields
+    if (this.role === 'employee' && this.employee_id === targetEmployeeId) {
+      const allowedFields = ['phone', 'email', 'emergency_contact', 'address'];
+      const editableFields = fields.filter(f => allowedFields.includes(f));
+      return { canEdit: editableFields.length > 0, editableFields };
+    }
+
+    return { canEdit: false, editableFields: [] };
+  }
+
+  /**
    * Generate safe user object for API response (without sensitive data)
    * @returns {Object} Safe user data
    */
@@ -129,6 +236,9 @@ class User extends Model {
       phone: this.phone,
       role: this.role,
       permissions: this.permissions,
+      department_id: this.department_id,
+      data_scope: this.data_scope,
+      can_view_sensitive: this.can_view_sensitive,
       status: this.status,
       is_active: this.is_active,
       last_login_at: this.last_login_at,
@@ -208,10 +318,31 @@ User.init(
       comment: '角色',
       validate: {
         isIn: {
-          args: [['admin', 'hr', 'manager', 'employee']],
-          msg: 'Invalid role'
+          args: [['admin', 'hr_admin', 'department_manager', 'employee']],
+          msg: 'Invalid role. Must be one of: admin, hr_admin, department_manager, employee'
         }
       }
+    },
+    department_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      comment: '所属部门ID（用于部门经理）',
+      references: {
+        model: 'departments',
+        key: 'department_id'
+      }
+    },
+    data_scope: {
+      type: DataTypes.ENUM('all', 'department', 'self'),
+      defaultValue: 'self',
+      allowNull: false,
+      comment: '数据访问范围：all-全部，department-本部门，self-仅自己'
+    },
+    can_view_sensitive: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+      comment: '是否可查看敏感数据'
     },
     permissions: {
       type: DataTypes.JSON,
@@ -324,6 +455,14 @@ User.init(
       {
         name: 'idx_last_login',
         fields: ['last_login_at']
+      },
+      {
+        name: 'idx_users_department',
+        fields: ['department_id']
+      },
+      {
+        name: 'idx_users_role_scope',
+        fields: ['role', 'data_scope']
       }
     ],
     defaultScope: {
