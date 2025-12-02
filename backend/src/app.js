@@ -32,6 +32,13 @@ app.use(express.urlencoded({ extended: true }));
 // Logging
 app.use(morgan('combined'));
 
+// Sensitive data handling middleware (must be before routes)
+const { sensitiveDataHandler } = require('./middleware/sensitiveDataHandler');
+app.use(sensitiveDataHandler({
+  autoMask: true,
+  excludePaths: ['/api/auth/login', '/api/health', '/api/auth/register']
+}));
+
 // Database connection
 const { testConnection } = require('./config/database');
 

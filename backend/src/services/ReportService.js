@@ -8,6 +8,7 @@ const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { Employee, Leave, Attendance, Department } = require('../models');
 const logger = require('../utils/logger');
+const permissionService = require('./PermissionService');
 
 class ReportService {
   /**
@@ -56,8 +57,12 @@ class ReportService {
         whereClause.employee_id = employee_id;
       }
 
-      // 应用数据权限过滤
-      const employeeWhere = this._applyDataScopeFilter(user, department_id);
+      // 应用数据权限过滤（使用统一的PermissionService）
+      const employeeWhere = permissionService.applyDataScopeFilter(
+        user,
+        'employee',
+        department_id ? { department_id } : {}
+      );
 
       // 查询假期记录
       const leaves = await Leave.findAll({
@@ -138,8 +143,12 @@ class ReportService {
         whereClause.employee_id = employee_id;
       }
 
-      // 应用数据权限过滤
-      const employeeWhere = this._applyDataScopeFilter(user, department_id);
+      // 应用数据权限过滤（使用统一的PermissionService）
+      const employeeWhere = permissionService.applyDataScopeFilter(
+        user,
+        'employee',
+        department_id ? { department_id } : {}
+      );
 
       // 查询考勤记录
       const attendances = await Attendance.findAll({
