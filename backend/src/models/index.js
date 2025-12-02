@@ -3,6 +3,8 @@ const Department = require('./Department');
 const Employee = require('./Employee');
 const User = require('./User');
 const OnboardingProcess = require('./OnboardingProcess');
+const Leave = require('./Leave');
+const Attendance = require('./Attendance');
 
 /**
  * Model Associations
@@ -58,6 +60,33 @@ OnboardingProcess.belongsTo(Employee, {
   as: 'employee'
 });
 
+// Leave associations
+Leave.belongsTo(Employee, {
+  foreignKey: 'employee_id',
+  as: 'employee'
+});
+
+Leave.belongsTo(User, {
+  foreignKey: 'approver_id',
+  as: 'approver'
+});
+
+Employee.hasMany(Leave, {
+  foreignKey: 'employee_id',
+  as: 'leaves'
+});
+
+// Attendance associations
+Attendance.belongsTo(Employee, {
+  foreignKey: 'employee_id',
+  as: 'employee'
+});
+
+Employee.hasMany(Attendance, {
+  foreignKey: 'employee_id',
+  as: 'attendances'
+});
+
 /**
  * Sync models with database
  * @param {boolean} force - If true, drops existing tables before creating new ones
@@ -84,7 +113,9 @@ const initModels = () => {
     Department,
     Employee,
     User,
-    OnboardingProcess
+    OnboardingProcess,
+    Leave,
+    Attendance
   };
 };
 
@@ -94,6 +125,8 @@ module.exports = {
   Employee,
   User,
   OnboardingProcess,
+  Leave,
+  Attendance,
   syncModels,
   initModels
 };

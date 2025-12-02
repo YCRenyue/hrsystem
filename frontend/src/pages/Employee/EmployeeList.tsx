@@ -21,12 +21,11 @@ import {
   UploadOutlined,
   DownloadOutlined,
   EditOutlined,
-  DeleteOutlined,
   FilterOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
-import { Employee, EmploymentStatus, EmployeeQueryParams, Department } from '../../types';
+import { Employee, EmployeeQueryParams, Department } from '../../types';
 import { employeeService } from '../../services/employeeService';
 import { departmentService } from '../../services/departmentService';
 import { usePermission } from '../../hooks/usePermission';
@@ -43,7 +42,6 @@ const EmployeeList: React.FC = () => {
   const { message } = App.useApp();
   const {
     canCreateEmployee,
-    canDeleteEmployee,
     canUpdateEmployee,
     canExportEmployees,
     canImportEmployees,
@@ -146,24 +144,6 @@ const EmployeeList: React.FC = () => {
     });
   };
 
-  const handleDelete = (employeeId: string) => {
-    Modal.confirm({
-      title: '确定要删除此员工吗？',
-      content: '此操作无法撤销。',
-      okText: '确定',
-      okType: 'danger',
-      cancelText: '取消',
-      onOk: async () => {
-        try {
-          await employeeService.deleteEmployee(employeeId);
-          message.success('员工删除成功');
-          fetchEmployees();
-        } catch (error) {
-          message.error('删除员工失败');
-        }
-      },
-    });
-  };
 
   const handleImport = async (file: File) => {
     const hideLoading = message.loading('正在导入员工数据，请稍候...', 0);
@@ -324,6 +304,14 @@ const EmployeeList: React.FC = () => {
       fixed: 'right',
       render: (_, record) => (
         <Space size="small">
+          {/* View button - always visible */}
+          <Button
+            type="link"
+            onClick={() => navigate(`/employees/${record.employee_id}`)}
+          >
+            查看
+          </Button>
+
           {/* Edit button - only show for users with update permission */}
           {canUpdateEmployee() && (
             <Button
@@ -332,18 +320,6 @@ const EmployeeList: React.FC = () => {
               onClick={() => navigate(`/employees/${record.employee_id}/edit`)}
             >
               编辑
-            </Button>
-          )}
-
-          {/* Delete button - only show for users with delete permission */}
-          {canDeleteEmployee() && (
-            <Button
-              type="link"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => handleDelete(record.employee_id)}
-            >
-              删除
             </Button>
           )}
         </Space>

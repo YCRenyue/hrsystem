@@ -61,6 +61,39 @@ export const usePermission = () => {
   };
 
   /**
+   * 快捷方法：检查是否可以导入员工数据
+   */
+  const canImportEmployees = (): boolean => {
+    return permission.hasPermission('employees.import');
+  };
+
+  /**
+   * 快捷方法：检查是否可以更新员工（别名，与canEditEmployee相同）
+   */
+  const canUpdateEmployee = (): boolean => {
+    return canEditEmployee();
+  };
+
+  /**
+   * 快捷方法：检查是否可以查看敏感数据
+   */
+  const canViewSensitive = (): boolean => {
+    // Admin 和 HR 可以查看所有敏感数据
+    if (permission.hasPermission('employees.view_all')) {
+      return true;
+    }
+    // 部门经理可以查看本部门员工的敏感数据
+    if (permission.hasPermission('employees.view_department')) {
+      return true;
+    }
+    // 员工可以查看自己的敏感数据
+    if (permission.hasPermission('employees.view_self')) {
+      return true;
+    }
+    return false;
+  };
+
+  /**
    * 快捷方法：检查是否可以管理部门
    */
   const canManageDepartments = (): boolean => {
@@ -105,8 +138,11 @@ export const usePermission = () => {
     // 快捷方法
     canCreateEmployee,
     canEditEmployee,
+    canUpdateEmployee, // Alias for canEditEmployee
     canDeleteEmployee,
     canExportEmployees,
+    canImportEmployees,
+    canViewSensitive,
     canManageDepartments,
     canManageUsers,
     canViewReports,

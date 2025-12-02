@@ -38,6 +38,15 @@ const { testConnection } = require('./config/database');
 // Test database connection on startup
 testConnection();
 
+// Scheduler service
+const schedulerService = require('./services/SchedulerService');
+
+// Start scheduler in production or when explicitly enabled
+if (process.env.NODE_ENV === 'production' || process.env.ENABLE_SCHEDULER === 'true') {
+  schedulerService.start();
+  console.log('Scheduler service started');
+}
+
 // Routes
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
@@ -49,6 +58,7 @@ app.use('/api/employees', require('./routes/employees'));
 app.use('/api/departments', require('./routes/departments'));
 app.use('/api/onboarding', require('./routes/onboarding'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/reports', require('./routes/reports'));
 
 // Error handling middleware
 const { errorHandler } = require('./middleware/errorHandler');
