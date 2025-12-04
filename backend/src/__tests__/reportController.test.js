@@ -13,20 +13,22 @@ jest.mock('../services/ReportService');
 
 // Mock auth middleware
 jest.mock('../middleware/auth', () => ({
-  authenticate: (req, res, next) => {
+  authenticateToken: (req, res, next) => {
     req.user = {
       user_id: 'user1',
       employee_id: 'emp1',
       department_id: 'dept1',
-      data_scope: 'all'
+      data_scope: 'all',
+      role: 'admin'
     };
     next();
-  }
+  },
+  requireRole: (...roles) => (req, res, next) => next()
 }));
 
-// Mock authorize middleware
-jest.mock('../middleware/authorize', () => ({
-  authorize: (permissions) => (req, res, next) => next()
+// Mock permission middleware
+jest.mock('../middleware/permission', () => ({
+  checkPermission: (permission) => (req, res, next) => next()
 }));
 
 describe('Report Controller', () => {

@@ -24,7 +24,7 @@ describe('Employee Excel Import - Real Format', () => {
       { name: '销售部', code: 'SALES', description: '销售管理部门' },
       { name: '客服部', code: 'CS', description: '客户服务部门' }
     ]);
-  });
+  }, 30000);
 
   beforeEach(async () => {
     await Employee.destroy({ where: {}, force: true });

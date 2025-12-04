@@ -25,7 +25,8 @@ const getDepartments = async (req, res) => {
         ]
       ]
     },
-    order: [['name', 'ASC']]
+    order: [['name', 'ASC']],
+    raw: true
   });
 
   res.json({
@@ -40,7 +41,7 @@ const getDepartments = async (req, res) => {
 const getDepartmentById = async (req, res) => {
   const { id } = req.params;
 
-  const department = await Department.findByPk(id);
+  const department = await Department.findByPk(id, { raw: true });
 
   if (!department) {
     throw new NotFoundError('Department', id);
@@ -83,7 +84,7 @@ const createDepartment = async (req, res) => {
 
   res.status(201).json({
     success: true,
-    data: department
+    data: department.toJSON()
   });
 };
 
@@ -115,7 +116,7 @@ const updateDepartment = async (req, res) => {
 
   res.json({
     success: true,
-    data: department
+    data: department.toJSON()
   });
 };
 

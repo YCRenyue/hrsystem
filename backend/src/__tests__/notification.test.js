@@ -295,8 +295,8 @@ describe('NotificationService', () => {
       const formUrl = 'https://example.com/onboarding/token123';
 
       // Mock DingTalk service
-      dingTalkService.isEnabled = jest.fn().returnValue(true);
-      dingTalkService.sendLinkMessage = jest.fn().resolvedValue({
+      dingTalkService.isEnabled = jest.fn().mockReturnValue(true);
+      dingTalkService.sendLinkMessage = jest.fn().mockResolvedValue({
         success: true,
         taskId: 'task_123',
       });
@@ -321,8 +321,8 @@ describe('NotificationService', () => {
         entry_date: '2025-01-15',
       };
 
-      dingTalkService.isEnabled = jest.fn().returnValue(true);
-      dingTalkService.sendMarkdownMessage = jest.fn().resolvedValue({
+      dingTalkService.isEnabled = jest.fn().mockReturnValue(true);
+      dingTalkService.sendMarkdownMessage = jest.fn().mockResolvedValue({
         success: true,
         taskId: 'task_123',
       });
@@ -346,8 +346,8 @@ describe('NotificationService', () => {
         email: 'test@example.com',
       };
 
-      dingTalkService.isEnabled = jest.fn().returnValue(true);
-      dingTalkService.sendTextMessage = jest.fn().resolvedValue({
+      dingTalkService.isEnabled = jest.fn().mockReturnValue(true);
+      dingTalkService.sendTextMessage = jest.fn().mockResolvedValue({
         success: true,
         taskId: 'task_123',
       });
@@ -369,8 +369,8 @@ describe('NotificationService', () => {
         contract_end_date: '2025-02-15',
       };
 
-      dingTalkService.isEnabled = jest.fn().returnValue(true);
-      dingTalkService.sendMarkdownMessage = jest.fn().resolvedValue({
+      dingTalkService.isEnabled = jest.fn().mockReturnValue(true);
+      dingTalkService.sendMarkdownMessage = jest.fn().mockResolvedValue({
         success: true,
         taskId: 'task_123',
       });
@@ -402,8 +402,8 @@ describe('NotificationService', () => {
         overtime: 10,
       };
 
-      dingTalkService.isEnabled = jest.fn().returnValue(true);
-      dingTalkService.sendMarkdownMessage = jest.fn().resolvedValue({
+      dingTalkService.isEnabled = jest.fn().mockReturnValue(true);
+      dingTalkService.sendMarkdownMessage = jest.fn().mockResolvedValue({
         success: true,
         taskId: 'task_123',
       });
@@ -435,8 +435,8 @@ describe('NotificationService', () => {
         },
       ];
 
-      dingTalkService.isEnabled = jest.fn().returnValue(true);
-      dingTalkService.sendTextMessage = jest.fn().resolvedValue({
+      dingTalkService.isEnabled = jest.fn().mockReturnValue(true);
+      dingTalkService.sendTextMessage = jest.fn().mockResolvedValue({
         success: true,
         taskId: 'task_123',
       });
@@ -457,6 +457,9 @@ describe('NotificationService', () => {
 
   describe('getAvailability', () => {
     it('should return availability status', () => {
+      // Mock isEnabled to return a boolean value
+      dingTalkService.isEnabled = jest.fn().mockReturnValue(false);
+
       const availability = notificationService.getAvailability();
 
       expect(availability).toHaveProperty('dingtalk');
