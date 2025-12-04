@@ -7,8 +7,8 @@
 const express = require('express');
 const router = express.Router();
 const reportController = require('../controllers/reportController');
-const { authenticate } = require('../middleware/auth');
-const { authorize } = require('../middleware/authorize');
+const { authenticateToken } = require('../middleware/auth');
+const { checkPermission } = require('../middleware/permission');
 
 /**
  * GET /api/reports/leaves
@@ -17,8 +17,8 @@ const { authorize } = require('../middleware/authorize');
  */
 router.get(
   '/leaves',
-  authenticate,
-  authorize(['reports.view_all', 'reports.view_department']),
+  authenticateToken,
+  checkPermission('reports.view_all'),
   reportController.getLeaveReport
 );
 
@@ -29,8 +29,8 @@ router.get(
  */
 router.get(
   '/attendance',
-  authenticate,
-  authorize(['reports.view_all', 'reports.view_department']),
+  authenticateToken,
+  checkPermission('reports.view_all'),
   reportController.getAttendanceReport
 );
 
@@ -41,8 +41,8 @@ router.get(
  */
 router.get(
   '/onboarding-offboarding',
-  authenticate,
-  authorize(['reports.view_all', 'reports.view_department']),
+  authenticateToken,
+  checkPermission('reports.view_all'),
   reportController.getOnboardingOffboardingReport
 );
 
