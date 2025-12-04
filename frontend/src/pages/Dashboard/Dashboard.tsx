@@ -8,6 +8,8 @@ import {
   TeamOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
+  CalendarOutlined,
+  FileDoneOutlined,
 } from '@ant-design/icons';
 import { dashboardService, DashboardStats } from '../../services/dashboardService';
 
@@ -44,6 +46,8 @@ const Dashboard: React.FC = () => {
   return (
     <div>
       <h2 style={{ marginBottom: 24 }}>系统概览</h2>
+
+      {/* 员工统计卡片 */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
           <Card>
@@ -83,6 +87,41 @@ const Dashboard: React.FC = () => {
               suffix="%"
               prefix={<CheckCircleOutlined />}
               valueStyle={{ color: '#52c41a' }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* 考勤和请假统计卡片 */}
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="本月出勤率"
+              value={stats?.attendanceRate || 0}
+              suffix="%"
+              prefix={<CalendarOutlined />}
+              valueStyle={{ color: '#1890ff' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="待审批请假"
+              value={stats?.pendingLeaves || 0}
+              prefix={<FileDoneOutlined />}
+              valueStyle={{ color: '#faad14' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="本月请假总数"
+              value={stats?.totalLeaves || 0}
+              prefix={<FileDoneOutlined />}
+              valueStyle={{ color: '#722ed1' }}
             />
           </Card>
         </Col>

@@ -18,6 +18,17 @@ export interface DashboardStats {
     status: string;
     count: number;
   }>;
+  attendanceRate: number;
+  attendanceStats: Array<{
+    status: string;
+    count: number;
+  }>;
+  pendingLeaves: number;
+  totalLeaves: number;
+  leaveStats: Array<{
+    status: string;
+    count: number;
+  }>;
 }
 
 export const dashboardService = {
