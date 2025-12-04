@@ -131,11 +131,21 @@ export const usePermission = () => {
     return permission.dataScope === 'self';
   };
 
+  /**
+   * 检查用户是否具有特定角色
+   */
+  const hasRole = (role: string): boolean => {
+    // 从 permission 中获取用户角色
+    const userRole = permission.user?.role || '';
+    return userRole === role;
+  };
+
   return {
     // 原始权限功能
     ...permission,
 
     // 快捷方法
+    hasRole,
     canCreateEmployee,
     canEditEmployee,
     canUpdateEmployee, // Alias for canEditEmployee
