@@ -181,12 +181,15 @@ const AttendanceList: React.FC = () => {
     }));
   };
 
-  const handleDateRangeChange = (dates: [Dayjs, Dayjs] | null) => {
+  const handleDateRangeChange = (dates: [Dayjs | null, Dayjs | null] | null) => {
+    // Filter out null values and ensure we have both start and end dates
+    const validDates = dates && dates[0] && dates[1] ? [dates[0], dates[1]] as [Dayjs, Dayjs] : null;
+
     setState(prev => ({
       ...prev,
       filters: {
         ...prev.filters,
-        dateRange: dates,
+        dateRange: validDates,
       },
       pagination: {
         ...prev.pagination,
