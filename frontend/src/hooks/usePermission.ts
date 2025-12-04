@@ -136,7 +136,7 @@ export const usePermission = () => {
    */
   const hasRole = (role: string): boolean => {
     // 从 permission 中获取用户角色
-    const userRole = permission.user?.role || '';
+    const userRole = permission.role || '';
     return userRole === role;
   };
 

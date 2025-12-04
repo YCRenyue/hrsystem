@@ -48,7 +48,7 @@ function App() {
                   <Route
                     path="employees"
                     element={
-                      <RoleGuard requiredRole={['admin', 'hr_admin', 'department_manager']}>
+                      <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
                         <EmployeeList />
                       </RoleGuard>
                     }
@@ -68,7 +68,7 @@ function App() {
                   <Route
                     path="employees/:id/edit"
                     element={
-                      <RoleGuard requiredRole={['admin', 'hr_admin', 'department_manager']}>
+                      <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
                         <EmployeeForm />
                       </RoleGuard>
                     }
@@ -91,7 +91,7 @@ function App() {
                   <Route
                     path="settings"
                     element={
-                      <RoleGuard requiredRole="admin">
+                      <RoleGuard requiredRoles={['admin']}>
                         <div>Settings (Coming Soon)</div>
                       </RoleGuard>
                     }
