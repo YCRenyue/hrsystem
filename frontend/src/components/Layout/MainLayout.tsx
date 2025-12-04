@@ -10,6 +10,7 @@ import {
   LogoutOutlined,
   SettingOutlined,
   ApartmentOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -77,6 +78,12 @@ const MainLayout: React.FC = () => {
       label: '部门管理',
       onClick: () => navigate('/departments'),
     },
+    {
+      key: '/attendance',
+      icon: <ClockCircleOutlined />,
+      label: '考勤管理',
+      onClick: () => navigate('/attendance'),
+    },
   ];
 
   return (
@@ -116,6 +123,7 @@ const MainLayout: React.FC = () => {
             {location.pathname === '/dashboard' && '系统概览'}
             {location.pathname === '/employees' && '员工管理'}
             {location.pathname === '/departments' && '部门管理'}
+            {location.pathname === '/attendance' && '考勤管理'}
           </div>
           <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
             <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>

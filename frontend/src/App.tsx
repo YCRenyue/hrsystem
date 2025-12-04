@@ -15,6 +15,7 @@ import EmployeeList from './pages/Employee/EmployeeList';
 import EmployeeForm from './pages/Employee/EmployeeForm';
 import OnboardingForm from './pages/Onboarding/OnboardingForm';
 import DepartmentList from './pages/Department/DepartmentList';
+import AttendanceList from './pages/Attendance/AttendanceList';
 import './App.css';
 
 function App() {
@@ -80,6 +81,16 @@ function App() {
                     element={
                       <RoleGuard requiredPermission="departments.view">
                         <DepartmentList />
+                      </RoleGuard>
+                    }
+                  />
+
+                  {/* Attendance management - accessible to admin, hr_admin, and department_manager */}
+                  <Route
+                    path="attendance"
+                    element={
+                      <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
+                        <AttendanceList />
                       </RoleGuard>
                     }
                   />

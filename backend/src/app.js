@@ -66,6 +66,7 @@ app.use('/api/departments', require('./routes/departments'));
 app.use('/api/onboarding', require('./routes/onboarding'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/attendance', require('./routes/attendance'));
 
 // Error handling middleware
 const { errorHandler } = require('./middleware/errorHandler');
