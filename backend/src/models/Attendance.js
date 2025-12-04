@@ -9,13 +9,13 @@ const { sequelize } = require('../config/database');
 
 const Attendance = sequelize.define('Attendance', {
   attendance_id: {
-    type: DataTypes.STRING(36),
+    type: DataTypes.UUID,
     primaryKey: true,
     defaultValue: DataTypes.UUIDV4,
     comment: '考勤记录ID'
   },
   employee_id: {
-    type: DataTypes.STRING(36),
+    type: DataTypes.UUID,
     allowNull: false,
     comment: '员工ID',
     references: {

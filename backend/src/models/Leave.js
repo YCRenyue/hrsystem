@@ -9,13 +9,13 @@ const { sequelize } = require('../config/database');
 
 const Leave = sequelize.define('Leave', {
   leave_id: {
-    type: DataTypes.STRING(36),
+    type: DataTypes.UUID,
     primaryKey: true,
     defaultValue: DataTypes.UUIDV4,
     comment: '假期记录ID'
   },
   employee_id: {
-    type: DataTypes.STRING(36),
+    type: DataTypes.UUID,
     allowNull: false,
     comment: '员工ID',
     references: {
@@ -53,7 +53,7 @@ const Leave = sequelize.define('Leave', {
     comment: '状态：pending-待审批, approved-已批准, rejected-已拒绝, cancelled-已取消'
   },
   approver_id: {
-    type: DataTypes.STRING(36),
+    type: DataTypes.UUID,
     comment: '审批人ID',
     references: {
       model: 'users',
