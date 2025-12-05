@@ -89,7 +89,9 @@ describe('Employee Management API', () => {
     it('should support sorting by employee_number ascending', async () => {
       const response = await request(app)
         .get('/api/employees')
-        .query({ page: 1, size: 10, sort_by: 'employee_number', sort_order: 'ASC' })
+        .query({
+          page: 1, size: 10, sort_by: 'employee_number', sort_order: 'ASC'
+        })
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
@@ -100,7 +102,9 @@ describe('Employee Management API', () => {
     it('should support sorting by employee_number descending', async () => {
       const response = await request(app)
         .get('/api/employees')
-        .query({ page: 1, size: 10, sort_by: 'employee_number', sort_order: 'DESC' })
+        .query({
+          page: 1, size: 10, sort_by: 'employee_number', sort_order: 'DESC'
+        })
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
@@ -110,7 +114,9 @@ describe('Employee Management API', () => {
     it('should support sorting by department name', async () => {
       const response = await request(app)
         .get('/api/employees')
-        .query({ page: 1, size: 10, sort_by: 'department', sort_order: 'ASC' })
+        .query({
+          page: 1, size: 10, sort_by: 'department', sort_order: 'ASC'
+        })
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
@@ -120,7 +126,9 @@ describe('Employee Management API', () => {
     it('should support sorting by entry_date', async () => {
       const response = await request(app)
         .get('/api/employees')
-        .query({ page: 1, size: 10, sort_by: 'entry_date', sort_order: 'DESC' })
+        .query({
+          page: 1, size: 10, sort_by: 'entry_date', sort_order: 'DESC'
+        })
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
@@ -130,7 +138,9 @@ describe('Employee Management API', () => {
     it('should support sorting by name (using name_hash)', async () => {
       const response = await request(app)
         .get('/api/employees')
-        .query({ page: 1, size: 10, sort_by: 'name', sort_order: 'ASC' })
+        .query({
+          page: 1, size: 10, sort_by: 'name', sort_order: 'ASC'
+        })
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);
@@ -140,7 +150,9 @@ describe('Employee Management API', () => {
     it('should support sorting by status', async () => {
       const response = await request(app)
         .get('/api/employees')
-        .query({ page: 1, size: 10, sort_by: 'status', sort_order: 'ASC' })
+        .query({
+          page: 1, size: 10, sort_by: 'status', sort_order: 'ASC'
+        })
         .set('Authorization', `Bearer ${authToken}`);
 
       expect(response.status).toBe(200);

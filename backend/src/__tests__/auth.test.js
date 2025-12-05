@@ -4,10 +4,10 @@
  */
 
 const request = require('supertest');
+const jwt = require('jsonwebtoken');
 const app = require('../app');
 const { User, sequelize } = require('../models');
 const { encryptionService } = require('../utils/encryption');
-const jwt = require('jsonwebtoken');
 
 describe('Authentication API', () => {
   let testUser;
@@ -140,7 +140,7 @@ describe('Authentication API', () => {
           password: 'password123'
         });
 
-      const token = loginResponse.body.data.token;
+      const { token } = loginResponse.body.data;
 
       const response = await request(app)
         .post('/api/auth/logout')
@@ -160,7 +160,7 @@ describe('Authentication API', () => {
           password: 'password123'
         });
 
-      const token = loginResponse.body.data.token;
+      const { token } = loginResponse.body.data;
 
       // Try to access protected route
       const response = await request(app)
@@ -233,7 +233,7 @@ describe('Authentication API', () => {
           password: 'password123'
         });
 
-      const token = loginResponse.body.data.token;
+      const { token } = loginResponse.body.data;
 
       const response = await request(app)
         .get('/api/employees')
@@ -250,7 +250,7 @@ describe('Authentication API', () => {
           password: 'password123'
         });
 
-      const token = loginResponse.body.data.token;
+      const { token } = loginResponse.body.data;
 
       const response = await request(app)
         .get('/api/employees')

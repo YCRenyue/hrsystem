@@ -2,6 +2,7 @@
  * User Routes
  */
 const express = require('express');
+
 const router = express.Router();
 const userController = require('../controllers/userController');
 const { asyncHandler } = require('../middleware/errorHandler');
@@ -11,6 +12,9 @@ router.get('/profile', asyncHandler(userController.getUserProfile));
 
 // Update user profile
 router.put('/profile', asyncHandler(userController.updateUserProfile));
+
+// Get current user's employee information
+router.get('/profile/employee', asyncHandler(userController.getProfileEmployee));
 
 // Change password
 router.post('/change-password', asyncHandler(userController.changePassword));

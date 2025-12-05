@@ -208,14 +208,14 @@ class User extends Model {
     // Department managers can edit limited fields for their department
     if (this.role === 'department_manager') {
       const allowedFields = ['phone', 'email', 'position', 'emergency_contact'];
-      const editableFields = fields.filter(f => allowedFields.includes(f));
+      const editableFields = fields.filter((f) => allowedFields.includes(f));
       return { canEdit: editableFields.length > 0, editableFields };
     }
 
     // Employees can only edit their own limited fields
     if (this.role === 'employee' && this.employee_id === targetEmployeeId) {
       const allowedFields = ['phone', 'email', 'emergency_contact', 'address'];
-      const editableFields = fields.filter(f => allowedFields.includes(f));
+      const editableFields = fields.filter((f) => allowedFields.includes(f));
       return { canEdit: editableFields.length > 0, editableFields };
     }
 

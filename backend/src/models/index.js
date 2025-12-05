@@ -107,17 +107,15 @@ const syncModels = async (force = false, alter = false) => {
  * Initialize all models and associations
  * @returns {Object} Object containing all models
  */
-const initModels = () => {
-  return {
-    sequelize,
-    Department,
-    Employee,
-    User,
-    OnboardingProcess,
-    Leave,
-    Attendance
-  };
-};
+const initModels = () => ({
+  sequelize,
+  Department,
+  Employee,
+  User,
+  OnboardingProcess,
+  Leave,
+  Attendance
+});
 
 module.exports = {
   sequelize,

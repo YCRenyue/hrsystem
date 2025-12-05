@@ -4,17 +4,17 @@
  */
 
 const request = require('supertest');
-const app = require('../app');
-const { Employee, Department, sequelize } = require('../models');
 const ExcelJS = require('exceljs');
 const path = require('path');
 const fs = require('fs');
+const { Employee, Department, sequelize } = require('../models');
+const app = require('../app');
 
 describe('Employee Import/Export API', () => {
   let authToken;
   let hrToken;
   let testDepartment;
-  let testEmployees = [];
+  const testEmployees = [];
 
   // Setup before all tests
   beforeAll(async () => {
@@ -90,7 +90,7 @@ describe('Employee Import/Export API', () => {
     ];
 
     // Add rows
-    employees.forEach(emp => worksheet.addRow(emp));
+    employees.forEach((emp) => worksheet.addRow(emp));
 
     // Write to buffer
     const buffer = await workbook.xlsx.writeBuffer();

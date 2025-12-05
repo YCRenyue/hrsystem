@@ -26,10 +26,21 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleDingTalkLogin = () => {
-    message.info('钉钉 OAuth 集成即将推出');
-    // TODO: Implement DingTalk OAuth flow
-    // window.location.href = DINGTALK_OAUTH_URL;
+  const handleDingTalkLogin = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/auth/dingtalk/login-url');
+      const data = await response.json();
+      if (data.success && data.data.loginUrl) {
+        window.location.href = data.data.loginUrl;
+      } else {
+        message.error('Failed to get DingTalk login URL');
+      }
+    } catch (error) {
+      message.error('Failed to initiate DingTalk login');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleWeChatLogin = () => {

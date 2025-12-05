@@ -2,9 +2,11 @@
  * Dashboard Controller Tests
  */
 const request = require('supertest');
-const app = require('../app');
-const { sequelize, Employee, Department, Attendance, Leave } = require('../models');
 const jwt = require('jsonwebtoken');
+const app = require('../app');
+const {
+  sequelize, Employee, Department, Attendance, Leave
+} = require('../models');
 
 describe('Dashboard Controller', () => {
   let authToken;
@@ -422,7 +424,7 @@ describe('Dashboard Controller', () => {
       expect(response.body.data).toHaveProperty('typeDistribution');
       expect(Array.isArray(response.body.data.typeDistribution)).toBe(true);
 
-      const annualLeave = response.body.data.typeDistribution.find(item => item.type === 'annual');
+      const annualLeave = response.body.data.typeDistribution.find((item) => item.type === 'annual');
       expect(annualLeave).toBeDefined();
       expect(annualLeave.days).toBe(4); // 1 + 3
     });

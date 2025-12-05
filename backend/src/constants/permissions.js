@@ -182,10 +182,10 @@ function hasPermission(requiredPermission, userPermissions) {
   }
 
   // 检查通配符匹配（例如：employees.* 匹配 employees.view_all）
-  const wildcardMatch = userPermissions.some(permission => {
+  const wildcardMatch = userPermissions.some((permission) => {
     if (permission.endsWith('.*')) {
       const prefix = permission.slice(0, -2);
-      return requiredPermission.startsWith(prefix + '.');
+      return requiredPermission.startsWith(`${prefix}.`);
     }
     return false;
   });

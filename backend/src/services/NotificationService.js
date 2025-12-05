@@ -24,8 +24,8 @@ class NotificationService {
         secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
         auth: {
           user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
+          pass: process.env.SMTP_PASS
+        }
       });
     } else {
       logger.warn('Email configuration not found. Email notifications will be disabled.');
@@ -45,12 +45,14 @@ class NotificationService {
    * @returns {Promise<Object>} Result with channel and success status
    */
   async sendNotification(options) {
-    const { employee, title, content, type = 'text', extra = {}, emailFallback = true } = options;
+    const {
+      employee, title, content, type = 'text', extra = {}, emailFallback = true
+    } = options;
 
     const result = {
       success: false,
       channel: null,
-      error: null,
+      error: null
     };
 
     // Try DingTalk first if user has dingtalk_user_id
@@ -97,29 +99,29 @@ class NotificationService {
    */
   async _sendViaDingTalk(userId, title, content, type, extra) {
     switch (type) {
-      case 'text':
-        return dingTalkService.sendTextMessage([userId], content);
+    case 'text':
+      return dingTalkService.sendTextMessage([userId], content);
 
-      case 'markdown':
-        return dingTalkService.sendMarkdownMessage([userId], title, content);
+    case 'markdown':
+      return dingTalkService.sendMarkdownMessage([userId], title, content);
 
-      case 'link':
-        return dingTalkService.sendLinkMessage([userId], {
-          title,
-          text: content,
-          messageUrl: extra.url || '',
-          picUrl: extra.picUrl || '',
-        });
+    case 'link':
+      return dingTalkService.sendLinkMessage([userId], {
+        title,
+        text: content,
+        messageUrl: extra.url || '',
+        picUrl: extra.picUrl || ''
+      });
 
-      case 'oa':
-        return dingTalkService.sendOAMessage([userId], {
-          head: extra.head || { bgcolor: 'FFBBBBBB', text: title },
-          body: extra.body || { title, content },
-          ...extra,
-        });
+    case 'oa':
+      return dingTalkService.sendOAMessage([userId], {
+        head: extra.head || { bgcolor: 'FFBBBBBB', text: title },
+        body: extra.body || { title, content },
+        ...extra
+      });
 
-      default:
-        return dingTalkService.sendTextMessage([userId], content);
+    default:
+      return dingTalkService.sendTextMessage([userId], content);
     }
   }
 
@@ -140,7 +142,7 @@ class NotificationService {
       to: email,
       subject: title,
       text: content,
-      html: htmlContent,
+      html: htmlContent
     };
 
     const info = await this.emailTransporter.sendMail(mailOptions);
@@ -208,7 +210,7 @@ class NotificationService {
       success: 0,
       failed: 0,
       channels: { dingtalk: 0, email: 0 },
-      errors: [],
+      errors: []
     };
 
     const promises = employees.map(async (employee) => {
@@ -217,7 +219,7 @@ class NotificationService {
           employee,
           title,
           content,
-          ...options,
+          ...options
         });
 
         if (result.success) {
@@ -228,7 +230,7 @@ class NotificationService {
           results.errors.push({
             employeeId: employee.employee_id,
             name: employee.name,
-            error: result.error,
+            error: result.error
           });
         }
       } catch (error) {
@@ -236,7 +238,7 @@ class NotificationService {
         results.errors.push({
           employeeId: employee.employee_id,
           name: employee.name,
-          error: error.message,
+          error: error.message
         });
       }
     });
@@ -271,8 +273,8 @@ class NotificationService {
       type: 'link',
       extra: {
         url: formUrl,
-        picUrl: '', // Optional: Add company logo
-      },
+        picUrl: '' // Optional: Add company logo
+      }
     });
   }
 
@@ -303,7 +305,7 @@ class NotificationService {
       employee,
       title,
       content,
-      type: 'markdown',
+      type: 'markdown'
     });
   }
 
@@ -329,7 +331,7 @@ class NotificationService {
       employee,
       title,
       content,
-      type: 'text',
+      type: 'text'
     });
   }
 
@@ -357,7 +359,7 @@ class NotificationService {
       employee,
       title,
       content,
-      type: 'markdown',
+      type: 'markdown'
     });
   }
 
@@ -385,7 +387,7 @@ class NotificationService {
       employee,
       title,
       content,
-      type: 'markdown',
+      type: 'markdown'
     });
   }
 
@@ -413,7 +415,7 @@ class NotificationService {
       title,
       content,
       type: 'markdown',
-      emailFallback: true,
+      emailFallback: true
     });
   }
 
@@ -441,7 +443,7 @@ ${statistics.overtime ? `**加班时长**：${statistics.overtime} 小时` : ''}
       employee,
       title,
       content,
-      type: 'markdown',
+      type: 'markdown'
     });
   }
 
@@ -453,7 +455,7 @@ ${statistics.overtime ? `**加班时长**：${statistics.overtime} 小时` : ''}
   getAvailability() {
     return {
       dingtalk: dingTalkService.isEnabled(),
-      email: !!this.emailTransporter,
+      email: !!this.emailTransporter
     };
   }
 }

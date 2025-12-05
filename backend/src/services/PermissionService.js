@@ -25,37 +25,37 @@ class PermissionService {
     }
 
     switch (user.data_scope) {
-      case 'all':
-        // Admin/HR可以访问所有数据
-        // 如果有额外的部门筛选，应用它
-        logger.debug(`Data scope: all - User ${user.user_id} can access all ${resourceType}`);
-        break;
+    case 'all':
+      // Admin/HR可以访问所有数据
+      // 如果有额外的部门筛选，应用它
+      logger.debug(`Data scope: all - User ${user.user_id} can access all ${resourceType}`);
+      break;
 
-      case 'department':
-        // 部门经理只能访问本部门数据
-        if (resourceType === 'employee') {
-          where.department_id = user.department_id;
-        } else if (resourceType === 'department') {
-          where.department_id = user.department_id;
-        }
-        logger.debug(`Data scope: department - User ${user.user_id} restricted to department ${user.department_id}`);
-        break;
+    case 'department':
+      // 部门经理只能访问本部门数据
+      if (resourceType === 'employee') {
+        where.department_id = user.department_id;
+      } else if (resourceType === 'department') {
+        where.department_id = user.department_id;
+      }
+      logger.debug(`Data scope: department - User ${user.user_id} restricted to department ${user.department_id}`);
+      break;
 
-      case 'self':
-        // 普通员工只能访问自己的数据
-        if (resourceType === 'employee') {
-          where.employee_id = user.employee_id;
-        } else {
-          // 对于其他资源类型，也限制为本人
-          where.employee_id = user.employee_id;
-        }
-        logger.debug(`Data scope: self - User ${user.user_id} restricted to own data`);
-        break;
-
-      default:
-        logger.warn(`Unknown data scope: ${user.data_scope}`);
-        // 默认为最严格的权限（只能查看自己）
+    case 'self':
+      // 普通员工只能访问自己的数据
+      if (resourceType === 'employee') {
         where.employee_id = user.employee_id;
+      } else {
+        // 对于其他资源类型，也限制为本人
+        where.employee_id = user.employee_id;
+      }
+      logger.debug(`Data scope: self - User ${user.user_id} restricted to own data`);
+      break;
+
+    default:
+      logger.warn(`Unknown data scope: ${user.data_scope}`);
+      // 默认为最严格的权限（只能查看自己）
+      where.employee_id = user.employee_id;
     }
 
     return where;
@@ -115,7 +115,7 @@ class PermissionService {
 
     const processedData = { ...employeeData };
 
-    sensitiveFields.forEach(field => {
+    sensitiveFields.forEach((field) => {
       const encryptedField = `${field}_encrypted`;
       const value = employeeData[field];
       const encryptedValue = employeeData[encryptedField];
@@ -179,22 +179,22 @@ class PermissionService {
     }
 
     switch (fieldName) {
-      case 'phone':
-      case 'emergency_contact_phone':
-        return encryptionService.maskPhone(value);
+    case 'phone':
+    case 'emergency_contact_phone':
+      return encryptionService.maskPhone(value);
 
-      case 'id_card':
-        return encryptionService.maskIdCard(value);
+    case 'id_card':
+      return encryptionService.maskIdCard(value);
 
-      case 'bank_account':
-        return encryptionService.maskBankCard(value);
+    case 'bank_account':
+      return encryptionService.maskBankCard(value);
 
-      default:
-        // 默认脱敏：显示前3位和后4位
-        if (value.length > 7) {
-          return value.substring(0, 3) + '****' + value.substring(value.length - 4);
-        }
-        return '****';
+    default:
+      // 默认脱敏：显示前3位和后4位
+      if (value.length > 7) {
+        return `${value.substring(0, 3)}****${value.substring(value.length - 4)}`;
+      }
+      return '****';
     }
   }
 
@@ -207,18 +207,18 @@ class PermissionService {
    */
   _getMaskedPlaceholder(fieldName) {
     switch (fieldName) {
-      case 'phone':
-      case 'emergency_contact_phone':
-        return '***-****-****';
+    case 'phone':
+    case 'emergency_contact_phone':
+      return '***-****-****';
 
-      case 'id_card':
-        return '***************';
+    case 'id_card':
+      return '***************';
 
-      case 'bank_account':
-        return '**** **** **** ****';
+    case 'bank_account':
+      return '**** **** **** ****';
 
-      default:
-        return '****';
+    default:
+      return '****';
     }
   }
 
@@ -234,9 +234,7 @@ class PermissionService {
       return [];
     }
 
-    return employees.map(employee => {
-      return this.processSensitiveFields(employee, canViewSensitive, 'mask');
-    });
+    return employees.map((employee) => this.processSensitiveFields(employee, canViewSensitive, 'mask'));
   }
 
   /**

@@ -5,7 +5,9 @@
  */
 
 const { sequelize } = require('../config/database');
-const { Department, Employee, User, OnboardingProcess } = require('../models');
+const {
+  Department, Employee, User, OnboardingProcess
+} = require('../models');
 
 /**
  * Check database connection
@@ -51,7 +53,7 @@ async function checkConnection() {
 
     if (tables.length > 0) {
       console.log(`✅ Found ${tables.length} tables in database:`);
-      tables.forEach(table => {
+      tables.forEach((table) => {
         console.log(`   - ${table.TABLE_NAME}`);
       });
       console.log('');
@@ -90,7 +92,7 @@ async function checkConnection() {
 
     // Test connection pool
     console.log('8️⃣  Testing connection pool...');
-    const pool = sequelize.connectionManager.pool;
+    const { pool } = sequelize.connectionManager;
     if (pool) {
       console.log('✅ Connection pool initialized\n');
     } else {

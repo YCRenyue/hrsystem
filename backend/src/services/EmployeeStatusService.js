@@ -10,9 +10,9 @@ const logger = require('../utils/logger');
  * 员工状态枚举
  */
 const EmployeeStatus = {
-  PENDING: 'pending',    // 待入职
-  ACTIVE: 'active',      // 在职
-  INACTIVE: 'inactive'   // 离职
+  PENDING: 'pending', // 待入职
+  ACTIVE: 'active', // 在职
+  INACTIVE: 'inactive' // 离职
 };
 
 /**
@@ -21,7 +21,7 @@ const EmployeeStatus = {
 const STATUS_TRANSITIONS = {
   [EmployeeStatus.PENDING]: [EmployeeStatus.ACTIVE],
   [EmployeeStatus.ACTIVE]: [EmployeeStatus.INACTIVE],
-  [EmployeeStatus.INACTIVE]: []  // 离职后不可转换
+  [EmployeeStatus.INACTIVE]: [] // 离职后不可转换
 };
 
 class EmployeeStatusService {

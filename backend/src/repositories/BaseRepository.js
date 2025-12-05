@@ -215,7 +215,9 @@ class BaseRepository {
    * @param {Object} options.order - Order clause
    * @returns {Promise<Object>} Paginated results with metadata
    */
-  async paginate({ page = 1, limit = 10, where = {}, order = [], ...options } = {}) {
+  async paginate({
+    page = 1, limit = 10, where = {}, order = [], ...options
+  } = {}) {
     try {
       const offset = (page - 1) * limit;
 
@@ -254,7 +256,7 @@ class BaseRepository {
    */
   async search(searchTerm, fields = [], options = {}) {
     try {
-      const searchConditions = fields.map(field => ({
+      const searchConditions = fields.map((field) => ({
         [field]: { [Op.like]: `%${searchTerm}%` }
       }));
 

@@ -1,6 +1,6 @@
 const { DataTypes, Model } = require('sequelize');
-const { sequelize } = require('../config/database');
 const crypto = require('crypto');
+const { sequelize } = require('../config/database');
 
 /**
  * OnboardingProcess Model
@@ -128,7 +128,9 @@ class OnboardingProcess extends Model {
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-    return { expired: false, days, hours, minutes };
+    return {
+      expired: false, days, hours, minutes
+    };
   }
 
   /**

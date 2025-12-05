@@ -2,6 +2,7 @@
  * Dashboard Routes
  */
 const express = require('express');
+
 const router = express.Router();
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');

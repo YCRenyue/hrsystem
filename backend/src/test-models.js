@@ -3,7 +3,9 @@
  * Run with: node src/test-models.js
  */
 require('dotenv').config();
-const { sequelize, Department, Employee, User, OnboardingProcess } = require('./models');
+const {
+  sequelize, Department, Employee, User, OnboardingProcess
+} = require('./models');
 const { encryptionService } = require('./utils/encryption');
 const EmployeeRepository = require('./repositories/EmployeeRepository');
 
@@ -28,8 +30,8 @@ async function testEncryption() {
   };
 
   console.log('Encrypted data (sample):', {
-    name: encrypted.name.substring(0, 50) + '...',
-    phone: encrypted.phone.substring(0, 50) + '...'
+    name: `${encrypted.name.substring(0, 50)}...`,
+    phone: `${encrypted.phone.substring(0, 50)}...`
   });
 
   // Test decryption
@@ -52,7 +54,7 @@ async function testEncryption() {
   console.log('Masked data:', masked);
 
   // Verify data integrity
-  const isValid = Object.keys(testData).every(key => testData[key] === decrypted[key]);
+  const isValid = Object.keys(testData).every((key) => testData[key] === decrypted[key]);
   console.log('Encryption/Decryption integrity:', isValid ? '✓ PASSED' : '✗ FAILED');
 }
 
@@ -187,7 +189,6 @@ async function testModels() {
     await employee.destroy();
     await department.destroy();
     console.log('✓ Test data cleaned up');
-
   } catch (error) {
     console.error('✗ Model test failed:', error);
     throw error;
@@ -240,7 +241,7 @@ async function runTests() {
       const filePath = path.join(__dirname, 'db', file);
       try {
         const sql = await fs.readFile(filePath, 'utf8');
-        const statements = sql.split(';').map(stmt => stmt.trim()).filter(stmt => stmt.length > 0 && !stmt.startsWith('--'));
+        const statements = sql.split(';').map((stmt) => stmt.trim()).filter((stmt) => stmt.length > 0 && !stmt.startsWith('--'));
         for (const statement of statements) {
           if (statement.trim()) {
             await sequelize.query(statement);

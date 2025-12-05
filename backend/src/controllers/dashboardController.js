@@ -1,8 +1,10 @@
 /**
  * Dashboard Controller - Statistics and overview
  */
-const { Employee, Department, Attendance, Leave, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const {
+  Employee, Department, Attendance, Leave, sequelize
+} = require('../models');
 
 /**
  * Get dashboard statistics
@@ -82,7 +84,7 @@ const getDashboardStats = async (req, res) => {
     });
 
     const totalAttendance = attendanceStats.reduce((sum, s) => sum + parseInt(s.count), 0);
-    const normalAttendance = attendanceStats.find(s => s.status === 'normal')?.count || 0;
+    const normalAttendance = attendanceStats.find((s) => s.status === 'normal')?.count || 0;
     const attendanceRate = totalAttendance > 0
       ? Math.round((normalAttendance / totalAttendance) * 100)
       : 0;
@@ -102,7 +104,7 @@ const getDashboardStats = async (req, res) => {
       raw: true
     });
 
-    const pendingLeaves = leaveStats.find(s => s.status === 'pending')?.count || 0;
+    const pendingLeaves = leaveStats.find((s) => s.status === 'pending')?.count || 0;
     const totalLeaves = leaveStats.reduce((sum, s) => sum + parseInt(s.count), 0);
 
     res.json({
@@ -152,7 +154,7 @@ const getDepartmentDistribution = async (req, res) => {
       raw: true
     });
 
-    const formattedData = distribution.map(item => ({
+    const formattedData = distribution.map((item) => ({
       department: item['department.name'] || '未分配',
       count: parseInt(item.count)
     }));
@@ -199,7 +201,7 @@ const getHiringTrend = async (req, res) => {
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
-      const hired = hiredData.find(d => d.month === monthKey)?.count || 0;
+      const hired = hiredData.find((d) => d.month === monthKey)?.count || 0;
 
       trendData.push({
         month: monthKey,
@@ -264,7 +266,7 @@ const getAttendanceAnalysis = async (req, res) => {
       success: true,
       data: {
         dailyAttendance,
-        statusDistribution: statusDistribution.map(item => ({
+        statusDistribution: statusDistribution.map((item) => ({
           status: item.status,
           count: parseInt(item.count)
         }))
@@ -308,7 +310,7 @@ const getLeaveAnalysis = async (req, res) => {
     res.json({
       success: true,
       data: {
-        typeDistribution: typeDistribution.map(item => ({
+        typeDistribution: typeDistribution.map((item) => ({
           type: item.leave_type,
           days: parseInt(item.days) || 0,
           count: parseInt(item.count)

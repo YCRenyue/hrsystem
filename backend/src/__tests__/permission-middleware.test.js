@@ -9,7 +9,7 @@ const {
   checkDataScope,
   requireDepartmentAccess,
   checkSensitiveDataAccess,
-  checkEditableFields,
+  checkEditableFields
 } = require('../middleware/permission');
 const { User } = require('../models');
 
@@ -18,7 +18,7 @@ const mockRequest = (userData = {}) => ({
   user: userData,
   params: {},
   query: {},
-  body: {},
+  body: {}
 });
 
 const mockResponse = () => {
@@ -33,8 +33,8 @@ const mockNext = jest.fn();
 // Mock User model methods
 jest.mock('../models', () => ({
   User: {
-    findByPk: jest.fn(),
-  },
+    findByPk: jest.fn()
+  }
 }));
 
 describe('Permission Middleware Tests', () => {
@@ -47,7 +47,7 @@ describe('Permission Middleware Tests', () => {
       const req = mockRequest({
         user_id: 'admin-1',
         role: 'admin',
-        permissions: ['*'],
+        permissions: ['*']
       });
       const res = mockResponse();
       const next = mockNext;
@@ -63,7 +63,7 @@ describe('Permission Middleware Tests', () => {
       const req = mockRequest({
         user_id: 'hr-1',
         role: 'hr_admin',
-        permissions: ['employees.view_all', 'employees.create'],
+        permissions: ['employees.view_all', 'employees.create']
       });
       const res = mockResponse();
       const next = mockNext;
@@ -79,7 +79,7 @@ describe('Permission Middleware Tests', () => {
       const req = mockRequest({
         user_id: 'hr-1',
         role: 'hr_admin',
-        permissions: ['employees.*', 'reports.view_all'],
+        permissions: ['employees.*', 'reports.view_all']
       });
       const res = mockResponse();
       const next = mockNext;
@@ -95,7 +95,7 @@ describe('Permission Middleware Tests', () => {
       const req = mockRequest({
         user_id: 'emp-1',
         role: 'employee',
-        permissions: ['employees.view_self'],
+        permissions: ['employees.view_self']
       });
       const res = mockResponse();
       const next = mockNext;
@@ -109,13 +109,15 @@ describe('Permission Middleware Tests', () => {
         expect.objectContaining({
           success: false,
           error: 'Permission Denied',
-          requiredPermission: 'employees.view_all',
+          requiredPermission: 'employees.view_all'
         })
       );
     });
 
     test('should return 401 when user is not authenticated', async () => {
-      const req = { user: null, params: {}, query: {}, body: {} }; // No user
+      const req = {
+        user: null, params: {}, query: {}, body: {}
+      }; // No user
       const res = mockResponse();
       const next = mockNext;
 
@@ -127,7 +129,7 @@ describe('Permission Middleware Tests', () => {
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
-          error: 'Unauthorized',
+          error: 'Unauthorized'
         })
       );
     });
@@ -139,7 +141,7 @@ describe('Permission Middleware Tests', () => {
         user_id: 'admin-1',
         role: 'admin',
         data_scope: 'all',
-        getDataScopeFilter: jest.fn().mockReturnValue({}),
+        getDataScopeFilter: jest.fn().mockReturnValue({})
       };
 
       const req = mockRequest(mockUser);
@@ -161,7 +163,7 @@ describe('Permission Middleware Tests', () => {
         role: 'department_manager',
         data_scope: 'department',
         department_id: 'dept-123',
-        getDataScopeFilter: jest.fn().mockReturnValue({ department_id: 'dept-123' }),
+        getDataScopeFilter: jest.fn().mockReturnValue({ department_id: 'dept-123' })
       };
 
       const req = mockRequest(mockUser);
@@ -183,7 +185,7 @@ describe('Permission Middleware Tests', () => {
         role: 'employee',
         data_scope: 'self',
         employee_id: 'emp-123',
-        getDataScopeFilter: jest.fn().mockReturnValue({ employee_id: 'emp-123' }),
+        getDataScopeFilter: jest.fn().mockReturnValue({ employee_id: 'emp-123' })
       };
 
       const req = mockRequest(mockUser);
@@ -206,7 +208,7 @@ describe('Permission Middleware Tests', () => {
         user_id: 'admin-1',
         role: 'admin',
         data_scope: 'all',
-        canAccessDepartment: jest.fn().mockReturnValue(true),
+        canAccessDepartment: jest.fn().mockReturnValue(true)
       };
 
       const req = mockRequest(mockUser);
@@ -227,7 +229,7 @@ describe('Permission Middleware Tests', () => {
         role: 'department_manager',
         data_scope: 'department',
         department_id: 'dept-123',
-        canAccessDepartment: jest.fn().mockReturnValue(true),
+        canAccessDepartment: jest.fn().mockReturnValue(true)
       };
 
       const req = mockRequest(mockUser);
@@ -248,7 +250,7 @@ describe('Permission Middleware Tests', () => {
         role: 'department_manager',
         data_scope: 'department',
         department_id: 'dept-123',
-        canAccessDepartment: jest.fn().mockReturnValue(false),
+        canAccessDepartment: jest.fn().mockReturnValue(false)
       };
 
       const req = mockRequest(mockUser);
@@ -265,7 +267,7 @@ describe('Permission Middleware Tests', () => {
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
-          error: 'Permission Denied',
+          error: 'Permission Denied'
         })
       );
     });
@@ -274,7 +276,7 @@ describe('Permission Middleware Tests', () => {
       const mockUser = {
         user_id: 'manager-1',
         role: 'department_manager',
-        canAccessDepartment: jest.fn(),
+        canAccessDepartment: jest.fn()
       };
 
       const req = mockRequest(mockUser);
@@ -298,7 +300,7 @@ describe('Permission Middleware Tests', () => {
         role: 'admin',
         data_scope: 'all',
         can_view_sensitive: true,
-        canViewSensitiveData: jest.fn().mockReturnValue(true),
+        canViewSensitiveData: jest.fn().mockReturnValue(true)
       };
 
       const req = mockRequest(mockUser);
@@ -321,7 +323,7 @@ describe('Permission Middleware Tests', () => {
         employee_id: 'emp-123',
         data_scope: 'self',
         can_view_sensitive: false,
-        canViewSensitiveData: jest.fn().mockReturnValue(true),
+        canViewSensitiveData: jest.fn().mockReturnValue(true)
       };
 
       const req = mockRequest(mockUser);
@@ -344,7 +346,7 @@ describe('Permission Middleware Tests', () => {
         employee_id: 'emp-123',
         data_scope: 'self',
         can_view_sensitive: false,
-        canViewSensitiveData: jest.fn().mockReturnValue(false),
+        canViewSensitiveData: jest.fn().mockReturnValue(false)
       };
 
       const req = mockRequest(mockUser);
@@ -368,13 +370,15 @@ describe('Permission Middleware Tests', () => {
         role: 'admin',
         canEditEmployeeFields: jest.fn().mockReturnValue({
           canEdit: true,
-          editableFields: ['name', 'email', 'phone', 'department_id'],
-        }),
+          editableFields: ['name', 'email', 'phone', 'department_id']
+        })
       };
 
       const req = mockRequest(mockUser);
       req.params = { id: 'emp-123' };
-      req.body = { name: 'New Name', email: 'new@email.com', phone: '1234567890', department_id: 'dept-456' };
+      req.body = {
+        name: 'New Name', email: 'new@email.com', phone: '1234567890', department_id: 'dept-456'
+      };
       const res = mockResponse();
       const next = mockNext;
 
@@ -395,8 +399,8 @@ describe('Permission Middleware Tests', () => {
         role: 'department_manager',
         canEditEmployeeFields: jest.fn().mockReturnValue({
           canEdit: true,
-          editableFields: ['phone', 'email'],
-        }),
+          editableFields: ['phone', 'email']
+        })
       };
 
       const req = mockRequest(mockUser);
@@ -422,8 +426,8 @@ describe('Permission Middleware Tests', () => {
         role: 'department_manager',
         canEditEmployeeFields: jest.fn().mockReturnValue({
           canEdit: true,
-          editableFields: ['phone', 'email'],
-        }),
+          editableFields: ['phone', 'email']
+        })
       };
 
       const req = mockRequest(mockUser);
@@ -445,7 +449,7 @@ describe('Permission Middleware Tests', () => {
         expect.objectContaining({
           success: false,
           error: 'Permission Denied',
-          nonEditableFields: ['name'],
+          nonEditableFields: ['name']
         })
       );
     });
@@ -457,8 +461,8 @@ describe('Permission Middleware Tests', () => {
         employee_id: 'emp-456',
         canEditEmployeeFields: jest.fn().mockReturnValue({
           canEdit: false,
-          editableFields: [],
-        }),
+          editableFields: []
+        })
       };
 
       const req = mockRequest(mockUser);
@@ -477,7 +481,7 @@ describe('Permission Middleware Tests', () => {
         expect.objectContaining({
           success: false,
           error: 'Permission Denied',
-          message: '您没有权限编辑该员工的信息',
+          message: '您没有权限编辑该员工的信息'
         })
       );
     });

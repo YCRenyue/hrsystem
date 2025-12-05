@@ -9,11 +9,9 @@ const OnboardingProcess = require('../models/OnboardingProcess');
 
 jest.mock('../models/Employee');
 jest.mock('../models/OnboardingProcess');
-jest.mock('../services/NotificationService', () => {
-  return jest.fn().mockImplementation(() => ({
-    sendOnboardingForm: jest.fn()
-  }));
-});
+jest.mock('../services/NotificationService', () => jest.fn().mockImplementation(() => ({
+  sendOnboardingForm: jest.fn()
+})));
 
 describe('OnboardingService', () => {
   let onboardingService;

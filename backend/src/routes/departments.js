@@ -2,6 +2,7 @@
  * Department Routes
  */
 const express = require('express');
+
 const router = express.Router();
 const departmentController = require('../controllers/departmentController');
 const { authenticateToken, requireRole } = require('../middleware/auth');

@@ -12,8 +12,6 @@
  * 6. 销售部员工 (employee) - sales_emp1/emp123
  */
 
-'use strict';
-
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
 
@@ -26,7 +24,7 @@ module.exports = {
 
       // 获取现有部门ID
       const [departments] = await queryInterface.sequelize.query(
-        `SELECT department_id, name FROM departments ORDER BY name`,
+        'SELECT department_id, name FROM departments ORDER BY name',
         { transaction }
       );
 
@@ -35,9 +33,9 @@ module.exports = {
       }
 
       // 使用实际存在的部门：技术部、产品部、销售部
-      const techDept = departments.find(d => d.name.includes('技术'));
-      const productDept = departments.find(d => d.name.includes('产品'));
-      const salesDept = departments.find(d => d.name.includes('销售'));
+      const techDept = departments.find((d) => d.name.includes('技术'));
+      const productDept = departments.find((d) => d.name.includes('产品'));
+      const salesDept = departments.find((d) => d.name.includes('销售'));
 
       console.log('找到部门:', {
         tech: techDept?.name,
@@ -312,7 +310,6 @@ module.exports = {
       console.log('生产部员工             | prod_emp1      | emp123    | 仅自己');
       console.log('销售部员工             | sales_emp1     | emp123    | 仅自己');
       console.log('─────────────────────────────────────────\n');
-
     } catch (error) {
       await transaction.rollback();
       console.error('❌ RBAC 测试用户创建失败:', error);
@@ -356,7 +353,6 @@ module.exports = {
 
       await transaction.commit();
       console.log('✅ RBAC 测试用户删除完成！');
-
     } catch (error) {
       await transaction.rollback();
       console.error('❌ 删除失败:', error);

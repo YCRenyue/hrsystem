@@ -2,6 +2,7 @@
  * Onboarding Routes
  */
 const express = require('express');
+
 const router = express.Router();
 const onboardingController = require('../controllers/onboardingController');
 const { asyncHandler } = require('../middleware/errorHandler');

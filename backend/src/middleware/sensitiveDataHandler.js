@@ -24,7 +24,7 @@ function sensitiveDataHandler(options = {}) {
 
   return (req, res, next) => {
     // 检查是否在排除路径中
-    if (excludePaths.some(path => req.path.startsWith(path))) {
+    if (excludePaths.some((path) => req.path.startsWith(path))) {
       return next();
     }
 
@@ -32,11 +32,11 @@ function sensitiveDataHandler(options = {}) {
     const originalJson = res.json.bind(res);
 
     // 重写json方法
-    res.json = function(data) {
+    res.json = function (data) {
       try {
         // 只处理成功的响应且包含data字段
         if (data && data.success && data.data) {
-          const user = req.user;
+          const { user } = req;
           const canViewSensitive = req.canViewSensitive || false;
 
           // 处理敏感数据
@@ -73,7 +73,7 @@ function processSensitiveData(data, user, canViewSensitive) {
 
   // 如果是数组，递归处理每个元素
   if (Array.isArray(data)) {
-    return data.map(item => processSensitiveData(item, user, canViewSensitive));
+    return data.map((item) => processSensitiveData(item, user, canViewSensitive));
   }
 
   // 如果是对象，处理敏感字段
@@ -120,7 +120,7 @@ function hasSensitiveFields(obj) {
     'emergency_contact_phone_encrypted'
   ];
 
-  return sensitiveFieldIndicators.some(field => field in obj);
+  return sensitiveFieldIndicators.some((field) => field in obj);
 }
 
 /**

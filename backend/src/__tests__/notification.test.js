@@ -26,8 +26,8 @@ describe('DingTalkService', () => {
           errcode: 0,
           access_token: 'test_token_123',
           expires_in: 7200,
-          errmsg: 'ok',
-        },
+          errmsg: 'ok'
+        }
       };
 
       axios.get.mockResolvedValue(mockResponse);
@@ -40,8 +40,8 @@ describe('DingTalkService', () => {
         {
           params: {
             appkey: process.env.DINGTALK_APP_KEY,
-            appsecret: process.env.DINGTALK_APP_SECRET,
-          },
+            appsecret: process.env.DINGTALK_APP_SECRET
+          }
         }
       );
     });
@@ -52,8 +52,8 @@ describe('DingTalkService', () => {
           errcode: 0,
           access_token: 'test_token_123',
           expires_in: 7200,
-          errmsg: 'ok',
-        },
+          errmsg: 'ok'
+        }
       };
 
       axios.get.mockResolvedValue(mockResponse);
@@ -71,8 +71,8 @@ describe('DingTalkService', () => {
       const mockResponse = {
         data: {
           errcode: 40001,
-          errmsg: 'invalid credential',
-        },
+          errmsg: 'invalid credential'
+        }
       };
 
       axios.get.mockResolvedValue(mockResponse);
@@ -97,15 +97,15 @@ describe('DingTalkService', () => {
         data: {
           errcode: 0,
           access_token: 'test_token_123',
-          expires_in: 7200,
-        },
+          expires_in: 7200
+        }
       };
 
       const mockSendResponse = {
         data: {
           errcode: 0,
-          task_id: 'task_123',
-        },
+          task_id: 'task_123'
+        }
       };
 
       axios.get.mockResolvedValue(mockTokenResponse);
@@ -133,15 +133,15 @@ describe('DingTalkService', () => {
         data: {
           errcode: 0,
           access_token: 'test_token_123',
-          expires_in: 7200,
-        },
+          expires_in: 7200
+        }
       };
 
       const mockSendResponse = {
         data: {
           errcode: 0,
-          task_id: 'task_456',
-        },
+          task_id: 'task_456'
+        }
       };
 
       axios.get.mockResolvedValue(mockTokenResponse);
@@ -164,15 +164,15 @@ describe('DingTalkService', () => {
         data: {
           errcode: 0,
           access_token: 'test_token_123',
-          expires_in: 7200,
-        },
+          expires_in: 7200
+        }
       };
 
       const mockSendResponse = {
         data: {
           errcode: 0,
-          task_id: 'task_789',
-        },
+          task_id: 'task_789'
+        }
       };
 
       axios.get.mockResolvedValue(mockTokenResponse);
@@ -182,7 +182,7 @@ describe('DingTalkService', () => {
         title: 'Link Title',
         text: 'Link description',
         messageUrl: 'https://example.com',
-        picUrl: 'https://example.com/pic.jpg',
+        picUrl: 'https://example.com/pic.jpg'
       };
 
       const result = await dingTalkService.sendLinkMessage(['user1'], linkData);
@@ -198,17 +198,17 @@ describe('DingTalkService', () => {
         data: {
           errcode: 0,
           access_token: 'test_token_123',
-          expires_in: 7200,
-        },
+          expires_in: 7200
+        }
       };
 
       const mockUserResponse = {
         data: {
           errcode: 0,
           result: {
-            userid: 'user123',
-          },
-        },
+            userid: 'user123'
+          }
+        }
       };
 
       axios.get.mockResolvedValue(mockTokenResponse);
@@ -224,15 +224,15 @@ describe('DingTalkService', () => {
         data: {
           errcode: 0,
           access_token: 'test_token_123',
-          expires_in: 7200,
-        },
+          expires_in: 7200
+        }
       };
 
       const mockUserResponse = {
         data: {
           errcode: 60121,
-          errmsg: 'user not found',
-        },
+          errmsg: 'user not found'
+        }
       };
 
       axios.get.mockResolvedValue(mockTokenResponse);
@@ -289,7 +289,7 @@ describe('NotificationService', () => {
         employee_id: 'emp001',
         name: 'Test Employee',
         dingtalk_user_id: 'user123',
-        email: 'test@example.com',
+        email: 'test@example.com'
       };
 
       const formUrl = 'https://example.com/onboarding/token123';
@@ -298,7 +298,7 @@ describe('NotificationService', () => {
       dingTalkService.isEnabled = jest.fn().mockReturnValue(true);
       dingTalkService.sendLinkMessage = jest.fn().mockResolvedValue({
         success: true,
-        taskId: 'task_123',
+        taskId: 'task_123'
       });
 
       const result = await notificationService.sendOnboardingNotification(
@@ -318,13 +318,13 @@ describe('NotificationService', () => {
         name: 'Test Employee',
         dingtalk_user_id: 'user123',
         email: 'test@example.com',
-        entry_date: '2025-01-15',
+        entry_date: '2025-01-15'
       };
 
       dingTalkService.isEnabled = jest.fn().mockReturnValue(true);
       dingTalkService.sendMarkdownMessage = jest.fn().mockResolvedValue({
         success: true,
-        taskId: 'task_123',
+        taskId: 'task_123'
       });
 
       const result = await notificationService.sendPreOnboardingReminder(
@@ -343,13 +343,13 @@ describe('NotificationService', () => {
         employee_id: 'emp001',
         name: 'Test Employee',
         dingtalk_user_id: 'user123',
-        email: 'test@example.com',
+        email: 'test@example.com'
       };
 
       dingTalkService.isEnabled = jest.fn().mockReturnValue(true);
       dingTalkService.sendTextMessage = jest.fn().mockResolvedValue({
         success: true,
-        taskId: 'task_123',
+        taskId: 'task_123'
       });
 
       const result = await notificationService.sendWelcomeMessage(employee);
@@ -366,13 +366,13 @@ describe('NotificationService', () => {
         name: 'Test Employee',
         dingtalk_user_id: 'user123',
         email: 'test@example.com',
-        contract_end_date: '2025-02-15',
+        contract_end_date: '2025-02-15'
       };
 
       dingTalkService.isEnabled = jest.fn().mockReturnValue(true);
       dingTalkService.sendMarkdownMessage = jest.fn().mockResolvedValue({
         success: true,
-        taskId: 'task_123',
+        taskId: 'task_123'
       });
 
       const result = await notificationService.sendContractExpiryReminder(
@@ -391,7 +391,7 @@ describe('NotificationService', () => {
         employee_id: 'emp001',
         name: 'Test Employee',
         dingtalk_user_id: 'user123',
-        email: 'test@example.com',
+        email: 'test@example.com'
       };
 
       const statistics = {
@@ -399,13 +399,13 @@ describe('NotificationService', () => {
         travelAllowance: 500,
         canteenExpense: 300,
         attendance: 22,
-        overtime: 10,
+        overtime: 10
       };
 
       dingTalkService.isEnabled = jest.fn().mockReturnValue(true);
       dingTalkService.sendMarkdownMessage = jest.fn().mockResolvedValue({
         success: true,
-        taskId: 'task_123',
+        taskId: 'task_123'
       });
 
       const result = await notificationService.sendMonthlyStatistics(
@@ -425,20 +425,20 @@ describe('NotificationService', () => {
           employee_id: 'emp001',
           name: 'Employee 1',
           dingtalk_user_id: 'user1',
-          email: 'emp1@example.com',
+          email: 'emp1@example.com'
         },
         {
           employee_id: 'emp002',
           name: 'Employee 2',
           dingtalk_user_id: 'user2',
-          email: 'emp2@example.com',
-        },
+          email: 'emp2@example.com'
+        }
       ];
 
       dingTalkService.isEnabled = jest.fn().mockReturnValue(true);
       dingTalkService.sendTextMessage = jest.fn().mockResolvedValue({
         success: true,
-        taskId: 'task_123',
+        taskId: 'task_123'
       });
 
       const result = await notificationService.sendBatchNotification(

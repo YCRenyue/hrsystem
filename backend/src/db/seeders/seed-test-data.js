@@ -4,9 +4,11 @@
  * 生成30个员工和过去12个月的考勤、请假数据
  */
 
-const { sequelize } = require('../../config/database');
-const { Employee, Department, Attendance, Leave, User } = require('../../models');
 const bcrypt = require('bcryptjs');
+const { sequelize } = require('../../config/database');
+const {
+  Employee, Department, Attendance, Leave, User
+} = require('../../models');
 const { encryptionService } = require('../../utils/encryption');
 
 // 姓名数据
@@ -14,9 +16,7 @@ const firstNames = ['张', '王', '李', '赵', '刘', '陈', '杨', '黄', '周
 const lastNames = ['伟', '芳', '娜', '秀英', '敏', '静', '丽', '强', '磊', '军', '洋', '勇', '艳', '杰', '鹏'];
 
 // 生成随机日期
-const getRandomDate = (start, end) => {
-  return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
-};
+const getRandomDate = (start, end) => new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
 
 // 生成随机手机号
 const generatePhone = () => {
@@ -33,7 +33,7 @@ const generateIdCard = () => {
   const month = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0');
   const day = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0');
   const suffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  return province + year + month + day + suffix + 'X';
+  return `${province + year + month + day + suffix}X`;
 };
 
 async function seedData() {
@@ -139,7 +139,7 @@ async function seedData() {
         const empUser = await User.create({
           username: `emp${i + 1}`,
           password_hash: await bcrypt.hash('emp123', 10),
-          email: email,
+          email,
           role: 'employee',
           data_scope: 'self',
           employee_id: employee.employee_id,
@@ -159,7 +159,7 @@ async function seedData() {
     startDate.setMonth(startDate.getMonth() - 12);
 
     for (const employee of employees) {
-      let currentDate = new Date(startDate);
+      const currentDate = new Date(startDate);
 
       while (currentDate <= today) {
         // 跳过周末
@@ -236,9 +236,9 @@ async function seedData() {
           leave_type: leaveType,
           start_date: startDate,
           end_date: endDate,
-          days: days,
+          days,
           reason: `${leaveType === 'sick' ? '身体不适' : '个人事务'}`,
-          status: status,
+          status,
           approver_id: status !== 'pending' ? users[1].user_id : null,
           approved_at: status !== 'pending' ? getRandomDate(startDate, new Date()) : null
         });
@@ -263,7 +263,6 @@ async function seedData() {
 - 部门经理: manager1 / manager123 (可创建更多)
 - 普通员工: emp1 / emp123 (emp1-emp30)
     `);
-
   } catch (error) {
     console.error('生成测试数据失败:', error);
     throw error;

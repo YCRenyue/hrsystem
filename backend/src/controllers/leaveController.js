@@ -2,8 +2,10 @@
  * Leave Controller - 请假管理
  */
 
-const { Leave, Employee, Department, User, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const {
+  Leave, Employee, Department, User, sequelize
+} = require('../models');
 const permissionService = require('../services/PermissionService');
 
 /**
@@ -72,7 +74,7 @@ const getLeaveList = async (req, res) => {
     const offset = (parseInt(page) - 1) * limit;
 
     // 基础查询条件
-    let where = {};
+    const where = {};
     if (leave_type) where.leave_type = leave_type;
     if (status) where.status = status;
     if (start_date && end_date) {
@@ -128,7 +130,7 @@ const getLeaveList = async (req, res) => {
 
     // 处理敏感数据
     const canViewSensitive = permissionService.canViewSensitiveData(req.user);
-    const processedRows = rows.map(row => {
+    const processedRows = rows.map((row) => {
       const data = row.toJSON();
       if (data.employee) {
         data.employee = permissionService.processSensitiveFields(

@@ -52,15 +52,33 @@ const getOnboardingForm = async (req, res) => {
         entry_date: process.employee.entry_date
       },
       form_fields: [
-        { field: 'phone', label: 'Phone Number', type: 'text', required: true },
-        { field: 'email', label: 'Email', type: 'email', required: true },
-        { field: 'gender', label: 'Gender', type: 'select', options: ['male', 'female'], required: true },
-        { field: 'birth_date', label: 'Birth Date', type: 'date', required: true },
-        { field: 'id_card', label: 'ID Card Number', type: 'text', required: true },
-        { field: 'bank_card', label: 'Bank Card Number', type: 'text', required: false },
-        { field: 'address', label: 'Home Address', type: 'textarea', required: false },
-        { field: 'emergency_contact', label: 'Emergency Contact', type: 'text', required: true },
-        { field: 'emergency_phone', label: 'Emergency Phone', type: 'text', required: true }
+        {
+          field: 'phone', label: 'Phone Number', type: 'text', required: true
+        },
+        {
+          field: 'email', label: 'Email', type: 'email', required: true
+        },
+        {
+          field: 'gender', label: 'Gender', type: 'select', options: ['male', 'female'], required: true
+        },
+        {
+          field: 'birth_date', label: 'Birth Date', type: 'date', required: true
+        },
+        {
+          field: 'id_card', label: 'ID Card Number', type: 'text', required: true
+        },
+        {
+          field: 'bank_card', label: 'Bank Card Number', type: 'text', required: false
+        },
+        {
+          field: 'address', label: 'Home Address', type: 'textarea', required: false
+        },
+        {
+          field: 'emergency_contact', label: 'Emergency Contact', type: 'text', required: true
+        },
+        {
+          field: 'emergency_phone', label: 'Emergency Phone', type: 'text', required: true
+        }
       ]
     }
   });

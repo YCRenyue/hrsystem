@@ -8,7 +8,7 @@ const { Employee, Department, sequelize } = require('../models');
 describe('Dashboard API', () => {
   let authToken;
   let testDepartments = [];
-  let testEmployees = [];
+  const testEmployees = [];
 
   beforeAll(async () => {
     await sequelize.authenticate();

@@ -1,6 +1,6 @@
+const { Op } = require('sequelize');
 const BaseRepository = require('./BaseRepository');
 const { Employee } = require('../models');
-const { Op } = require('sequelize');
 
 /**
  * Employee Repository
@@ -232,7 +232,7 @@ class EmployeeRepository extends BaseRepository {
   async createWithEncryption(data) {
     // Prepare non-encrypted fields first
     const nonEncryptedFields = {};
-    Object.keys(data).forEach(key => {
+    Object.keys(data).forEach((key) => {
       if (!['name', 'phone', 'id_card', 'bank_card', 'birth_date'].includes(key)) {
         nonEncryptedFields[key] = data[key];
       }
@@ -271,7 +271,7 @@ class EmployeeRepository extends BaseRepository {
     if (data.birth_date) employee.setBirthDate(data.birth_date);
 
     // Update other fields
-    Object.keys(data).forEach(key => {
+    Object.keys(data).forEach((key) => {
       if (!['name', 'phone', 'id_card', 'bank_card', 'birth_date'].includes(key)) {
         employee[key] = data[key];
       }

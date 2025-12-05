@@ -11,8 +11,6 @@
  * - 添加索引：提升权限查询性能
  */
 
-'use strict';
-
 module.exports = {
   /**
    * 应用迁移
@@ -114,7 +112,6 @@ module.exports = {
 
       await transaction.commit();
       console.log('✅ RBAC 字段迁移完成！');
-
     } catch (error) {
       await transaction.rollback();
       console.error('❌ RBAC 字段迁移失败:', error);
@@ -133,7 +130,7 @@ module.exports = {
 
       // 回滚 hr_admin 到 hr
       await queryInterface.sequelize.query(
-        `UPDATE users SET role = 'hr' WHERE role = 'hr_admin'`,
+        'UPDATE users SET role = \'hr\' WHERE role = \'hr_admin\'',
         { transaction }
       );
 
@@ -150,7 +147,6 @@ module.exports = {
 
       await transaction.commit();
       console.log('✅ RBAC 字段迁移回滚完成！');
-
     } catch (error) {
       await transaction.rollback();
       console.error('❌ 回滚失败:', error);

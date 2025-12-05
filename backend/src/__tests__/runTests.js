@@ -46,7 +46,7 @@ console.log('\n正在运行测试套件...\n');
 
 // Run each test suite
 tests.forEach((test, index) => {
-  console.log(`\n[${ index + 1}/${tests.length}] ${test.name}`);
+  console.log(`\n[${index + 1}/${tests.length}] ${test.name}`);
   console.log(`    描述: ${test.description}`);
   console.log('    '.padEnd(70, '-'));
 
@@ -87,7 +87,7 @@ tests.forEach((test, index) => {
     console.log(`    ⊘ 跳过: ${result.numPendingTests || 0}`);
     console.log(`    ⏱ 耗时: ${duration}ms`);
   } catch (error) {
-    console.error(`    ✗ 测试失败:`, error.message);
+    console.error('    ✗ 测试失败:', error.message);
     results.tests.push({
       name: test.name,
       error: error.message,
@@ -112,7 +112,7 @@ try {
 }
 
 // Print summary
-console.log('\n' + '='.repeat(70));
+console.log(`\n${'='.repeat(70)}`);
 console.log('  测试总结');
 console.log('='.repeat(70));
 console.log(`\n  总测试数:   ${results.total}`);
@@ -126,7 +126,7 @@ const allPassed = results.failed === 0;
 console.log(`\n  状态:       ${allPassed ? '✓ 所有测试通过' : '✗ 有测试失败'}`);
 
 console.log('\n结束时间:', new Date().toLocaleString('zh-CN'));
-console.log('='.repeat(70) + '\n');
+console.log(`${'='.repeat(70)}\n`);
 
 // Save results to JSON file
 const reportPath = path.join(__dirname, '../../test-results.json');

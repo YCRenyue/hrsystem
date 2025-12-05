@@ -4,9 +4,9 @@
  */
 
 require('dotenv').config();
-const { sequelize } = require('../config/database');
 const fs = require('fs');
 const path = require('path');
+const { sequelize } = require('../config/database');
 
 async function runMigrations() {
   try {
@@ -27,7 +27,7 @@ async function runMigrations() {
     // Get migration files
     const migrationsDir = path.join(__dirname, 'migrations');
     const migrationFiles = fs.readdirSync(migrationsDir)
-      .filter(file => file.endsWith('.js'))
+      .filter((file) => file.endsWith('.js'))
       .sort();
 
     console.log(`找到 ${migrationFiles.length} 个迁移文件\n`);

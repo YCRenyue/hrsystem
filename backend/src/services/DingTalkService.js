@@ -44,8 +44,8 @@ class DingTalkService {
       const response = await axios.get(`${DINGTALK_API_BASE}/gettoken`, {
         params: {
           appkey: this.appKey,
-          appsecret: this.appSecret,
-        },
+          appsecret: this.appSecret
+        }
       });
 
       if (response.data.errcode !== 0) {
@@ -87,14 +87,14 @@ class DingTalkService {
       const payload = {
         agent_id: this.agentId,
         userid_list: userIdList.join(','),
-        msg: this._buildMessagePayload(msgType, content),
+        msg: this._buildMessagePayload(msgType, content)
       };
 
       const response = await axios.post(
         `${DINGTALK_API_BASE}/topapi/message/corpconversation/asyncsend_v2`,
         payload,
         {
-          params: { access_token: accessToken },
+          params: { access_token: accessToken }
         }
       );
 
@@ -105,7 +105,7 @@ class DingTalkService {
       logger.info(`Work notification sent successfully to ${userIdList.length} users`);
       return {
         success: true,
-        taskId: response.data.task_id,
+        taskId: response.data.task_id
       };
     } catch (error) {
       logger.error('Failed to send work notification:', error.message);
@@ -124,7 +124,7 @@ class DingTalkService {
     return this.sendWorkNotification({
       userIdList,
       msgType: 'text',
-      content: { content },
+      content: { content }
     });
   }
 
@@ -140,7 +140,7 @@ class DingTalkService {
     return this.sendWorkNotification({
       userIdList,
       msgType: 'markdown',
-      content: { title, text },
+      content: { title, text }
     });
   }
 
@@ -159,7 +159,7 @@ class DingTalkService {
     return this.sendWorkNotification({
       userIdList,
       msgType: 'link',
-      content: linkData,
+      content: linkData
     });
   }
 
@@ -174,7 +174,7 @@ class DingTalkService {
     return this.sendWorkNotification({
       userIdList,
       msgType: 'oa',
-      content: oaData,
+      content: oaData
     });
   }
 
@@ -190,14 +190,14 @@ class DingTalkService {
     const msgTypeMap = {
       text: {
         msgtype: 'text',
-        text: { content: content.content },
+        text: { content: content.content }
       },
       markdown: {
         msgtype: 'markdown',
         markdown: {
           title: content.title,
-          text: content.text,
-        },
+          text: content.text
+        }
       },
       link: {
         msgtype: 'link',
@@ -205,17 +205,17 @@ class DingTalkService {
           title: content.title,
           text: content.text,
           messageUrl: content.messageUrl,
-          picUrl: content.picUrl || '',
-        },
+          picUrl: content.picUrl || ''
+        }
       },
       oa: {
         msgtype: 'oa',
-        oa: content,
+        oa: content
       },
       action_card: {
         msgtype: 'action_card',
-        action_card: content,
-      },
+        action_card: content
+      }
     };
 
     return msgTypeMap[msgType] || msgTypeMap.text;
@@ -277,6 +277,79 @@ class DingTalkService {
     } catch (error) {
       logger.error(`Failed to get user ID by mobile ${mobile}:`, error.message);
       return null;
+    }
+  }
+
+  /**
+   * Exchange authorization code for access token (OAuth flow)
+   *
+   * @param {string} authCode - Authorization code from DingTalk
+   * @returns {Promise<Object>} Token information
+   * @throws {Error} If exchange fails
+   */
+  async exchangeCodeForToken(authCode) {
+    if (!authCode) {
+      throw new Error('Authorization code is required');
+    }
+
+    try {
+      const response = await axios.post(
+        `${DINGTALK_NEW_API_BASE}/v1.0/oauth2/userAccessToken`,
+        {
+          clientId: this.appKey,
+          clientSecret: this.appSecret,
+          code: authCode,
+          grantType: 'authorization_code'
+        }
+      );
+
+      if (!response.data || !response.data.accessToken) {
+        throw new Error('Invalid response from DingTalk OAuth API');
+      }
+
+      logger.info('Successfully exchanged code for DingTalk access token');
+      return {
+        accessToken: response.data.accessToken,
+        expireIn: response.data.expireIn,
+        refreshToken: response.data.refreshToken
+      };
+    } catch (error) {
+      logger.error('Failed to exchange code for token:', error.message);
+      throw new Error(`Failed to exchange code for token: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get user info using OAuth access token
+   *
+   * @param {string} accessToken - User access token
+   * @returns {Promise<Object>} User information
+   * @throws {Error} If retrieval fails
+   */
+  async getUserInfoByToken(accessToken) {
+    if (!accessToken) {
+      throw new Error('Access token is required');
+    }
+
+    try {
+      const response = await axios.get(
+        `${DINGTALK_NEW_API_BASE}/v1.0/contact/users/me`,
+        {
+          headers: {
+            'x-acs-dingtalk-access-token': accessToken
+          }
+        }
+      );
+
+      if (!response.data) {
+        throw new Error('Invalid response from DingTalk user info API');
+      }
+
+      logger.info('Successfully retrieved user info from DingTalk');
+      return response.data;
+    } catch (error) {
+      logger.error('Failed to get user info:', error.message);
+      throw new Error(`Failed to get user info: ${error.message}`);
     }
   }
 

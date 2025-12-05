@@ -214,7 +214,7 @@ class Employee extends Model {
       this.entry_date
     ];
 
-    return requiredFields.every(field => field !== null && field !== undefined && field !== '');
+    return requiredFields.every((field) => field !== null && field !== undefined && field !== '');
   }
 
   /**
@@ -226,7 +226,7 @@ class Employee extends Model {
     const data = {
       employee_id: this.employee_id,
       employee_number: this.employee_number,
-      name: includeSensitive ? this.getName() : this.getName()?.substring(0, 1) + '**',
+      name: includeSensitive ? this.getName() : `${this.getName()?.substring(0, 1)}**`,
       email: this.email,
       phone: this.getMaskedPhone(),
       id_card: this.getMaskedIdCard(),

@@ -2,8 +2,10 @@
  * Attendance Controller - 考勤管理
  */
 
-const { Attendance, Employee, Department, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const {
+  Attendance, Employee, Department, sequelize
+} = require('../models');
 const permissionService = require('../services/PermissionService');
 
 /**
@@ -93,7 +95,7 @@ const getAttendanceList = async (req, res) => {
     const offset = (parseInt(page) - 1) * limit;
 
     // 基础查询条件
-    let where = {};
+    const where = {};
     if (status) where.status = status;
     if (start_date && end_date) {
       where.date = {
@@ -150,7 +152,7 @@ const getAttendanceList = async (req, res) => {
 
     // 处理敏感数据
     const canViewSensitive = permissionService.canViewSensitiveData(req.user);
-    const processedRows = rows.map(row => {
+    const processedRows = rows.map((row) => {
       const data = row.toJSON();
       if (data.employee) {
         data.employee = permissionService.processSensitiveFields(
@@ -209,16 +211,16 @@ const getAttendanceStats = async (req, res) => {
     });
 
     // Attendance rate
-    const normalCount = byStatus.find(s => s.status === 'normal')?.count || 0;
+    const normalCount = byStatus.find((s) => s.status === 'normal')?.count || 0;
     const attendanceRate = totalRecords > 0
       ? Math.round((normalCount / totalRecords) * 100)
       : 0;
 
     // Late count
-    const lateCount = byStatus.find(s => s.status === 'late')?.count || 0;
+    const lateCount = byStatus.find((s) => s.status === 'late')?.count || 0;
 
     // Absent count
-    const absentCount = byStatus.find(s => s.status === 'absent')?.count || 0;
+    const absentCount = byStatus.find((s) => s.status === 'absent')?.count || 0;
 
     res.json({
       success: true,

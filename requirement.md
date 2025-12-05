@@ -370,11 +370,13 @@ hrsystem/
   - 编辑权限检查（根据角色和数据范围）
   - 字段级权限控制（部分只读）
 
-- [ ] 创建个人信息页面
+- [x] 创建个人信息页面 (已完成 - 2025-12-05)
   - 文件：`frontend/src/pages/Profile/UserProfile.tsx`
   - 显示当前用户员工信息
   - 可编辑：联系方式、紧急联系人
   - 只读：姓名、工号、部门、入职日期
+  - 实现了完整的查看和编辑功能
+  - 添加了后端API：GET/PUT /api/users/profile
 
 - [ ] 改造Dashboard页面
   - 角色差异化显示统计数据
@@ -503,10 +505,14 @@ if (hasPermission('employees.create')) {
   - 用户列表同步
   - 增量同步
 
-- [ ] 实现OAuth认证功能 📅 待实现
-  - 登录跳转
-  - 回调处理
-  - Token生成
+- [x] 实现OAuth认证功能 (已完成 - 2025-12-05)
+  - 登录跳转 ✅
+  - 回调处理 ✅
+  - Token生成 ✅
+  - 后端实现：DingTalkService.exchangeCodeForToken()
+  - 后端实现：authController.handleDingTalkCallback()
+  - 前端实现：Login页面钉钉登录按钮
+  - 前端实现：DingTalkCallback回调处理页面
 
 - [x] 错误处理和重试机制 (已完成 - 2025-12-02)
   - API错误处理 ✅
@@ -552,10 +558,13 @@ if (hasPermission('employees.create')) {
 
 #### 4.2 用户认证系统
 
-- [ ] 实现钉钉OAuth登录流程
-  - 前端登录按钮
-  - OAuth跳转
-  - 回调处理
+- [x] 实现钉钉OAuth登录流程 (已完成 - 2025-12-05)
+  - 前端登录按钮 ✅
+  - OAuth跳转 ✅
+  - 回调处理 ✅
+  - API端点：GET /api/auth/dingtalk/login-url
+  - API端点：POST /api/auth/dingtalk/callback
+  - 前端页面：Login.tsx, DingTalkCallback.tsx
 
 - [ ] 实现JWT token生成和验证
   - Token生成

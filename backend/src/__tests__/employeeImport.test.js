@@ -133,30 +133,30 @@ describe('Employee Excel Import - Real Format', () => {
         // Map status from Chinese to English
         const statusValue = row.getCell(11).value?.toString().trim() || '在职';
         const statusMap = {
-          '待完善': 'pending',
-          '在职': 'active',
-          '离职': 'inactive',
-          'pending': 'pending',
-          'active': 'active',
-          'inactive': 'inactive'
+          待完善: 'pending',
+          在职: 'active',
+          离职: 'inactive',
+          pending: 'pending',
+          active: 'active',
+          inactive: 'inactive'
         };
         const status = statusMap[statusValue] || 'active';
 
         // Map employment type from Chinese to English
         const employmentTypeValue = row.getCell(12).value?.toString().trim() || '';
         const employmentTypeMap = {
-          '全职': 'full_time',
-          '兼职': 'part_time',
-          '实习': 'intern',
-          '合同工': 'contractor'
+          全职: 'full_time',
+          兼职: 'part_time',
+          实习: 'intern',
+          合同工: 'contractor'
         };
         const employment_type = employmentTypeMap[employmentTypeValue] || 'full_time';
 
         // Map gender from Chinese to English
         const genderValue = row.getCell(3).value?.toString().trim() || '';
         const genderMap = {
-          '男': 'male',
-          '女': 'female'
+          男: 'male',
+          女: 'female'
         };
         const gender = genderMap[genderValue];
 
@@ -173,16 +173,16 @@ describe('Employee Excel Import - Real Format', () => {
         const employeeData = {
           employee_number: row.getCell(1).value?.toString().trim(),
           name: row.getCell(2).value?.toString().trim(),
-          gender: gender,
+          gender,
           birth_date: parseExcelDate(row.getCell(4).value),
           id_card: row.getCell(5).value?.toString().trim(),
           phone: row.getCell(6).value?.toString().trim(),
           email: row.getCell(7).value?.toString().trim(),
-          department_id: department_id,
+          department_id,
           position: row.getCell(9).value?.toString().trim(),
           entry_date: parseExcelDate(row.getCell(10).value),
-          status: status,
-          employment_type: employment_type,
+          status,
+          employment_type,
           bank_card: row.getCell(13).value?.toString().trim(),
           address: row.getCell(14).value?.toString().trim(),
           emergency_contact: row.getCell(15).value?.toString().trim(),
@@ -277,14 +277,14 @@ describe('Employee Excel Import - Real Format', () => {
     expect(createdEmployees).toHaveLength(2);
 
     // Verify employee 1 data
-    const emp1 = createdEmployees.find(e => e.employee_number === 'EMP9001');
+    const emp1 = createdEmployees.find((e) => e.employee_number === 'EMP9001');
     expect(emp1.getName()).toBe('测试员工');
     expect(emp1.getPhone()).toBe('13800000001');
     expect(emp1.status).toBe('active');
     expect(emp1.employment_type).toBe('full_time');
 
     // Verify employee 2 data
-    const emp2 = createdEmployees.find(e => e.employee_number === 'EMP9002');
+    const emp2 = createdEmployees.find((e) => e.employee_number === 'EMP9002');
     expect(emp2.getName()).toBe('李四');
     expect(emp2.status).toBe('inactive');
     expect(emp2.employment_type).toBe('part_time');

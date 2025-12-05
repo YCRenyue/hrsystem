@@ -57,7 +57,9 @@ const getDepartmentById = async (req, res) => {
  * Create new department
  */
 const createDepartment = async (req, res) => {
-  const { name, code, parent_id, manager_id, description, sort_order } = req.body;
+  const {
+    name, code, parent_id, manager_id, description, sort_order
+  } = req.body;
 
   if (!name || !code) {
     throw new ValidationError('Department name and code are required');

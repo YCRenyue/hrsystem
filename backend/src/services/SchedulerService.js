@@ -108,18 +108,18 @@ class SchedulerService {
       const employees = await Employee.findAll({
         where: {
           entry_date: {
-            [Op.eq]: today,
+            [Op.eq]: today
           },
           status: 'pending',
-          data_complete: false,
+          data_complete: false
         },
         include: [
           {
             model: OnboardingProcess,
             as: 'onboardingProcess',
-            required: false,
-          },
-        ],
+            required: false
+          }
+        ]
       });
 
       logger.info(`Found ${employees.length} employees starting today`);
@@ -132,7 +132,7 @@ class SchedulerService {
             process = await OnboardingProcess.create({
               employee_id: employee.employee_id,
               process_status: 'pending',
-              form_token: this._generateFormToken(),
+              form_token: this._generateFormToken()
             });
           }
 
@@ -149,7 +149,7 @@ class SchedulerService {
           await process.update({
             process_status: 'sent',
             sent_time: new Date(),
-            notification_method: result.channel,
+            notification_method: result.channel
           });
 
           logger.info(`Onboarding notification sent to ${employee.name} via ${result.channel}`);
@@ -179,12 +179,12 @@ class SchedulerService {
       const employees = await Employee.findAll({
         where: {
           entry_date: {
-            [Op.eq]: threeDaysFromNow,
+            [Op.eq]: threeDaysFromNow
           },
           status: {
-            [Op.in]: ['pending', 'active'],
-          },
-        },
+            [Op.in]: ['pending', 'active']
+          }
+        }
       });
 
       logger.info(`Found ${employees.length} employees starting in 3 days`);
@@ -219,10 +219,10 @@ class SchedulerService {
       const employees = await Employee.findAll({
         where: {
           entry_date: {
-            [Op.eq]: oneWeekAgo,
+            [Op.eq]: oneWeekAgo
           },
-          status: 'active',
-        },
+          status: 'active'
+        }
       });
 
       logger.info(`Found ${employees.length} employees who completed 1 week`);
@@ -277,10 +277,10 @@ class SchedulerService {
       const employees = await Employee.findAll({
         where: {
           contract_end_date: {
-            [Op.eq]: thirtyDaysFromNow,
+            [Op.eq]: thirtyDaysFromNow
           },
-          status: 'active',
-        },
+          status: 'active'
+        }
       });
 
       logger.info(`Found ${employees.length} employees with contracts expiring in 30 days`);
@@ -314,8 +314,8 @@ class SchedulerService {
 
       const employees = await Employee.findAll({
         where: {
-          status: 'active',
-        },
+          status: 'active'
+        }
       });
 
       logger.info(`Sending monthly statistics to ${employees.length} employees`);
@@ -329,7 +329,7 @@ class SchedulerService {
             travelAllowance: 0, // TODO: Calculate from travel records
             canteenExpense: 0, // TODO: Calculate from canteen records
             attendance: 0, // TODO: Calculate from attendance records
-            overtime: 0, // TODO: Calculate from overtime records
+            overtime: 0 // TODO: Calculate from overtime records
           };
 
           await notificationService.sendMonthlyStatistics(employee, statistics);
@@ -368,7 +368,7 @@ class SchedulerService {
       welcome: () => this.runWelcomeMessages(),
       training: () => this.runTrainingReminders(),
       'contract-expiry': () => this.runContractExpiryReminders(),
-      statistics: () => this.runMonthlyStatistics(),
+      statistics: () => this.runMonthlyStatistics()
     };
 
     if (tasks[taskName]) {
@@ -388,7 +388,7 @@ class SchedulerService {
     return {
       isRunning: this.isRunning,
       jobCount: this.jobs.length,
-      notificationChannels: notificationService.getAvailability(),
+      notificationChannels: notificationService.getAvailability()
     };
   }
 }

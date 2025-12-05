@@ -6,7 +6,9 @@
 
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
-const { Employee, Leave, Attendance, Department } = require('../models');
+const {
+  Employee, Leave, Attendance, Department
+} = require('../models');
 const logger = require('../utils/logger');
 const permissionService = require('./PermissionService');
 
@@ -97,7 +99,7 @@ class ReportService {
         : null;
 
       return {
-        leaves: leaves.map(leave => this._formatLeaveRecord(leave)),
+        leaves: leaves.map((leave) => this._formatLeaveRecord(leave)),
         statistics,
         byType,
         byDepartment,
@@ -183,16 +185,14 @@ class ReportService {
         : null;
 
       // 异常考勤汇总
-      const abnormalRecords = attendances.filter(a =>
-        ['late', 'early_leave', 'absent'].includes(a.status)
-      );
+      const abnormalRecords = attendances.filter((a) => ['late', 'early_leave', 'absent'].includes(a.status));
 
       return {
-        attendances: attendances.map(att => this._formatAttendanceRecord(att)),
+        attendances: attendances.map((att) => this._formatAttendanceRecord(att)),
         statistics,
         byStatus,
         byDepartment,
-        abnormalRecords: abnormalRecords.map(att => this._formatAttendanceRecord(att)),
+        abnormalRecords: abnormalRecords.map((att) => this._formatAttendanceRecord(att)),
         total: attendances.length
       };
     } catch (error) {
@@ -244,7 +244,7 @@ class ReportService {
         });
 
         onboardingData = {
-          employees: onboardingEmployees.map(emp => this._formatEmployeeRecord(emp)),
+          employees: onboardingEmployees.map((emp) => this._formatEmployeeRecord(emp)),
           total: onboardingEmployees.length,
           byDepartment: user.data_scope === 'all'
             ? this._groupEmployeesByDepartment(onboardingEmployees)
@@ -279,7 +279,7 @@ class ReportService {
         });
 
         offboardingData = {
-          employees: offboardingEmployees.map(emp => this._formatEmployeeRecord(emp)),
+          employees: offboardingEmployees.map((emp) => this._formatEmployeeRecord(emp)),
           total: offboardingEmployees.length,
           byDepartment: user.data_scope === 'all'
             ? this._groupEmployeesByDepartment(offboardingEmployees)
@@ -360,7 +360,7 @@ class ReportService {
       other: '其他'
     };
 
-    leaves.forEach(leave => {
+    leaves.forEach((leave) => {
       const type = leave.leave_type;
       if (!grouped[type]) {
         grouped[type] = {
@@ -385,7 +385,7 @@ class ReportService {
   _groupLeavesByDepartment(leaves) {
     const grouped = {};
 
-    leaves.forEach(leave => {
+    leaves.forEach((leave) => {
       const deptId = leave.employee?.department?.department_id;
       const deptName = leave.employee?.department?.name;
 
@@ -426,7 +426,7 @@ class ReportService {
       total_overtime_hours: 0
     };
 
-    attendances.forEach(att => {
+    attendances.forEach((att) => {
       stats[att.status] = (stats[att.status] || 0) + 1;
       stats.total_late_minutes += att.late_minutes || 0;
       stats.total_early_leave_minutes += att.early_leave_minutes || 0;
@@ -454,8 +454,8 @@ class ReportService {
       weekend: '周末'
     };
 
-    attendances.forEach(att => {
-      const status = att.status;
+    attendances.forEach((att) => {
+      const { status } = att;
       if (!grouped[status]) {
         grouped[status] = {
           status,
@@ -477,7 +477,7 @@ class ReportService {
   _groupAttendancesByDepartment(attendances) {
     const grouped = {};
 
-    attendances.forEach(att => {
+    attendances.forEach((att) => {
       const deptId = att.employee?.department?.department_id;
       const deptName = att.employee?.department?.name;
 
@@ -510,7 +510,7 @@ class ReportService {
   _groupEmployeesByDepartment(employees) {
     const grouped = {};
 
-    employees.forEach(emp => {
+    employees.forEach((emp) => {
       const deptId = emp.department?.department_id;
       const deptName = emp.department?.name;
 
@@ -538,7 +538,7 @@ class ReportService {
   _groupEmployeesByMonth(employees, dateField) {
     const grouped = {};
 
-    employees.forEach(emp => {
+    employees.forEach((emp) => {
       const date = emp[dateField];
       if (!date) return;
 

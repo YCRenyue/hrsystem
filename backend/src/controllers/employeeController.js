@@ -1,9 +1,9 @@
 /**
  * Employee Controller
  */
+const { Op } = require('sequelize');
 const { Employee, Department } = require('../models');
 const { NotFoundError, ValidationError } = require('../middleware/errorHandler');
-const { Op } = require('sequelize');
 
 /**
  * Get paginated list of employees
@@ -86,7 +86,7 @@ const getEmployees = async (req, res) => {
   const canViewSensitive = req.user?.role === 'admin' || req.user?.role === 'hr';
 
   // Convert to safe objects
-  let safeRows = rows.map(emp => emp.toSafeObject(canViewSensitive));
+  let safeRows = rows.map((emp) => emp.toSafeObject(canViewSensitive));
 
   // Sort by name in memory if needed
   if (sort_by === 'name') {
@@ -133,10 +133,9 @@ const getEmployeeById = async (req, res) => {
   }
 
   // Check if user can view sensitive data
-  const canViewSensitive =
-    req.user?.role === 'admin' ||
-    req.user?.role === 'hr' ||
-    req.user?.employee_id === id;
+  const canViewSensitive = req.user?.role === 'admin'
+    || req.user?.role === 'hr'
+    || req.user?.employee_id === id;
 
   res.json({
     success: true,
@@ -219,7 +218,7 @@ const updateEmployee = async (req, res) => {
     'gender', 'address', 'emergency_contact', 'emergency_phone'
   ];
 
-  directFields.forEach(field => {
+  directFields.forEach((field) => {
     if (updateData[field] !== undefined) {
       employee[field] = updateData[field];
     }
@@ -339,36 +338,36 @@ const importFromExcel = async (req, res) => {
       // Map status from Chinese to English
       const statusValue = row.getCell(11).value?.toString().trim() || '在职';
       const statusMap = {
-        '待完善': 'pending',
-        '在职': 'active',
-        '离职': 'inactive',
-        'pending': 'pending',
-        'active': 'active',
-        'inactive': 'inactive'
+        待完善: 'pending',
+        在职: 'active',
+        离职: 'inactive',
+        pending: 'pending',
+        active: 'active',
+        inactive: 'inactive'
       };
       const status = statusMap[statusValue] || 'active';
 
       // Map employment type from Chinese to English
       const employmentTypeValue = row.getCell(12).value?.toString().trim() || '';
       const employmentTypeMap = {
-        '全职': 'full_time',
-        '兼职': 'part_time',
-        '实习': 'intern',
-        '合同工': 'contractor',
-        'full_time': 'full_time',
-        'part_time': 'part_time',
-        'intern': 'intern',
-        'contractor': 'contractor'
+        全职: 'full_time',
+        兼职: 'part_time',
+        实习: 'intern',
+        合同工: 'contractor',
+        full_time: 'full_time',
+        part_time: 'part_time',
+        intern: 'intern',
+        contractor: 'contractor'
       };
       const employment_type = employmentTypeMap[employmentTypeValue] || 'full_time';
 
       // Map gender from Chinese to English
       const genderValue = row.getCell(3).value?.toString().trim() || '';
       const genderMap = {
-        '男': 'male',
-        '女': 'female',
-        'male': 'male',
-        'female': 'female'
+        男: 'male',
+        女: 'female',
+        male: 'male',
+        female: 'female'
       };
       const gender = genderMap[genderValue];
 
@@ -385,16 +384,16 @@ const importFromExcel = async (req, res) => {
       const employeeData = {
         employee_number: row.getCell(1).value?.toString().trim(),
         name: row.getCell(2).value?.toString().trim(),
-        gender: gender,
+        gender,
         birth_date: parseExcelDate(row.getCell(4).value),
         id_card: row.getCell(5).value?.toString().trim(),
         phone: row.getCell(6).value?.toString().trim(),
         email: row.getCell(7).value?.toString().trim(),
-        department_id: department_id,
+        department_id,
         position: row.getCell(9).value?.toString().trim(),
         entry_date: parseExcelDate(row.getCell(10).value),
-        status: status,
-        employment_type: employment_type,
+        status,
+        employment_type,
         bank_card: row.getCell(13).value?.toString().trim(),
         address: row.getCell(14).value?.toString().trim(),
         emergency_contact: row.getCell(15).value?.toString().trim(),
@@ -535,7 +534,7 @@ const exportToExcel = async (req, res) => {
   const canViewSensitive = req.user?.role === 'admin' || req.user?.role === 'hr';
 
   // Add rows
-  employees.forEach(employee => {
+  employees.forEach((employee) => {
     const safeData = employee.toSafeObject(canViewSensitive);
     worksheet.addRow({
       employee_number: employee.employee_number,

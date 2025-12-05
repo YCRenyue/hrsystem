@@ -5,7 +5,9 @@
  */
 
 const reportService = require('../services/ReportService');
-const { Employee, Leave, Attendance, Department } = require('../models');
+const {
+  Employee, Leave, Attendance, Department
+} = require('../models');
 
 // Mock the models
 jest.mock('../models', () => ({
@@ -98,7 +100,7 @@ describe('ReportService', () => {
     });
 
     it('should filter by leave type', async () => {
-      const annualLeaves = mockLeaves.filter(l => l.leave_type === 'annual');
+      const annualLeaves = mockLeaves.filter((l) => l.leave_type === 'annual');
       Leave.findAll.mockResolvedValue(annualLeaves);
 
       const filters = {
@@ -133,7 +135,7 @@ describe('ReportService', () => {
         data_scope: 'self'
       };
 
-      const selfLeaves = mockLeaves.filter(l => l.employee_id === employee.employee_id);
+      const selfLeaves = mockLeaves.filter((l) => l.employee_id === employee.employee_id);
       Leave.findAll.mockResolvedValue(selfLeaves);
 
       const result = await reportService.getLeaveReport(employee, {});
@@ -159,12 +161,12 @@ describe('ReportService', () => {
       const result = await reportService.getLeaveReport(mockUser, {});
 
       expect(result.byType).toBeDefined();
-      const annualType = result.byType.find(t => t.type === 'annual');
+      const annualType = result.byType.find((t) => t.type === 'annual');
       expect(annualType).toBeDefined();
       expect(annualType.count).toBe(1);
       expect(annualType.total_days).toBe(3);
 
-      const sickType = result.byType.find(t => t.type === 'sick');
+      const sickType = result.byType.find((t) => t.type === 'sick');
       expect(sickType).toBeDefined();
       expect(sickType.count).toBe(1);
       expect(sickType.total_days).toBe(2);
@@ -284,7 +286,7 @@ describe('ReportService', () => {
     });
 
     it('should filter by status', async () => {
-      const lateAttendances = mockAttendances.filter(a => a.status === 'late');
+      const lateAttendances = mockAttendances.filter((a) => a.status === 'late');
       Attendance.findAll.mockResolvedValue(lateAttendances);
 
       const filters = { status: 'late' };

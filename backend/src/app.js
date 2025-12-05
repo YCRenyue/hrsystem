@@ -34,6 +34,7 @@ app.use(morgan('combined'));
 
 // Sensitive data handling middleware (must be before routes)
 const { sensitiveDataHandler } = require('./middleware/sensitiveDataHandler');
+
 app.use(sensitiveDataHandler({
   autoMask: true,
   excludePaths: ['/api/auth/login', '/api/health', '/api/auth/register']
@@ -72,6 +73,7 @@ app.use('/api/users', require('./routes/users'));
 
 // Error handling middleware
 const { errorHandler } = require('./middleware/errorHandler');
+
 app.use(errorHandler);
 
 // 404 handler

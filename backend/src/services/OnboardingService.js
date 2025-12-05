@@ -196,7 +196,7 @@ class OnboardingService {
   async _updateEmployeeData(employee, formData) {
     const updateFields = this._extractUpdateFields(formData);
 
-    Object.keys(updateFields).forEach(key => {
+    Object.keys(updateFields).forEach((key) => {
       if (this._isEncryptedField(key)) {
         const setterMethod = this._getSetterMethod(key);
         employee[setterMethod](updateFields[key]);
@@ -220,7 +220,7 @@ class OnboardingService {
     ];
 
     const updates = {};
-    allowedFields.forEach(field => {
+    allowedFields.forEach((field) => {
       if (formData[field] !== undefined) {
         updates[field] = formData[field];
       }

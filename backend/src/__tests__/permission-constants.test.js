@@ -12,7 +12,7 @@ const {
   ONBOARDING_PERMISSIONS,
   ROLE_PERMISSIONS_MAP,
   hasPermission,
-  getRolePermissions,
+  getRolePermissions
 } = require('../constants/permissions');
 
 describe('Permission Constants Tests', () => {

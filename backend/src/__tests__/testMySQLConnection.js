@@ -24,7 +24,7 @@ async function testConnection() {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT) || 3306,
     user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
+    password: process.env.DB_PASSWORD || ''
   };
 
   try {
@@ -38,7 +38,7 @@ async function testConnection() {
     // Test 4: List all databases
     console.log('📚 Available Databases:');
     const [databases] = await connection.query('SHOW DATABASES');
-    databases.forEach(db => {
+    databases.forEach((db) => {
       const dbName = db.Database || db.database;
       if (dbName === process.env.DB_NAME) {
         console.log(`   ✅ ${dbName} (TARGET DATABASE)`);
@@ -50,9 +50,7 @@ async function testConnection() {
 
     // Test 5: Check if target database exists
     const targetDb = process.env.DB_NAME || 'hr_system';
-    const dbExists = databases.some(db =>
-      (db.Database || db.database) === targetDb
-    );
+    const dbExists = databases.some((db) => (db.Database || db.database) === targetDb);
 
     if (dbExists) {
       console.log(`✅ Target database '${targetDb}' exists\n`);
@@ -66,7 +64,7 @@ async function testConnection() {
       console.log('📋 Tables in database:');
       const [tables] = await connection.query('SHOW TABLES');
       if (tables.length > 0) {
-        tables.forEach(table => {
+        tables.forEach((table) => {
           const tableName = Object.values(table)[0];
           console.log(`   - ${tableName}`);
         });
@@ -83,7 +81,6 @@ async function testConnection() {
     await connection.end();
     console.log('✨ All connection tests completed successfully!\n');
     process.exit(0);
-
   } catch (error) {
     console.error('❌ Connection test failed:\n');
 
@@ -93,19 +90,16 @@ async function testConnection() {
       console.error('   1. Check if MySQL server is running');
       console.error('   2. Verify the port (default: 3306)');
       console.error('   3. Check if MySQL is installed\n');
-
     } else if (error.code === 'ER_ACCESS_DENIED_ERROR') {
       console.error('Error: Access denied - Invalid credentials');
       console.error('\n💡 Solutions:');
       console.error('   1. Check DB_USER and DB_PASSWORD in .env file');
       console.error('   2. Verify MySQL user has proper permissions');
       console.error('   3. Try resetting MySQL root password\n');
-
     } else if (error.code === 'ER_BAD_DB_ERROR') {
       console.error(`Error: Database '${process.env.DB_NAME}' does not exist`);
       console.error('\n💡 Solution:');
       console.error(`   Create the database: CREATE DATABASE ${process.env.DB_NAME};\n`);
-
     } else {
       console.error(`Error: ${error.message}`);
       console.error(`Code: ${error.code}\n`);

@@ -15,7 +15,7 @@ const logger = require('../utils/logger');
  */
 async function getLeaveReport(req, res) {
   try {
-    const user = req.user; // 从认证中间件获取
+    const { user } = req; // 从认证中间件获取
     const filters = {
       start_date: req.query.start_date,
       end_date: req.query.end_date,
@@ -55,7 +55,7 @@ async function getLeaveReport(req, res) {
  */
 async function getAttendanceReport(req, res) {
   try {
-    const user = req.user;
+    const { user } = req;
     const filters = {
       start_date: req.query.start_date,
       end_date: req.query.end_date,
@@ -94,7 +94,7 @@ async function getAttendanceReport(req, res) {
  */
 async function getOnboardingOffboardingReport(req, res) {
   try {
-    const user = req.user;
+    const { user } = req;
     const filters = {
       start_date: req.query.start_date,
       end_date: req.query.end_date,

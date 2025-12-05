@@ -2,6 +2,7 @@
  * Authentication Routes
  */
 const express = require('express');
+
 const router = express.Router();
 const authController = require('../controllers/authController');
 const { authenticateToken } = require('../middleware/auth');
@@ -27,6 +28,13 @@ router.get('/me', authenticateToken, asyncHandler(authController.getCurrentUser)
  * @access  Private
  */
 router.post('/logout', authenticateToken, asyncHandler(authController.logout));
+
+/**
+ * @route   GET /api/auth/dingtalk/login-url
+ * @desc    Get DingTalk OAuth login URL
+ * @access  Public
+ */
+router.get('/dingtalk/login-url', asyncHandler(authController.getDingTalkLoginUrl));
 
 /**
  * @route   POST /api/auth/dingtalk/callback

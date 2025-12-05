@@ -4,7 +4,9 @@
  */
 
 const { sequelize, testConnection } = require('../config/database');
-const { Department, Employee, User, OnboardingProcess } = require('../models');
+const {
+  Department, Employee, User, OnboardingProcess
+} = require('../models');
 
 describe('Database Connection Tests', () => {
   /**
@@ -136,31 +138,31 @@ describe('Database Connection Tests', () => {
    */
   describe('Model Associations', () => {
     test('Department should have employees association', () => {
-      const associations = Department.associations;
+      const { associations } = Department;
       expect(associations.employees).toBeDefined();
       expect(associations.employees.associationType).toBe('HasMany');
     });
 
     test('Employee should belong to Department', () => {
-      const associations = Employee.associations;
+      const { associations } = Employee;
       expect(associations.department).toBeDefined();
       expect(associations.department.associationType).toBe('BelongsTo');
     });
 
     test('Employee should have User association', () => {
-      const associations = Employee.associations;
+      const { associations } = Employee;
       expect(associations.user).toBeDefined();
       expect(associations.user.associationType).toBe('HasOne');
     });
 
     test('User should belong to Employee', () => {
-      const associations = User.associations;
+      const { associations } = User;
       expect(associations.employee).toBeDefined();
       expect(associations.employee.associationType).toBe('BelongsTo');
     });
 
     test('OnboardingProcess should belong to Employee', () => {
-      const associations = OnboardingProcess.associations;
+      const { associations } = OnboardingProcess;
       expect(associations.employee).toBeDefined();
       expect(associations.employee.associationType).toBe('BelongsTo');
     });
@@ -203,7 +205,7 @@ describe('Database Connection Tests', () => {
    */
   describe('Connection Pool', () => {
     test('should have connection pool initialized', () => {
-      const pool = sequelize.connectionManager.pool;
+      const { pool } = sequelize.connectionManager;
       expect(pool).toBeDefined();
     });
 

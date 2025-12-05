@@ -12,18 +12,16 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 /**
  * Generate JWT token
  */
-const generateToken = (user) => {
-  return jwt.sign(
-    {
-      user_id: user.user_id,
-      username: user.username,
-      role: user.role,
-      employee_id: user.employee_id
-    },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  );
-};
+const generateToken = (user) => jwt.sign(
+  {
+    user_id: user.user_id,
+    username: user.username,
+    role: user.role,
+    employee_id: user.employee_id
+  },
+  JWT_SECRET,
+  { expiresIn: JWT_EXPIRES_IN }
+);
 
 /**
  * Login with username and password
@@ -114,23 +112,99 @@ const logout = async (req, res) => {
 };
 
 /**
+ * Get DingTalk OAuth login URL
+ */
+const getDingTalkLoginUrl = async (req, res) => {
+  const { generateDingTalkLoginUrl } = require('../utils/oauthHelper');
+
+  const clientId = process.env.DINGTALK_APP_KEY;
+  const redirectUri = `${process.env.FRONTEND_URL}/auth/dingtalk/callback`;
+
+  if (!clientId) {
+    throw new ValidationError('DingTalk OAuth is not configured');
+  }
+
+  const loginUrl = generateDingTalkLoginUrl({
+    clientId,
+    redirectUri,
+    scope: 'openid'
+  });
+
+  res.json({
+    success: true,
+    data: { loginUrl }
+  });
+};
+
+/**
  * DingTalk OAuth callback handler
  */
 const handleDingTalkCallback = async (req, res) => {
+  const dingTalkService = require('../services/DingTalkService');
+  const { Employee } = require('../models');
   const { code, state } = req.body;
 
-  // TODO: Implement DingTalk OAuth flow
-  // 1. Exchange code for access token
-  // 2. Get user info from DingTalk
-  // 3. Find or create user in database
-  // 4. Generate JWT token
+  if (!code) {
+    throw new ValidationError('Authorization code is required');
+  }
 
-  throw new Error('DingTalk OAuth not yet implemented');
+  // Exchange code for access token
+  const tokenData = await dingTalkService.exchangeCodeForToken(code);
+
+  // Get user info from DingTalk
+  const userInfo = await dingTalkService.getUserInfoByToken(tokenData.accessToken);
+
+  // Find employee by DingTalk user ID or mobile
+  let employee = await Employee.findOne({
+    where: { dingtalk_user_id: userInfo.openid }
+  });
+
+  if (!employee && userInfo.mobile) {
+    const employees = await Employee.findAll();
+    employee = employees.find((emp) => emp.getPhone() === userInfo.mobile);
+
+    if (employee) {
+      employee.dingtalk_user_id = userInfo.openid;
+      await employee.save();
+    }
+  }
+
+  if (!employee) {
+    throw new UnauthorizedError('User not found in system');
+  }
+
+  // Find associated user account
+  const user = await User.findOne({
+    where: { employee_id: employee.employee_id }
+  });
+
+  if (!user) {
+    throw new UnauthorizedError('User account not found');
+  }
+
+  if (!user.is_active) {
+    throw new UnauthorizedError('Account is inactive');
+  }
+
+  // Record successful login
+  const ipAddress = req.ip || req.connection.remoteAddress;
+  await user.recordSuccessfulLogin(ipAddress);
+
+  const token = generateToken(user.toSafeObject());
+
+  res.json({
+    success: true,
+    data: {
+      token,
+      user: user.toSafeObject()
+    }
+  });
 };
 
 module.exports = {
   login,
   getCurrentUser,
   logout,
+  getDingTalkLoginUrl,
   handleDingTalkCallback
 };

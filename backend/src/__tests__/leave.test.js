@@ -4,7 +4,9 @@
 
 const request = require('supertest');
 const app = require('../app');
-const { Employee, Leave, Department, User } = require('../models');
+const {
+  Employee, Leave, Department, User
+} = require('../models');
 const { sequelize } = require('../config/database');
 
 describe('Leave Controller', () => {

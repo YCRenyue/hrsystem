@@ -9,7 +9,7 @@ const LOG_LEVELS = {
   ERROR: 0,
   WARN: 1,
   INFO: 2,
-  DEBUG: 3,
+  DEBUG: 3
 };
 
 const currentLevel = LOG_LEVELS[process.env.LOG_LEVEL?.toUpperCase() || 'INFO'];
@@ -46,7 +46,7 @@ const logger = {
     if (currentLevel >= LOG_LEVELS.DEBUG) {
       console.log(formatMessage('DEBUG', message, ...args));
     }
-  },
+  }
 };
 
 module.exports = logger;
