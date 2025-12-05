@@ -1,5 +1,5 @@
 /**
- * Dashboard Page - Overview of HR system
+ * Dashboard Page - Overview of HR system with enhanced visualizations
  */
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Statistic, App, Spin } from 'antd';
@@ -12,6 +12,9 @@ import {
   FileDoneOutlined,
 } from '@ant-design/icons';
 import { dashboardService, DashboardStats } from '../../services/dashboardService';
+import DepartmentDistributionChart from './DepartmentDistributionChart';
+import HiringTrendChart from './HiringTrendChart';
+import AttendanceAnalysisChart from './AttendanceAnalysisChart';
 
 const Dashboard: React.FC = () => {
   const { message } = App.useApp();
@@ -182,6 +185,22 @@ const Dashboard: React.FC = () => {
               <p style={{ color: '#999' }}>暂无数据</p>
             )}
           </Card>
+        </Col>
+      </Row>
+
+      {/* Enhanced Charts Section */}
+      <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
+        <Col xs={24} lg={12}>
+          <DepartmentDistributionChart />
+        </Col>
+        <Col xs={24} lg={12}>
+          <AttendanceAnalysisChart />
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col xs={24}>
+          <HiringTrendChart />
         </Col>
       </Row>
     </div>

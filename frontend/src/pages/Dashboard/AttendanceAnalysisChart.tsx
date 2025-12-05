@@ -1,0 +1,115 @@
+/**
+ * Attendance Analysis Chart Component
+ * Displays attendance status distribution
+ */
+import React, { useEffect, useState } from 'react';
+import { Column } from '@ant-design/plots';
+import { Card, Spin, Empty, App } from 'antd';
+import axios from 'axios';
+
+interface StatusData {
+  status: string;
+  count: number;
+}
+
+interface AttendanceData {
+  statusDistribution: StatusData[];
+}
+
+const AttendanceAnalysisChart: React.FC = () => {
+  const { message } = App.useApp();
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<StatusData[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('token');
+        const response = await axios.get<{ success: boolean; data: AttendanceData }>(
+          `${process.env.REACT_APP_API_URL}/api/dashboard/charts/attendance-analysis`,
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+
+        if (response.data.success && response.data.data.statusDistribution) {
+          // Map status names to Chinese
+          const statusMap: Record<string, string> = {
+            normal: '正常',
+            late: '迟到',
+            early: '早退',
+            absent: '缺勤',
+          };
+
+          const formattedData = response.data.data.statusDistribution.map(item => ({
+            status: statusMap[item.status] || item.status,
+            count: item.count,
+          }));
+
+          setData(formattedData);
+        }
+      } catch (error) {
+        console.error('Failed to fetch attendance analysis:', error);
+        message.error('获取考勤分析数据失败');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [message]);
+
+  const config = {
+    data,
+    xField: 'status',
+    yField: 'count',
+    label: {
+      position: 'middle' as const,
+      style: {
+        fill: '#FFFFFF',
+        opacity: 0.6,
+      },
+    },
+    xAxis: {
+      label: {
+        autoHide: true,
+        autoRotate: false,
+      },
+    },
+    meta: {
+      status: {
+        alias: '考勤状态',
+      },
+      count: {
+        alias: '人次',
+      },
+    },
+  };
+
+  if (loading) {
+    return (
+      <Card title="考勤状况分析（本月）">
+        <div style={{ textAlign: 'center', padding: '50px 0' }}>
+          <Spin />
+        </div>
+      </Card>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <Card title="考勤状况分析（本月）">
+        <Empty description="暂无数据" />
+      </Card>
+    );
+  }
+
+  return (
+    <Card title="考勤状况分析（本月）">
+      <Column {...config} />
+    </Card>
+  );
+};
+
+export default AttendanceAnalysisChart;

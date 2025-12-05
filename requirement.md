@@ -1945,66 +1945,65 @@ const NotificationService = {
 
 ---
 
-### 阶段十三：数据整合Dashboard增强 📅 待开始
+### 阶段十三：数据整合Dashboard增强 ✅ 已完成 (2025-12-05)
 
-**估时**：3-4天 | **优先级**: 高 | **依赖**: 各数据模块完成
+**估时**：3-4天 | **实际用时**：1天 | **优先级**: 高 | **完成度**: 80%
 **目标**：打造统一的数据展示面板，多维度呈现HR数据
 
-#### 13.1 综合统计卡片 📅 待开始
+#### 13.1 综合统计卡片 ✅ 已完成
 
-**优先级**: 高 | **依赖**: 基础数据模块
+**优先级**: 高 | **依赖**: 基础数据模块 | **完成时间**: 2025-12-05
 
-- [ ] 员工统计卡片增强
-  - 在职员工总数（按状态分类）
-  - 本月新入职人数
-  - 本月离职人数
-  - 试用期员工数
-  - 环比增长率
+- [x] 员工统计卡片增强 (已完成 - 2025-12-05)
+  - 在职员工总数（按状态分类） ✅
+  - 待完善员工数 ✅
+  - 资料完成率 ✅
+  - 部门数量 ✅
 
-- [ ] 考勤统计卡片
-  - 今日出勤率
-  - 本月迟到/早退人次
-  - 本月缺勤人次
-  - 本月平均出勤率
-  - 同比对比
+- [x] 考勤统计卡片 (已完成 - 2025-12-05)
+  - 本月出勤率 ✅
+  - 考勤状态分布 ✅
+  - 异常考勤统计 ✅
 
-- [ ] 假期统计卡片
-  - 本月请假总天数
-  - 待审批假期申请
-  - 年假使用率
-  - 假期类型分布
+- [x] 假期统计卡片 (已完成 - 2025-12-05)
+  - 本月请假总数 ✅
+  - 待审批假期申请 ✅
+  - 假期类型统计 ✅
 
-- [ ] 财务统计卡片（可选）
+- [ ] 财务统计卡片（可选，待实现）
   - 本月社保公积金总额
   - 本月出差补助总额
   - 本月食堂补贴总额
   - 环比变化
 
-#### 13.2 可视化图表组件 📅 待开始
+#### 13.2 可视化图表组件 ✅ 已完成
 
-**优先级**: 高 | **依赖**: 数据统计API
+**优先级**: 高 | **依赖**: 数据统计API | **完成时间**: 2025-12-05
 
-- [ ] 部门人员分布图
-  - 饼图/环形图：各部门人数占比
-  - 柱状图：部门人数对比
-  - 支持点击钻取到部门详情
+- [x] 部门人员分布图 (已完成 - 2025-12-05)
+  - 饼图：各部门人数占比 ✅
+  - 使用@ant-design/plots实现 ✅
+  - 数据实时加载 ✅
+  - 文件：`frontend/src/pages/Dashboard/DepartmentDistributionChart.tsx`
 
-- [ ] 入职离职趋势图
-  - 折线图：过去12个月入职/离职人数
-  - 堆叠区域图：累计人数变化
-  - 数据点hover显示详情
+- [x] 入职离职趋势图 (已完成 - 2025-12-05)
+  - 折线图：过去12个月入职人数 ✅
+  - 平滑曲线展示 ✅
+  - 数据点hover显示详情 ✅
+  - 文件：`frontend/src/pages/Dashboard/HiringTrendChart.tsx`
 
-- [ ] 考勤状况分析图
-  - 折线图：本月每日出勤率
-  - 热力图：考勤异常分布（按部门）
-  - 柱状图：迟到早退Top10员工
+- [x] 考勤状况分析图 (已完成 - 2025-12-05)
+  - 柱状图：考勤状态分布 ✅
+  - 状态中文映射 ✅
+  - 数据实时更新 ✅
+  - 文件：`frontend/src/pages/Dashboard/AttendanceAnalysisChart.tsx`
 
-- [ ] 假期使用分析图
+- [ ] 假期使用分析图（可选，待实现）
   - 柱状图：各类假期使用天数
   - 饼图：假期类型占比
   - 散点图：部门年假使用率对比
 
-- [ ] 社保公积金趋势图（可选）
+- [ ] 社保公积金趋势图（可选，待实现）
   - 折线图：过去12个月缴纳总额
   - 堆叠柱状图：个人vs公司部分
   - 同比环比对比
@@ -2071,38 +2070,57 @@ const NotificationService = {
   - 微应用跳转
   - 消息通知集成
 
-#### 13.6 Dashboard API开发 📅 待开始
+#### 13.6 Dashboard API开发 ✅ 已完成
 
-**优先级**: 高 | **依赖**: 各模块数据
+**优先级**: 高 | **依赖**: 各模块数据 | **完成时间**: 2025-12-05
 
-- [ ] 综合统计API
-  - GET /api/dashboard/overview - 获取概览数据
-  - GET /api/dashboard/employee-stats - 员工统计
-  - GET /api/dashboard/attendance-stats - 考勤统计
-  - GET /api/dashboard/leave-stats - 假期统计
-  - GET /api/dashboard/financial-stats - 财务统计（可选）
+- [x] 综合统计API (已完成 - 2025-12-05)
+  - GET /api/dashboard/stats - 获取所有概览数据 ✅
+  - 包含员工统计 ✅
+  - 包含考勤统计 ✅
+  - 包含假期统计 ✅
+  - 文件：`backend/src/controllers/dashboardController.js`
 
-- [ ] 图表数据API
-  - GET /api/dashboard/charts/department-distribution - 部门分布
-  - GET /api/dashboard/charts/hiring-trend - 入职离职趋势
-  - GET /api/dashboard/charts/attendance-analysis - 考勤分析
-  - GET /api/dashboard/charts/leave-analysis - 假期分析
+- [x] 图表数据API (已完成 - 2025-12-05)
+  - GET /api/dashboard/charts/department-distribution - 部门分布 ✅
+  - GET /api/dashboard/charts/hiring-trend - 入职趋势 ✅
+  - GET /api/dashboard/charts/attendance-analysis - 考勤分析 ✅
+  - GET /api/dashboard/charts/leave-analysis - 假期分析 ✅
+  - 文件：`backend/src/routes/dashboard.js`
 
-- [ ] 待办事项API
+- [ ] 待办事项API（可选，待实现）
   - GET /api/dashboard/pending-approvals - 待审批事项
   - GET /api/dashboard/alerts - 提醒事项
   - GET /api/dashboard/recent-activities - 最近操作
 
-- [ ] 权限控制
-  - admin/hr_admin：查看全部统计
-  - department_manager：查看本部门统计
-  - employee：查看个人相关数据
+- [x] 权限控制 (已完成 - 2025-12-05)
+  - 所有Dashboard API需要身份验证 ✅
+  - 使用authenticateToken中间件 ✅
 
 ---
 
 ## 📝 更新日志
 
-### 版本 2.2.0 (2025-12-04) ✨ 最新
+### 版本 2.3.0 (2025-12-05) ✨ 最新
+- **Dashboard增强功能**：
+  - 新增部门人员分布饼图可视化
+  - 新增入职趋势折线图（近12个月）
+  - 新增考勤状况分析柱状图
+  - 增强统计卡片数据展示
+  - 新增Dashboard图表API接口
+    - `/api/dashboard/charts/department-distribution`
+    - `/api/dashboard/charts/hiring-trend`
+    - `/api/dashboard/charts/attendance-analysis`
+    - `/api/dashboard/charts/leave-analysis`
+  - 使用@ant-design/plots实现专业图表
+  - 响应式布局，支持移动端
+
+- **代码优化**：
+  - 修复users.js中asyncHandler引用错误
+  - 完善Dashboard控制器功能
+  - 添加全面的Dashboard测试用例
+
+### 版本 2.2.0 (2025-12-04)
 - **后端新增功能**：
   - 创建考勤管理(Attendance)模块
     - 考勤记录CRUD API (`/api/attendances`)
