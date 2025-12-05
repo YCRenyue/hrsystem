@@ -4,6 +4,7 @@
 
 const { Leave, Employee, Department, User, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const permissionService = require('../services/PermissionService');
 
 /**
  * Create leave application
@@ -70,8 +71,8 @@ const getLeaveList = async (req, res) => {
     const limit = parseInt(size);
     const offset = (parseInt(page) - 1) * limit;
 
-    const where = {};
-    if (employee_id) where.employee_id = employee_id;
+    // 基础查询条件
+    let where = {};
     if (leave_type) where.leave_type = leave_type;
     if (status) where.status = status;
     if (start_date && end_date) {
@@ -80,37 +81,69 @@ const getLeaveList = async (req, res) => {
       };
     }
 
+    const include = [
+      {
+        model: Employee,
+        as: 'employee',
+        attributes: ['employee_id', 'employee_number', 'name_encrypted', 'department_id'],
+        include: [
+          {
+            model: Department,
+            as: 'department',
+            attributes: ['department_id', 'name']
+          }
+        ]
+      },
+      {
+        model: User,
+        as: 'approver',
+        attributes: ['user_id', 'username'],
+        required: false
+      }
+    ];
+
+    // 根据用户角色应用数据过滤
+    if (req.user.data_scope === 'all') {
+      // admin/hr_admin: 可以查看所有数据
+      if (employee_id) where.employee_id = employee_id;
+    } else if (req.user.data_scope === 'department') {
+      // department_manager: 只能查看本部门数据
+      include[0].where = { department_id: req.user.department_id };
+      if (employee_id) {
+        where.employee_id = employee_id;
+      }
+    } else {
+      // employee: 只能查看自己的数据
+      where.employee_id = req.user.employee_id;
+    }
+
     const { count, rows } = await Leave.findAndCountAll({
       where,
-      include: [
-        {
-          model: Employee,
-          as: 'employee',
-          attributes: ['employee_id', 'employee_number', 'name_encrypted'],
-          include: [
-            {
-              model: Department,
-              as: 'department',
-              attributes: ['department_id', 'name']
-            }
-          ]
-        },
-        {
-          model: User,
-          as: 'approver',
-          attributes: ['user_id', 'username'],
-          required: false
-        }
-      ],
+      include,
       limit,
       offset,
-      order: [['created_at', 'DESC']]
+      order: [['created_at', 'DESC']],
+      distinct: true
+    });
+
+    // 处理敏感数据
+    const canViewSensitive = permissionService.canViewSensitiveData(req.user);
+    const processedRows = rows.map(row => {
+      const data = row.toJSON();
+      if (data.employee) {
+        data.employee = permissionService.processSensitiveFields(
+          data.employee,
+          canViewSensitive,
+          'mask'
+        );
+      }
+      return data;
     });
 
     res.json({
       success: true,
       data: {
-        rows,
+        rows: processedRows,
         total: count,
         page: parseInt(page),
         size: limit

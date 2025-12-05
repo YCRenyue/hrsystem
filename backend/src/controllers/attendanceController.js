@@ -4,6 +4,7 @@
 
 const { Attendance, Employee, Department, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const permissionService = require('../services/PermissionService');
 
 /**
  * Create attendance record
@@ -91,8 +92,8 @@ const getAttendanceList = async (req, res) => {
     const limit = parseInt(size);
     const offset = (parseInt(page) - 1) * limit;
 
-    const where = {};
-    if (employee_id) where.employee_id = employee_id;
+    // 基础查询条件
+    let where = {};
     if (status) where.status = status;
     if (start_date && end_date) {
       where.date = {
@@ -100,6 +101,10 @@ const getAttendanceList = async (req, res) => {
       };
     }
 
+    // 根据用户权限过滤数据
+    // admin和hr_admin: 可以查看所有数据或指定部门
+    // department_manager: 只能查看本部门数据
+    // employee: 只能查看自己的数据
     const include = [
       {
         model: Employee,
@@ -115,8 +120,23 @@ const getAttendanceList = async (req, res) => {
       }
     ];
 
-    if (department_id) {
-      include[0].where = { department_id };
+    // 根据用户角色应用数据过滤
+    if (req.user.data_scope === 'all') {
+      // admin/hr_admin: 可以查看所有数据
+      if (employee_id) where.employee_id = employee_id;
+      if (department_id) {
+        include[0].where = { department_id };
+      }
+    } else if (req.user.data_scope === 'department') {
+      // department_manager: 只能查看本部门数据
+      include[0].where = { department_id: req.user.department_id };
+      if (employee_id) {
+        // 只能查询本部门的员工
+        where.employee_id = employee_id;
+      }
+    } else {
+      // employee: 只能查看自己的数据
+      where.employee_id = req.user.employee_id;
     }
 
     const { count, rows } = await Attendance.findAndCountAll({
@@ -124,13 +144,28 @@ const getAttendanceList = async (req, res) => {
       include,
       limit,
       offset,
-      order: [['date', 'DESC']]
+      order: [['date', 'DESC']],
+      distinct: true
+    });
+
+    // 处理敏感数据
+    const canViewSensitive = permissionService.canViewSensitiveData(req.user);
+    const processedRows = rows.map(row => {
+      const data = row.toJSON();
+      if (data.employee) {
+        data.employee = permissionService.processSensitiveFields(
+          data.employee,
+          canViewSensitive,
+          'mask'
+        );
+      }
+      return data;
     });
 
     res.json({
       success: true,
       data: {
-        rows,
+        rows: processedRows,
         total: count,
         page: parseInt(page),
         size: limit

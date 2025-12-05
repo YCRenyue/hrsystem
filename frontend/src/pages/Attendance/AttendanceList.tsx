@@ -13,13 +13,25 @@ import {
   DatePicker,
   Select,
   message,
-  Spin
+  Spin,
+  Row,
+  Col,
+  Statistic
 } from 'antd';
-import { ReloadOutlined, ExportOutlined } from '@ant-design/icons';
+import {
+  ReloadOutlined,
+  ExportOutlined,
+  CalendarOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  CloseCircleOutlined
+} from '@ant-design/icons';
+import { Pie, Column as ColumnChart } from '@ant-design/charts';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import type { FilterValue, SorterResult } from 'antd/es/table/interface';
 import dayjs, { Dayjs } from 'dayjs';
 import { usePermission } from '../../hooks/usePermission';
+import { attendanceService, AttendanceStats } from '../../services/attendanceService';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
@@ -51,6 +63,7 @@ interface AttendanceListState {
     status: string | undefined;
     department_id: string | undefined;
   };
+  stats: AttendanceStats | null;
 }
 
 const AttendanceList: React.FC = () => {
@@ -71,6 +84,7 @@ const AttendanceList: React.FC = () => {
       status: undefined,
       department_id: undefined,
     },
+    stats: null,
   });
 
   const [departments, setDepartments] = useState<Array<{ department_id: string; name: string }>>([]);
@@ -119,46 +133,54 @@ const AttendanceList: React.FC = () => {
     setState(prev => ({ ...prev, loading: true }));
 
     try {
-      const params = new URLSearchParams({
-        page: String(state.pagination.current),
-        size: String(state.pagination.pageSize),
-      });
+      // Prepare parameters for both list and stats
+      const listParams = {
+        page: state.pagination.current,
+        size: state.pagination.pageSize,
+        start_date: state.filters.dateRange?.[0].format('YYYY-MM-DD'),
+        end_date: state.filters.dateRange?.[1].format('YYYY-MM-DD'),
+        status: state.filters.status,
+        department_id: state.filters.department_id,
+      };
 
-      if (state.filters.dateRange) {
-        params.append('start_date', state.filters.dateRange[0].format('YYYY-MM-DD'));
-        params.append('end_date', state.filters.dateRange[1].format('YYYY-MM-DD'));
-      }
+      const statsParams = {
+        start_date: state.filters.dateRange?.[0].format('YYYY-MM-DD'),
+        end_date: state.filters.dateRange?.[1].format('YYYY-MM-DD'),
+        department_id: state.filters.department_id,
+      };
 
-      if (state.filters.status) {
-        params.append('status', state.filters.status);
-      }
+      // Fetch both list and stats in parallel
+      const [listResponse, statsResponse] = await Promise.all([
+        attendanceService.getList(listParams),
+        attendanceService.getStats(statsParams),
+      ]);
 
-      if (state.filters.department_id) {
-        params.append('department_id', state.filters.department_id);
-      }
-
-      const response = await fetch(`/api/attendance?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      setState(prev => ({
+        ...prev,
+        data: listResponse.rows.map(row => ({
+          attendance_id: row.attendance_id,
+          employee_id: row.employee_id,
+          employee_number: row.employee?.employee_number || '',
+          employee_name: row.employee?.name_masked || row.employee?.name_encrypted || '',
+          department_name: row.employee?.department?.name || '',
+          date: row.date,
+          check_in_time: row.check_in_time,
+          check_out_time: row.check_out_time,
+          status: row.status,
+          late_minutes: row.late_minutes,
+          early_leave_minutes: row.early_leave_minutes,
+          work_hours: row.work_hours,
+          overtime_hours: row.overtime_hours,
+          location: row.location || null,
+          notes: row.notes || null,
+        })),
+        loading: false,
+        pagination: {
+          ...prev.pagination,
+          total: listResponse.total,
         },
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setState(prev => ({
-          ...prev,
-          data: result.data,
-          loading: false,
-          pagination: {
-            ...prev.pagination,
-            total: result.pagination.total,
-          },
-        }));
-      } else {
-        message.error(result.message || '加载考勤数据失败');
-        setState(prev => ({ ...prev, loading: false }));
-      }
+        stats: statsResponse,
+      }));
     } catch (error) {
       console.error('Failed to fetch attendance data:', error);
       message.error('加载考勤数据失败');
@@ -366,8 +388,117 @@ const AttendanceList: React.FC = () => {
     },
   ];
 
+  // Prepare pie chart data
+  const pieData = state.stats?.byStatus.map(item => ({
+    type: statusMap[item.status]?.text || item.status,
+    value: Number(item.count),
+  })) || [];
+
+  // Pie chart config
+  const pieConfig = {
+    data: pieData,
+    angleField: 'value',
+    colorField: 'type',
+    radius: 0.8,
+    label: {
+      type: 'outer',
+      content: '{name} {percentage}',
+    },
+    interactions: [{ type: 'element-active' }],
+  };
+
+  // Prepare column chart data (daily attendance trends)
+  const columnData = state.data.reduce((acc: any[], record) => {
+    const date = dayjs(record.date).format('MM-DD');
+    const statusText = statusMap[record.status]?.text || record.status;
+    const existing = acc.find(item => item.date === date);
+
+    if (existing) {
+      existing[statusText] = (existing[statusText] || 0) + 1;
+    } else {
+      acc.push({
+        date,
+        [statusText]: 1,
+      });
+    }
+
+    return acc;
+  }, []);
+
   return (
     <div style={{ padding: '24px' }}>
+      <h2>考勤管理</h2>
+
+      {/* Statistics Cards */}
+      {state.stats && (
+        <Row gutter={16} style={{ marginBottom: '24px' }}>
+          <Col xs={24} sm={12} lg={6}>
+            <Card>
+              <Statistic
+                title="总考勤记录"
+                value={state.stats.totalRecords}
+                prefix={<CalendarOutlined />}
+                valueStyle={{ color: '#1890ff' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card>
+              <Statistic
+                title="出勤率"
+                value={state.stats.attendanceRate}
+                suffix="%"
+                prefix={<CheckCircleOutlined />}
+                valueStyle={{ color: '#52c41a' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card>
+              <Statistic
+                title="迟到次数"
+                value={state.stats.lateCount}
+                prefix={<ClockCircleOutlined />}
+                valueStyle={{ color: '#faad14' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card>
+              <Statistic
+                title="缺勤次数"
+                value={state.stats.absentCount}
+                prefix={<CloseCircleOutlined />}
+                valueStyle={{ color: '#f5222d' }}
+              />
+            </Card>
+          </Col>
+        </Row>
+      )}
+
+      {/* Charts */}
+      <Row gutter={16} style={{ marginBottom: '24px' }}>
+        <Col xs={24} lg={12}>
+          <Card title="考勤状态分布" bordered={false}>
+            <Pie {...pieConfig} />
+          </Card>
+        </Col>
+        <Col xs={24} lg={12}>
+          <Card title="每日考勤趋势" bordered={false}>
+            <ColumnChart
+              data={columnData}
+              xField="date"
+              yField="value"
+              seriesField="type"
+              isGroup={true}
+              columnStyle={{
+                radius: [4, 4, 0, 0],
+              }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
       <Card>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           {/* 筛选区域 */}

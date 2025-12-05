@@ -16,6 +16,8 @@ import EmployeeForm from './pages/Employee/EmployeeForm';
 import OnboardingForm from './pages/Onboarding/OnboardingForm';
 import DepartmentList from './pages/Department/DepartmentList';
 import AttendanceList from './pages/Attendance/AttendanceList';
+import LeaveList from './pages/Leave/LeaveList';
+import UserSettings from './pages/Settings';
 import './App.css';
 
 function App() {
@@ -95,15 +97,25 @@ function App() {
                     }
                   />
 
-                  {/* User profile - accessible to all authenticated users */}
-                  <Route path="profile" element={<div>User Profile (Coming Soon)</div>} />
-
-                  {/* Settings - admin only */}
+                  {/* Leave management - accessible to admin, hr_admin, and department_manager */}
                   <Route
-                    path="settings"
+                    path="leaves"
+                    element={
+                      <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
+                        <LeaveList />
+                      </RoleGuard>
+                    }
+                  />
+
+                  {/* User settings - accessible to all authenticated users */}
+                  <Route path="settings" element={<UserSettings />} />
+
+                  {/* Admin settings - admin only */}
+                  <Route
+                    path="admin"
                     element={
                       <RoleGuard requiredRoles={['admin']}>
-                        <div>Settings (Coming Soon)</div>
+                        <div>Admin Settings (Coming Soon)</div>
                       </RoleGuard>
                     }
                   />

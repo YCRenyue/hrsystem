@@ -68,6 +68,7 @@ app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/attendances', require('./routes/attendances'));
 app.use('/api/leaves', require('./routes/leaves'));
+app.use('/api/users', require('./routes/users'));
 
 // Error handling middleware
 const { errorHandler } = require('./middleware/errorHandler');

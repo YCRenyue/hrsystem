@@ -410,6 +410,11 @@ User.init(
       allowNull: true,
       comment: '刷新令牌过期时间'
     },
+    preferences: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      comment: '用户偏好设置（主题、字体、颜色等）'
+    },
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,

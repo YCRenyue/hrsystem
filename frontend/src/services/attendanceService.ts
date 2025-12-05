@@ -1,129 +1,115 @@
 /**
- * Attendance Service
- * 考勤相关API服务
+ * Attendance Service - API calls for attendance management
  */
+import apiClient from './api';
+import { ApiResponse } from '../types';
 
-import axios from 'axios';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
-
-export interface AttendanceRecord {
+export interface Attendance {
   attendance_id: string;
   employee_id: string;
-  employee_number: string;
-  employee_name: string;
-  department_name: string;
   date: string;
   check_in_time: string | null;
   check_out_time: string | null;
-  status: 'normal' | 'late' | 'early_leave' | 'absent' | 'leave' | 'holiday' | 'weekend';
+  status: 'normal' | 'late' | 'early_leave' | 'absent' | 'leave';
   late_minutes: number;
   early_leave_minutes: number;
-  work_hours: number | null;
+  work_hours: number;
   overtime_hours: number;
-  location: string | null;
-  device_info: string | null;
-  notes: string | null;
+  notes?: string;
+  location?: string;
+  device_info?: string;
+  created_at: string;
+  updated_at: string;
+  employee?: {
+    employee_id: string;
+    employee_number: string;
+    name_encrypted?: string;
+    name_masked?: string;
+    department?: {
+      department_id: string;
+      name: string;
+    };
+  };
 }
 
-export interface AttendanceQueryParams {
+export interface AttendanceStats {
+  totalRecords: number;
+  attendanceRate: number;
+  lateCount: number;
+  absentCount: number;
+  byStatus: Array<{
+    status: string;
+    count: number;
+  }>;
+}
+
+export interface AttendanceListParams {
   page?: number;
   size?: number;
+  employee_id?: string;
   start_date?: string;
   end_date?: string;
   status?: string;
   department_id?: string;
-  employee_id?: string;
 }
 
 export interface AttendanceListResponse {
-  success: boolean;
-  data: AttendanceRecord[];
-  pagination: {
-    total: number;
-    page: number;
-    size: number;
-    totalPages: number;
-  };
-  message?: string;
+  rows: Attendance[];
+  total: number;
+  page: number;
+  size: number;
 }
 
-/**
- * 获取考勤记录列表
- */
-export const getAttendanceList = async (
-  params: AttendanceQueryParams
-): Promise<AttendanceListResponse> => {
-  const response = await axios.get(`${API_BASE_URL}/attendance`, {
-    params,
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem('token')}`,
-    },
-  });
-  return response.data;
-};
+export const attendanceService = {
+  /**
+   * Get attendance list with filters and pagination
+   */
+  async getList(params: AttendanceListParams): Promise<AttendanceListResponse> {
+    const response = await apiClient.get<ApiResponse<AttendanceListResponse>>(
+      '/attendances',
+      { params }
+    );
+    return response.data.data!;
+  },
 
-/**
- * 获取单个考勤记录详情
- */
-export const getAttendanceById = async (
-  attendanceId: string
-): Promise<{ success: boolean; data: AttendanceRecord; message?: string }> => {
-  const response = await axios.get(`${API_BASE_URL}/attendance/${attendanceId}`, {
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem('token')}`,
-    },
-  });
-  return response.data;
-};
+  /**
+   * Get attendance statistics
+   */
+  async getStats(params?: {
+    start_date?: string;
+    end_date?: string;
+    department_id?: string;
+  }): Promise<AttendanceStats> {
+    const response = await apiClient.get<ApiResponse<AttendanceStats>>(
+      '/attendances/stats',
+      { params }
+    );
+    return response.data.data!;
+  },
 
-/**
- * 导出考勤记录
- */
-export const exportAttendance = async (params: AttendanceQueryParams): Promise<Blob> => {
-  const response = await axios.get(`${API_BASE_URL}/attendance/export`, {
-    params,
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem('token')}`,
-    },
-    responseType: 'blob',
-  });
-  return response.data;
-};
+  /**
+   * Create attendance record
+   */
+  async create(data: Partial<Attendance>): Promise<Attendance> {
+    const response = await apiClient.post<ApiResponse<Attendance>>('/attendances', data);
+    return response.data.data!;
+  },
 
-/**
- * 获取员工考勤统计
- */
-export const getAttendanceStats = async (
-  employeeId: string,
-  startDate: string,
-  endDate: string
-): Promise<{
-  success: boolean;
-  data: {
-    total_days: number;
-    normal_days: number;
-    late_days: number;
-    early_leave_days: number;
-    absent_days: number;
-    leave_days: number;
-    total_work_hours: number;
-    total_overtime_hours: number;
-  };
-  message?: string;
-}> => {
-  const response = await axios.get(`${API_BASE_URL}/attendance/stats/${employeeId}`, {
-    params: { start_date: startDate, end_date: endDate },
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem('token')}`,
-    },
-  });
-  return response.data;
-};
+  /**
+   * Update attendance record
+   */
+  async update(id: string, data: Partial<Attendance>): Promise<Attendance> {
+    const response = await apiClient.put<ApiResponse<Attendance>>(
+      `/attendances/${id}`,
+      data
+    );
+    return response.data.data!;
+  },
 
-export default {
-  getAttendanceList,
-  getAttendanceById,
-  exportAttendance,
-  getAttendanceStats,
+  /**
+   * Delete attendance record
+   */
+  async delete(id: string): Promise<void> {
+    await apiClient.delete(`/attendances/${id}`);
+  }
 };

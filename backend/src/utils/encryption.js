@@ -148,6 +148,22 @@ class EncryptionService {
   }
 
   /**
+   * Create SHA-256 hash for searchable encrypted fields
+   * @param {string} data - Data to hash
+   * @returns {string} SHA-256 hash in hex format
+   */
+  hash(data) {
+    if (!data || typeof data !== 'string') {
+      throw new Error('Data must be a non-empty string');
+    }
+
+    return crypto
+      .createHash('sha256')
+      .update(data.toLowerCase())
+      .digest('hex');
+  }
+
+  /**
    * Hash password using bcrypt (delegated to bcryptjs)
    * Note: This is kept separate as password hashing should use bcrypt, not encryption
    */
