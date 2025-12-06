@@ -232,7 +232,6 @@ class Employee extends Model {
       id_card: this.getMaskedIdCard(),
       bank_card: this.getMaskedBankCard(),
       department_id: this.department_id,
-      department: this.department, // Include department object if loaded
       position: this.position,
       employment_type: this.employment_type,
       entry_date: this.entry_date,
@@ -243,10 +242,18 @@ class Employee extends Model {
       age: this.getAge(),
       work_years: this.getWorkYears(),
       dingtalk_user_id: this.dingtalk_user_id,
+      emergency_contact: this.emergency_contact,
+      emergency_phone: this.emergency_phone,
+      address: this.address,
       data_complete: this.isDataComplete(),
       created_at: this.created_at,
       updated_at: this.updated_at
     };
+
+    // Include department if loaded (convert to plain object)
+    if (this.department) {
+      data.department = this.department.get ? this.department.get({ plain: true }) : this.department;
+    }
 
     if (includeSensitive) {
       data.phone = this.getPhone();

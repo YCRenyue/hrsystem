@@ -18,6 +18,11 @@ import DepartmentList from './pages/Department/DepartmentList';
 import AttendanceList from './pages/Attendance/AttendanceList';
 import LeaveList from './pages/Leave/LeaveList';
 import UserSettings from './pages/Settings';
+import UserProfile from './pages/Profile/UserProfile';
+import AnnualLeaveList from './pages/AnnualLeave/AnnualLeaveList';
+import SocialSecurityList from './pages/SocialSecurity/SocialSecurityList';
+import BusinessTripList from './pages/BusinessTrip/BusinessTripList';
+import CanteenMealList from './pages/CanteenMeal/CanteenMealList';
 import './App.css';
 
 function App() {
@@ -107,8 +112,48 @@ function App() {
                     }
                   />
 
+                  {/* User profile - accessible to all authenticated users */}
+                  <Route path="profile" element={<UserProfile />} />
+
                   {/* User settings - accessible to all authenticated users */}
                   <Route path="settings" element={<UserSettings />} />
+
+                  {/* Business data management - accessible to admin and hr_admin */}
+                  <Route
+                    path="annual-leave"
+                    element={
+                      <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
+                        <AnnualLeaveList />
+                      </RoleGuard>
+                    }
+                  />
+
+                  <Route
+                    path="social-security"
+                    element={
+                      <RoleGuard requiredRoles={['admin', 'hr_admin']}>
+                        <SocialSecurityList />
+                      </RoleGuard>
+                    }
+                  />
+
+                  <Route
+                    path="business-trips"
+                    element={
+                      <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
+                        <BusinessTripList />
+                      </RoleGuard>
+                    }
+                  />
+
+                  <Route
+                    path="canteen-meals"
+                    element={
+                      <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
+                        <CanteenMealList />
+                      </RoleGuard>
+                    }
+                  />
 
                   {/* Admin settings - admin only */}
                   <Route

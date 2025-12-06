@@ -124,6 +124,8 @@ const MainLayout: React.FC = () => {
             {location.pathname === '/employees' && '员工管理'}
             {location.pathname === '/departments' && '部门管理'}
             {location.pathname === '/attendance' && '考勤管理'}
+            {location.pathname === '/profile' && '个人资料'}
+            {location.pathname === '/settings' && '用户设置'}
           </div>
           <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
             <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>

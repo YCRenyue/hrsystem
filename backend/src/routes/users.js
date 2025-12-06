@@ -6,6 +6,10 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { authenticateToken } = require('../middleware/auth');
+
+// All routes require authentication
+router.use(authenticateToken);
 
 // Get current user profile
 router.get('/profile', asyncHandler(userController.getUserProfile));

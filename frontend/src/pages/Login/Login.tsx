@@ -96,7 +96,7 @@ const Login: React.FC = () => {
         </Button>
 
         <div style={{ textAlign: 'center', marginTop: 24, color: '#999' }}>
-          <small>演示环境，可使用任意用户名/密码登录</small>
+          <small>Dev</small>
         </div>
       </Card>
     </div>
