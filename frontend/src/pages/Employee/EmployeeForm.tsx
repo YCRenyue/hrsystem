@@ -23,7 +23,6 @@ import {
   EmploymentType,
   EmploymentStatus,
   EmployeeCreateInput,
-  Employee,
 } from '../../types';
 import { employeeService } from '../../services/employeeService';
 import { departmentService } from '../../services/departmentService';

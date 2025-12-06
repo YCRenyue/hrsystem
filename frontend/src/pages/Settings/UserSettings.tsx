@@ -24,7 +24,6 @@ import {
   BgColorsOutlined,
   SaveOutlined
 } from '@ant-design/icons';
-import type { Color } from 'antd/es/color-picker';
 import { userService, UserProfile, UserPreferences, ChangePasswordData } from '../../services/userService';
 
 const { Sider, Content } = Layout;
@@ -50,6 +49,7 @@ const UserSettings: React.FC = () => {
    */
   useEffect(() => {
     loadUserData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadUserData = async () => {

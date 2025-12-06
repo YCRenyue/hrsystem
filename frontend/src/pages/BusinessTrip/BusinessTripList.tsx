@@ -12,7 +12,6 @@ import {
   Modal,
   App,
   Tag,
-  DatePicker,
 } from 'antd';
 import {
   PlusOutlined,
@@ -26,7 +25,6 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 
 const { Search } = Input;
-const { RangePicker } = DatePicker;
 
 interface BusinessTrip {
   trip_id: string;

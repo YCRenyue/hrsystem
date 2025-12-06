@@ -21,7 +21,6 @@ import {
   ReloadOutlined,
   CheckOutlined,
   CloseOutlined,
-  FileDoneOutlined,
   ClockCircleOutlined,
   FileTextOutlined
 } from '@ant-design/icons';
@@ -140,6 +139,7 @@ const LeaveList: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination.current, pagination.pageSize, dateRange, statusFilter, typeFilter]);
 
   /**

@@ -13,7 +13,6 @@ import {
   DatePicker,
   Select,
   message,
-  Spin,
   Row,
   Col,
   Statistic
@@ -111,6 +110,7 @@ const AttendanceList: React.FC = () => {
   // 加载考勤数据
   useEffect(() => {
     fetchAttendanceData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.pagination.current, state.pagination.pageSize, state.filters]);
 
   const fetchDepartments = async () => {

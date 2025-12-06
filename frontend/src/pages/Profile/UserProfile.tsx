@@ -25,7 +25,6 @@ import {
   UserOutlined,
   LockOutlined,
 } from '@ant-design/icons';
-import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 
 interface UserProfileData {
@@ -52,7 +51,6 @@ interface UserProfileData {
 }
 
 const UserProfile = () => {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [profileData, setProfileData] = useState<UserProfileData | null>(null);
@@ -62,6 +60,7 @@ const UserProfile = () => {
 
   useEffect(() => {
     fetchProfileData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchProfileData = async () => {

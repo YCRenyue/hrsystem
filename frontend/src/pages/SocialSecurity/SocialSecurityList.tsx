@@ -6,7 +6,6 @@ import {
   Table,
   Button,
   Input,
-  Select,
   Space,
   Card,
   Upload,
@@ -28,7 +27,6 @@ import api from '../../services/api';
 import dayjs from 'dayjs';
 
 const { Search } = Input;
-const { Option } = Select;
 
 interface SocialSecurity {
   security_id: string;

@@ -12,7 +12,6 @@ import {
   Modal,
   App,
   Tag,
-  DatePicker,
 } from 'antd';
 import {
   PlusOutlined,
@@ -24,10 +23,8 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
-import dayjs from 'dayjs';
 
 const { Search } = Input;
-const { RangePicker } = DatePicker;
 
 interface CanteenMeal {
   meal_id: string;
