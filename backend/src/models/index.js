@@ -5,6 +5,10 @@ const User = require('./User');
 const OnboardingProcess = require('./OnboardingProcess');
 const Leave = require('./Leave');
 const Attendance = require('./Attendance');
+const AnnualLeave = require('./AnnualLeave');
+const SocialSecurity = require('./SocialSecurity');
+const BusinessTrip = require('./BusinessTrip');
+const CanteenMeal = require('./CanteenMeal');
 
 /**
  * Model Associations
@@ -87,6 +91,55 @@ Employee.hasMany(Attendance, {
   as: 'attendances'
 });
 
+// AnnualLeave associations
+AnnualLeave.belongsTo(Employee, {
+  foreignKey: 'employee_id',
+  as: 'employee'
+});
+
+Employee.hasMany(AnnualLeave, {
+  foreignKey: 'employee_id',
+  as: 'annualLeaves'
+});
+
+// SocialSecurity associations
+SocialSecurity.belongsTo(Employee, {
+  foreignKey: 'employee_id',
+  as: 'employee'
+});
+
+Employee.hasMany(SocialSecurity, {
+  foreignKey: 'employee_id',
+  as: 'socialSecurities'
+});
+
+// BusinessTrip associations
+BusinessTrip.belongsTo(Employee, {
+  foreignKey: 'employee_id',
+  as: 'employee'
+});
+
+BusinessTrip.belongsTo(User, {
+  foreignKey: 'approver_id',
+  as: 'approver'
+});
+
+Employee.hasMany(BusinessTrip, {
+  foreignKey: 'employee_id',
+  as: 'businessTrips'
+});
+
+// CanteenMeal associations
+CanteenMeal.belongsTo(Employee, {
+  foreignKey: 'employee_id',
+  as: 'employee'
+});
+
+Employee.hasMany(CanteenMeal, {
+  foreignKey: 'employee_id',
+  as: 'canteenMeals'
+});
+
 /**
  * Sync models with database
  * @param {boolean} force - If true, drops existing tables before creating new ones
@@ -114,7 +167,11 @@ const initModels = () => ({
   User,
   OnboardingProcess,
   Leave,
-  Attendance
+  Attendance,
+  AnnualLeave,
+  SocialSecurity,
+  BusinessTrip,
+  CanteenMeal
 });
 
 module.exports = {
@@ -125,6 +182,10 @@ module.exports = {
   OnboardingProcess,
   Leave,
   Attendance,
+  AnnualLeave,
+  SocialSecurity,
+  BusinessTrip,
+  CanteenMeal,
   syncModels,
   initModels
 };

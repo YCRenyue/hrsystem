@@ -70,6 +70,10 @@ app.use('/api/reports', require('./routes/reports'));
 app.use('/api/attendances', require('./routes/attendances'));
 app.use('/api/leaves', require('./routes/leaves'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/annual-leave', require('./routes/annualLeave'));
+app.use('/api/social-security', require('./routes/socialSecurity'));
+app.use('/api/business-trips', require('./routes/businessTrip'));
+app.use('/api/canteen-meals', require('./routes/canteenMeal'));
 
 // Error handling middleware
 const { errorHandler } = require('./middleware/errorHandler');
