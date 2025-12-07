@@ -1,0 +1,55 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+
+env:
+  NODE_VERSION: '18.x'
+
+jobs:
+  build-docker-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./docker/Dockerfile.backend
+          push: false
+          tags: hrsystem-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build frontend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./docker/Dockerfile.frontend
+          push: false
+          tags: hrsystem-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build summary
+        run: |
+          echo "Docker images built successfully!"
+          echo "Backend: hrsystem-backend:latest"
+          echo "Frontend: hrsystem-frontend:latest"
+          echo ""
+          echo "To deploy manually:"
+          echo "1. Pull the latest code on your server"
+          echo "2. Run: docker-compose build"
+          echo "3. Run: docker-compose up -d"

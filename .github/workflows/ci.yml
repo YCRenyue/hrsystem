@@ -1,0 +1,138 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+      - 'fix/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  NODE_VERSION: '18.x'
+
+jobs:
+  backend-lint:
+    name: Backend Linting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          npm ci
+
+      - name: Run backend linting
+        run: |
+          cd backend
+          npm run lint
+
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm run build
+        env:
+          CI: false
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/build/
+          retention-days: 7
+
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for emoji in files (except requirement.md)
+        run: |
+          echo "Checking for emoji usage in code files..."
+          if find . -type f \
+            -not -path "./node_modules/*" \
+            -not -path "./.git/*" \
+            -not -path "./backend/node_modules/*" \
+            -not -path "./frontend/node_modules/*" \
+            -not -path "./requirement.md" \
+            -not -path "./.github/*" \
+            -not -path "*/coverage/*" \
+            -not -path "*/build/*" \
+            -regex ".*\.\(js\|ts\|jsx\|tsx\|json\|md\|txt\|yml\|yaml\)" \
+            -exec grep -l "[😀-🙏🌀-🗿🚀-🛿]" {} \; | grep -v requirement.md; then
+            echo "ERROR: Emoji found in code files (emoji only allowed in requirement.md)"
+            exit 1
+          else
+            echo "No emoji found in code files - PASS"
+          fi
+
+      - name: Check file size limits
+        run: |
+          echo "Checking for files over 500 lines..."
+          find backend/src frontend/src -type f \( -name "*.js" -o -name "*.ts" -o -name "*.jsx" -o -name "*.tsx" \) 2>/dev/null | while read file; do
+            lines=$(wc -l < "$file")
+            if [ "$lines" -gt 500 ]; then
+              echo "WARNING: $file has $lines lines (limit: 500)"
+            fi
+          done || true
+
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [backend-lint, frontend-build, code-quality]
+    if: always()
+
+    steps:
+      - name: Check CI status
+        run: |
+          echo "CI Pipeline Summary:"
+          echo "==================="
+          echo "Backend Linting: ${{ needs.backend-lint.result }}"
+          echo "Frontend Build: ${{ needs.frontend-build.result }}"
+          echo "Code Quality: ${{ needs.code-quality.result }}"
+
+          if [[ "${{ needs.backend-lint.result }}" == "failure" ]] || \
+             [[ "${{ needs.frontend-build.result }}" == "failure" ]] || \
+             [[ "${{ needs.code-quality.result }}" == "failure" ]]; then
+            echo "CI Pipeline FAILED"
+            exit 1
+          else
+            echo "CI Pipeline PASSED"
+          fi

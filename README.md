@@ -3,6 +3,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/ZixunHuangUPenn/hrsystem?style=flat-square)](https://github.com/ZixunHuangUPenn/hrsystem/stargazers)
 [![GitHub Issues](https://img.shields.io/github/issues/ZixunHuangUPenn/hrsystem?style=flat-square)](https://github.com/ZixunHuangUPenn/hrsystem/issues)
 [![License](https://img.shields.io/github/license/ZixunHuangUPenn/hrsystem?style=flat-square)](LICENSE)
+[![CI Pipeline](https://github.com/ZixunHuangUPenn/hrsystem/actions/workflows/ci.yml/badge.svg)](https://github.com/ZixunHuangUPenn/hrsystem/actions/workflows/ci.yml)
 
 ## 📋 项目概述
 
