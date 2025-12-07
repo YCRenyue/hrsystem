@@ -190,8 +190,8 @@ const AttendanceList: React.FC = () => {
 
   const handleTableChange = (
     pagination: TablePaginationConfig,
-    filters: Record<string, FilterValue | null>,
-    sorter: SorterResult<AttendanceRecord> | SorterResult<AttendanceRecord>[]
+    _filters: Record<string, FilterValue | null>,
+    _sorter: SorterResult<AttendanceRecord> | SorterResult<AttendanceRecord>[]
   ) => {
     setState(prev => ({
       ...prev,
@@ -401,29 +401,36 @@ const AttendanceList: React.FC = () => {
     colorField: 'type',
     radius: 0.8,
     label: {
-      type: 'outer',
-      content: '{name} {percentage}',
+      text: (d: any) => `${d.type}: ${d.value}`,
+      position: 'outside' as const,
+    },
+    legend: {
+      position: 'right' as const,
     },
     interactions: [{ type: 'element-active' }],
   };
 
   // Prepare column chart data (daily attendance trends)
-  const columnData = state.data.reduce((acc: any[], record) => {
+  const columnData: Array<{ date: string; type: string; value: number }> = [];
+  const dateMap = new Map<string, Map<string, number>>();
+
+  state.data.forEach(record => {
     const date = dayjs(record.date).format('MM-DD');
     const statusText = statusMap[record.status]?.text || record.status;
-    const existing = acc.find(item => item.date === date);
 
-    if (existing) {
-      existing[statusText] = (existing[statusText] || 0) + 1;
-    } else {
-      acc.push({
-        date,
-        [statusText]: 1,
-      });
+    if (!dateMap.has(date)) {
+      dateMap.set(date, new Map());
     }
 
-    return acc;
-  }, []);
+    const statusCounts = dateMap.get(date)!;
+    statusCounts.set(statusText, (statusCounts.get(statusText) || 0) + 1);
+  });
+
+  dateMap.forEach((statusCounts, date) => {
+    statusCounts.forEach((count, statusText) => {
+      columnData.push({ date, type: statusText, value: count });
+    });
+  });
 
   return (
     <div style={{ padding: '24px' }}>
@@ -479,20 +486,27 @@ const AttendanceList: React.FC = () => {
       {/* Charts */}
       <Row gutter={16} style={{ marginBottom: '24px' }}>
         <Col xs={24} lg={12}>
-          <Card title="考勤状态分布" bordered={false}>
+          <Card title="考勤状态分布">
             <Pie {...pieConfig} />
           </Card>
         </Col>
         <Col xs={24} lg={12}>
-          <Card title="每日考勤趋势" bordered={false}>
+          <Card title="每日考勤趋势">
             <ColumnChart
               data={columnData}
               xField="date"
               yField="value"
-              seriesField="type"
-              isGroup={true}
-              columnStyle={{
-                radius: [4, 4, 0, 0],
+              colorField="type"
+              transform={[{ type: 'dodgeX' }]}
+              scale={{
+                x: { type: 'band', padding: 0.2 },
+              }}
+              style={{
+                radiusTopLeft: 4,
+                radiusTopRight: 4,
+              }}
+              legend={{
+                position: 'top-right' as const,
               }}
             />
           </Card>

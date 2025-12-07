@@ -61,6 +61,9 @@ const UserSettings: React.FC = () => {
       setProfile(profileData);
       setPreferences(preferencesData);
       preferencesForm.setFieldsValue(preferencesData);
+
+      // Apply theme changes on initial load
+      applyThemeChanges(preferencesData);
     } catch (error) {
       console.error('Failed to load user data:', error);
       message.error('加载用户数据失败');
@@ -332,7 +335,6 @@ const UserSettings: React.FC = () => {
                 showText
                 size="large"
                 format="hex"
-                defaultValue={preferences.backgroundColor}
                 style={{ width: '100%' }}
               />
             </Form.Item>
@@ -348,7 +350,6 @@ const UserSettings: React.FC = () => {
                 showText
                 size="large"
                 format="hex"
-                defaultValue={preferences.primaryColor}
                 style={{ width: '100%' }}
               />
             </Form.Item>

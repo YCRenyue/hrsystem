@@ -11,6 +11,11 @@ import {
   SettingOutlined,
   ApartmentOutlined,
   ClockCircleOutlined,
+  FileTextOutlined,
+  CalendarOutlined,
+  SafetyOutlined,
+  CarOutlined,
+  CoffeeOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -84,6 +89,36 @@ const MainLayout: React.FC = () => {
       label: '考勤管理',
       onClick: () => navigate('/attendance'),
     },
+    {
+      key: '/leaves',
+      icon: <FileTextOutlined />,
+      label: '请假管理',
+      onClick: () => navigate('/leaves'),
+    },
+    {
+      key: '/annual-leave',
+      icon: <CalendarOutlined />,
+      label: '年假管理',
+      onClick: () => navigate('/annual-leave'),
+    },
+    {
+      key: '/social-security',
+      icon: <SafetyOutlined />,
+      label: '社保管理',
+      onClick: () => navigate('/social-security'),
+    },
+    {
+      key: '/business-trips',
+      icon: <CarOutlined />,
+      label: '出差管理',
+      onClick: () => navigate('/business-trips'),
+    },
+    {
+      key: '/canteen-meals',
+      icon: <CoffeeOutlined />,
+      label: '食堂餐费',
+      onClick: () => navigate('/canteen-meals'),
+    },
   ];
 
   return (
@@ -124,6 +159,11 @@ const MainLayout: React.FC = () => {
             {location.pathname === '/employees' && '员工管理'}
             {location.pathname === '/departments' && '部门管理'}
             {location.pathname === '/attendance' && '考勤管理'}
+            {location.pathname === '/leaves' && '请假管理'}
+            {location.pathname === '/annual-leave' && '年假管理'}
+            {location.pathname === '/social-security' && '社保管理'}
+            {location.pathname === '/business-trips' && '出差管理'}
+            {location.pathname === '/canteen-meals' && '食堂餐费'}
             {location.pathname === '/profile' && '个人资料'}
             {location.pathname === '/settings' && '用户设置'}
           </div>
