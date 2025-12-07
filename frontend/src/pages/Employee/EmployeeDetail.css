@@ -1,0 +1,43 @@
+.employee-detail-container {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.employee-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.employee-detail-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.employee-detail-card .ant-descriptions-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1890ff;
+  margin-bottom: 16px;
+}
+
+.employee-detail-card .ant-descriptions-item-label {
+  background-color: #fafafa;
+}
+
+.employee-detail-card .ant-divider {
+  margin: 24px 0;
+}
+
+@media (max-width: 768px) {
+  .employee-detail-container {
+    padding: 16px;
+  }
+
+  .employee-detail-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

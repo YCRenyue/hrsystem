@@ -13,6 +13,7 @@ import Login from './pages/Login/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
 import EmployeeList from './pages/Employee/EmployeeList';
 import EmployeeForm from './pages/Employee/EmployeeForm';
+import EmployeeDetail from './pages/Employee/EmployeeDetail';
 import OnboardingForm from './pages/Onboarding/OnboardingForm';
 import DepartmentList from './pages/Department/DepartmentList';
 import AttendanceList from './pages/Attendance/AttendanceList';
@@ -68,6 +69,16 @@ function App() {
                     element={
                       <RoleGuard requiredPermission="employees.create">
                         <EmployeeForm />
+                      </RoleGuard>
+                    }
+                  />
+
+                  {/* View employee detail - accessible to admin, hr_admin, and department_manager */}
+                  <Route
+                    path="employees/:id"
+                    element={
+                      <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
+                        <EmployeeDetail />
                       </RoleGuard>
                     }
                   />
