@@ -5,7 +5,7 @@
  */
 
 const bcrypt = require('bcryptjs');
-const { sequelize } = require('../../config/database');
+const { sequelize: _sequelize } = require('../../config/database');
 const {
   Employee, Department, Attendance, Leave, User
 } = require('../../models');

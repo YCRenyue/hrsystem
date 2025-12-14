@@ -4,7 +4,7 @@
 
 const bcrypt = require('bcryptjs');
 const { User, Employee, Department } = require('../models');
-const permissionService = require('../services/PermissionService');
+const _permissionService = require('../services/PermissionService');
 
 /**
  * Get current user profile
@@ -50,7 +50,7 @@ const getUserProfile = async (req, res) => {
  */
 const updateUserProfile = async (req, res) => {
   const {
-    email, emergency_contact, emergency_phone, address, status, role
+    email, emergency_contact, emergency_phone, address, status: _status, role: _role
   } = req.body;
 
   // Check for restricted fields

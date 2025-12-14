@@ -3,8 +3,6 @@
  * Creates tables for annual leave, social security, business trips, and canteen meals
  */
 
-'use strict';
-
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     // Create annual_leave table
@@ -424,7 +422,7 @@ module.exports = {
     await queryInterface.addIndex('canteen_meal', ['meal_date']);
   },
 
-  down: async (queryInterface, Sequelize) => {
+  down: async (queryInterface, _Sequelize) => {
     // Drop tables in reverse order
     await queryInterface.dropTable('canteen_meal');
     await queryInterface.dropTable('business_trip_allowance');

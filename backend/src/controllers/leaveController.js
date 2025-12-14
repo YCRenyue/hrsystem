@@ -70,8 +70,8 @@ const getLeaveList = async (req, res) => {
       end_date
     } = req.query;
 
-    const limit = parseInt(size);
-    const offset = (parseInt(page) - 1) * limit;
+    const limit = parseInt(size, 10);
+    const offset = (parseInt(page, 10) - 1) * limit;
 
     // 基础查询条件
     const where = {};
@@ -147,7 +147,7 @@ const getLeaveList = async (req, res) => {
       data: {
         rows: processedRows,
         total: count,
-        page: parseInt(page),
+        page: parseInt(page, 10),
         size: limit
       }
     });

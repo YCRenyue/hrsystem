@@ -83,7 +83,7 @@ const getDashboardStats = async (req, res) => {
       raw: true
     });
 
-    const totalAttendance = attendanceStats.reduce((sum, s) => sum + parseInt(s.count), 0);
+    const totalAttendance = attendanceStats.reduce((sum, s) => sum + parseInt(s.count, 10), 0);
     const normalAttendance = attendanceStats.find((s) => s.status === 'normal')?.count || 0;
     const attendanceRate = totalAttendance > 0
       ? Math.round((normalAttendance / totalAttendance) * 100)
@@ -105,7 +105,7 @@ const getDashboardStats = async (req, res) => {
     });
 
     const pendingLeaves = leaveStats.find((s) => s.status === 'pending')?.count || 0;
-    const totalLeaves = leaveStats.reduce((sum, s) => sum + parseInt(s.count), 0);
+    const totalLeaves = leaveStats.reduce((sum, s) => sum + parseInt(s.count, 10), 0);
 
     res.json({
       success: true,
@@ -156,7 +156,7 @@ const getDepartmentDistribution = async (req, res) => {
 
     const formattedData = distribution.map((item) => ({
       department: item['department.name'] || '未分配',
-      count: parseInt(item.count)
+      count: parseInt(item.count, 10)
     }));
 
     res.json({
@@ -205,7 +205,7 @@ const getHiringTrend = async (req, res) => {
 
       trendData.push({
         month: monthKey,
-        hired: parseInt(hired)
+        hired: parseInt(hired, 10)
       });
     }
 
@@ -268,7 +268,7 @@ const getAttendanceAnalysis = async (req, res) => {
         dailyAttendance,
         statusDistribution: statusDistribution.map((item) => ({
           status: item.status,
-          count: parseInt(item.count)
+          count: parseInt(item.count, 10)
         }))
       }
     });
@@ -312,8 +312,8 @@ const getLeaveAnalysis = async (req, res) => {
       data: {
         typeDistribution: typeDistribution.map((item) => ({
           type: item.leave_type,
-          days: parseInt(item.days) || 0,
-          count: parseInt(item.count)
+          days: parseInt(item.days, 10) || 0,
+          count: parseInt(item.count, 10)
         }))
       }
     });

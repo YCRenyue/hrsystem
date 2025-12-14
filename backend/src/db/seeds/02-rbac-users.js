@@ -16,7 +16,7 @@ const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
 
 module.exports = {
-  async up(queryInterface, Sequelize) {
+  async up(queryInterface, _Sequelize) {
     const transaction = await queryInterface.sequelize.transaction();
 
     try {

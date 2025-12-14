@@ -48,7 +48,7 @@ const asyncHandler = (fn) => (req, res, next) => {
 /**
  * Global error handler middleware
  */
-const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, _next) => {
   // Log error
   console.error('Error occurred:', {
     error: err.message,

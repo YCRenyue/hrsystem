@@ -542,7 +542,7 @@ module.exports = {
     });
   },
 
-  down: async (queryInterface, Sequelize) => {
+  down: async (queryInterface, _Sequelize) => {
     // Drop tables in reverse order
     await queryInterface.dropTable('onboarding_processes');
     await queryInterface.dropTable('users');

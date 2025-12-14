@@ -8,9 +8,6 @@
 
 require('dotenv').config();
 const { sequelize } = require('../config/database');
-const {
-  Department, Employee, User, OnboardingProcess
-} = require('../models');
 
 async function resetDatabase() {
   try {

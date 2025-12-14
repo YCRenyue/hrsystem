@@ -5,7 +5,7 @@
  */
 
 const { Op } = require('sequelize');
-const { sequelize } = require('../config/database');
+const { sequelize: _sequelize } = require('../config/database');
 const {
   Employee, Leave, Attendance, Department
 } = require('../models');

@@ -54,7 +54,7 @@ const getSocialSecurities = async (req, res) => {
 
   const { count, rows } = await SocialSecurity.findAndCountAll(queryOptions);
 
-  const data = rows.map(record => {
+  const data = rows.map((record) => {
     const obj = record.toJSON();
     if (obj.employee) {
       obj.employee.name = record.employee.getName();
@@ -370,7 +370,7 @@ const exportToExcel = async (req, res) => {
 
   const records = await SocialSecurity.findAll(queryOptions);
 
-  const data = records.map(record => ({
+  const data = records.map((record) => ({
     employee_number: record.employee.employee_number,
     employee_name: record.employee.getName(),
     year_month: record.year_month,

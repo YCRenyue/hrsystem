@@ -8,7 +8,7 @@ const { NotFoundError, ValidationError } = require('../middleware/errorHandler')
  * Get all departments with employee count
  */
 const getDepartments = async (req, res) => {
-  const { Employee } = require('../models');
+  const { Employee: _Employee } = require('../models');
   const { sequelize } = require('../config/database');
 
   const departments = await Department.findAll({

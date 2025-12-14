@@ -2,7 +2,7 @@
  * Authentication Controller
  */
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
+const _bcrypt = require('bcryptjs');
 const { User } = require('../models');
 const { UnauthorizedError, ValidationError, NotFoundError } = require('../middleware/errorHandler');
 
@@ -142,7 +142,7 @@ const getDingTalkLoginUrl = async (req, res) => {
 const handleDingTalkCallback = async (req, res) => {
   const dingTalkService = require('../services/DingTalkService');
   const { Employee } = require('../models');
-  const { code, state } = req.body;
+  const { code, state: _state } = req.body;
 
   if (!code) {
     throw new ValidationError('Authorization code is required');

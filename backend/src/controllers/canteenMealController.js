@@ -77,7 +77,7 @@ const getCanteenMeals = async (req, res) => {
   const { count, rows } = await CanteenMeal.findAndCountAll(queryOptions);
 
   // Decrypt employee names
-  const data = rows.map(record => {
+  const data = rows.map((record) => {
     const obj = record.toJSON();
     if (obj.employee) {
       obj.employee.name = record.employee.getName();
@@ -351,7 +351,7 @@ const importFromExcel = async (req, res) => {
 
   const results = await ExcelService.importFromBuffer(
     req.file.buffer,
-    async (row, rowNum) => {
+    async (row, _rowNum) => {
       const employeeNumber = ExcelService.getCellValue(row.getCell(1));
       const mealDate = ExcelService.parseExcelDate(row.getCell(2).value);
       const mealType = ExcelService.getCellValue(row.getCell(3));
@@ -432,7 +432,9 @@ const importFromExcel = async (req, res) => {
  * Export to Excel
  */
 const exportToExcel = async (req, res) => {
-  const { search, mealType, mealDateStart, mealDateEnd, isSubsidized } = req.query;
+  const {
+    search, mealType, mealDateStart, mealDateEnd, isSubsidized
+  } = req.query;
 
   const where = {};
 
@@ -477,7 +479,7 @@ const exportToExcel = async (req, res) => {
 
   const records = await CanteenMeal.findAll(queryOptions);
 
-  const data = records.map(record => ({
+  const data = records.map((record) => ({
     employee_number: record.employee.employee_number,
     employee_name: record.employee.getName(),
     meal_date: record.meal_date,

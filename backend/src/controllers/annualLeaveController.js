@@ -58,7 +58,7 @@ const getAnnualLeaves = async (req, res) => {
   const { count, rows } = await AnnualLeave.findAndCountAll(queryOptions);
 
   // Decrypt employee names
-  const data = rows.map(record => {
+  const data = rows.map((record) => {
     const obj = record.toJSON();
     if (obj.employee) {
       obj.employee.name = record.employee.getName();
@@ -280,7 +280,7 @@ const importFromExcel = async (req, res) => {
 
   const results = await ExcelService.importFromBuffer(
     req.file.buffer,
-    async (row, rowNum) => {
+    async (row, _rowNum) => {
       const employeeNumber = ExcelService.getCellValue(row.getCell(1));
       const year = ExcelService.getCellValue(row.getCell(2));
       const totalDays = ExcelService.getCellValue(row.getCell(3));
@@ -374,7 +374,7 @@ const exportToExcel = async (req, res) => {
 
   const records = await AnnualLeave.findAll(queryOptions);
 
-  const data = records.map(record => ({
+  const data = records.map((record) => ({
     employee_number: record.employee.employee_number,
     employee_name: record.employee.getName(),
     year: record.year,

@@ -122,7 +122,7 @@ module.exports = {
   /**
    * 回滚迁移
    */
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface, _Sequelize) {
     const transaction = await queryInterface.sequelize.transaction();
 
     try {

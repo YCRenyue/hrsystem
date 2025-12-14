@@ -78,7 +78,7 @@ const getBusinessTrips = async (req, res) => {
   const { count, rows } = await BusinessTrip.findAndCountAll(queryOptions);
 
   // Decrypt employee names
-  const data = rows.map(record => {
+  const data = rows.map((record) => {
     const obj = record.toJSON();
     if (obj.employee) {
       obj.employee.name = record.employee.getName();
@@ -376,7 +376,7 @@ const importFromExcel = async (req, res) => {
 
   const results = await ExcelService.importFromBuffer(
     req.file.buffer,
-    async (row, rowNum) => {
+    async (row, _rowNum) => {
       const employeeNumber = ExcelService.getCellValue(row.getCell(1));
       const tripNumber = ExcelService.getCellValue(row.getCell(2));
       const startDate = ExcelService.parseExcelDate(row.getCell(3).value);
@@ -457,7 +457,9 @@ const importFromExcel = async (req, res) => {
  * Export to Excel
  */
 const exportToExcel = async (req, res) => {
-  const { status, search, startDate, endDate } = req.query;
+  const {
+    status, search, startDate, endDate
+  } = req.query;
 
   const where = {};
 
@@ -504,7 +506,7 @@ const exportToExcel = async (req, res) => {
 
   const records = await BusinessTrip.findAll(queryOptions);
 
-  const data = records.map(record => ({
+  const data = records.map((record) => ({
     employee_number: record.employee.employee_number,
     employee_name: record.employee.getName(),
     trip_number: record.trip_number,

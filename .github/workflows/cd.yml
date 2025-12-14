@@ -27,7 +27,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          file: ./docker/Dockerfile.backend
+          file: ./backend/Dockerfile
           push: false
           tags: hrsystem-backend:latest
           cache-from: type=gha
@@ -37,7 +37,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
-          file: ./docker/Dockerfile.frontend
+          file: ./frontend/Dockerfile
           push: false
           tags: hrsystem-frontend:latest
           cache-from: type=gha

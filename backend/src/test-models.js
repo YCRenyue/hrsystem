@@ -209,7 +209,7 @@ async function runTests() {
 
     // Run database migration first
     console.log('\n=== Running Database Migration ===');
-    const { sequelize: migrateSequelize } = require('./config/database');
+    const { sequelize: _migrateSequelize } = require('./config/database');
     const mysql = require('mysql2/promise');
     const fs = require('fs').promises;
     const path = require('path');

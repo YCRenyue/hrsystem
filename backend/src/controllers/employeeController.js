@@ -20,8 +20,8 @@ const getEmployees = async (req, res) => {
     sort_order = 'ASC'
   } = req.query;
 
-  const offset = (parseInt(page) - 1) * parseInt(size);
-  const limit = parseInt(size);
+  const offset = (parseInt(page, 10) - 1) * parseInt(size, 10);
+  const limit = parseInt(size, 10);
 
   // Build where clause
   const where = {};
@@ -105,9 +105,9 @@ const getEmployees = async (req, res) => {
     data: {
       items: safeRows,
       total: count,
-      page: parseInt(page),
-      size: parseInt(size),
-      totalPages: Math.ceil(count / parseInt(size))
+      page: parseInt(page, 10),
+      size: parseInt(size, 10),
+      totalPages: Math.ceil(count / parseInt(size, 10))
     }
   });
 };

@@ -59,7 +59,7 @@ class ExcelService {
     const worksheet = workbook.addWorksheet('Data');
 
     // Add headers
-    worksheet.columns = columns.map(col => ({
+    worksheet.columns = columns.map((col) => ({
       header: col.header,
       key: col.key,
       width: col.width || 15
@@ -75,7 +75,7 @@ class ExcelService {
 
     // Add sample data if provided
     if (sampleData.length > 0) {
-      sampleData.forEach(row => {
+      sampleData.forEach((row) => {
         worksheet.addRow(row);
       });
     }
@@ -126,7 +126,7 @@ class ExcelService {
 
       // Skip empty rows
       const hasData = row.values.some(
-        value => value !== null && value !== undefined && value !== ''
+        (value) => value !== null && value !== undefined && value !== ''
       );
       if (!hasData) continue;
 
@@ -157,7 +157,7 @@ class ExcelService {
     const worksheet = workbook.addWorksheet(sheetName);
 
     // Define columns
-    worksheet.columns = columns.map(col => ({
+    worksheet.columns = columns.map((col) => ({
       header: col.header,
       key: col.key,
       width: col.width || 15
@@ -172,9 +172,9 @@ class ExcelService {
     };
 
     // Add data rows
-    data.forEach(item => {
+    data.forEach((item) => {
       const row = {};
-      columns.forEach(col => {
+      columns.forEach((col) => {
         if (col.formatter) {
           row[col.key] = col.formatter(item);
         } else {
@@ -185,9 +185,9 @@ class ExcelService {
     });
 
     // Auto-fit columns (optional)
-    worksheet.columns.forEach(column => {
+    worksheet.columns.forEach((column) => {
       let maxLength = column.header.length;
-      column.eachCell({ includeEmpty: false }, cell => {
+      column.eachCell({ includeEmpty: false }, (cell) => {
         const cellLength = cell.value ? String(cell.value).length : 0;
         if (cellLength > maxLength) {
           maxLength = cellLength;
