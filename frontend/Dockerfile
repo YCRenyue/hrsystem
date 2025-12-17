@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-alpine as build
+FROM node:18-alpine AS build
 
 WORKDIR /app
 
@@ -23,10 +23,6 @@ COPY --from=build /app/build /usr/share/nginx/html
 
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Create non-root user
-RUN addgroup -g 1001 -S nginx
-RUN adduser -S frontend -u 1001
 
 # Expose port
 EXPOSE 80

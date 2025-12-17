@@ -44,7 +44,6 @@ const EmployeeList: React.FC = () => {
     canCreateEmployee,
     canUpdateEmployee,
     canExportEmployees,
-    canImportEmployees,
     shouldShowDepartmentFilter,
     canViewSensitive,
   } = usePermission();

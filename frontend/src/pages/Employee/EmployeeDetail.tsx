@@ -4,8 +4,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Card,
-  Row,
-  Col,
   Descriptions,
   Button,
   Space,
