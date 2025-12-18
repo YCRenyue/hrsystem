@@ -47,7 +47,7 @@ router.get('/', asyncHandler(employeeController.getEmployees));
  */
 router.get(
   '/export',
-  requireRole('hr', 'admin'),
+  requireRole('hr_admin', 'admin'),
   asyncHandler(employeeController.exportToExcel)
 );
 
@@ -58,7 +58,7 @@ router.get(
  */
 router.post(
   '/import',
-  requireRole('hr', 'admin'),
+  requireRole('hr_admin', 'admin'),
   upload.single('file'),
   asyncHandler(employeeController.importFromExcel)
 );
@@ -77,7 +77,7 @@ router.get('/:id', asyncHandler(employeeController.getEmployeeById));
  */
 router.post(
   '/',
-  requireRole('hr', 'admin'),
+  requireRole('hr_admin', 'admin'),
   asyncHandler(employeeController.createEmployee)
 );
 
@@ -88,7 +88,7 @@ router.post(
  */
 router.put(
   '/:id',
-  requireRole('hr', 'admin'),
+  requireRole('hr_admin', 'admin'),
   asyncHandler(employeeController.updateEmployee)
 );
 

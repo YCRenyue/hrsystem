@@ -83,7 +83,7 @@ const getEmployees = async (req, res) => {
   });
 
   // Check if user has permission to view sensitive data
-  const canViewSensitive = req.user?.role === 'admin' || req.user?.role === 'hr';
+  const canViewSensitive = req.user?.role === 'admin' || req.user?.role === 'hr_admin';
 
   // Convert to safe objects
   let safeRows = rows.map((emp) => emp.toSafeObject(canViewSensitive));
@@ -134,7 +134,7 @@ const getEmployeeById = async (req, res) => {
 
   // Check if user can view sensitive data
   const canViewSensitive = req.user?.role === 'admin'
-    || req.user?.role === 'hr'
+    || req.user?.role === 'hr_admin'
     || req.user?.employee_id === id;
 
   res.json({
@@ -531,7 +531,7 @@ const exportToExcel = async (req, res) => {
   ];
 
   // Check if user can view sensitive data
-  const canViewSensitive = req.user?.role === 'admin' || req.user?.role === 'hr';
+  const canViewSensitive = req.user?.role === 'admin' || req.user?.role === 'hr_admin';
 
   // Add rows
   employees.forEach((employee) => {

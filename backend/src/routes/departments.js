@@ -32,7 +32,7 @@ router.get('/:id', asyncHandler(departmentController.getDepartmentById));
  */
 router.post(
   '/',
-  requireRole('hr', 'admin'),
+  requireRole('hr_admin', 'admin'),
   asyncHandler(departmentController.createDepartment)
 );
 
@@ -43,7 +43,7 @@ router.post(
  */
 router.put(
   '/:id',
-  requireRole('hr', 'admin'),
+  requireRole('hr_admin', 'admin'),
   asyncHandler(departmentController.updateDepartment)
 );
 

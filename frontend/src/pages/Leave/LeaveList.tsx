@@ -336,10 +336,16 @@ const LeaveList: React.FC = () => {
     colorField: 'type',
     radius: 0.8,
     label: {
-      type: 'outer',
-      content: '{name} {percentage}'
+      text: 'type',
+      style: {
+        fontSize: 12,
+        textAlign: 'center'
+      }
     },
-    interactions: [{ type: 'element-active' }]
+    interactions: [{ type: 'element-active' }],
+    legend: {
+      position: 'bottom' as const
+    }
   };
 
   /**
@@ -353,6 +359,13 @@ const LeaveList: React.FC = () => {
   /**
    * Column chart config
    */
+  const getColumnColor = (datum: { status: string }) => {
+    if (datum.status === '已批准') return '#52c41a';
+    if (datum.status === '待审批') return '#faad14';
+    if (datum.status === '已拒绝') return '#f5222d';
+    return '#1890ff';
+  };
+
   const columnConfig = {
     data: columnDataByStatus,
     xField: 'status',
@@ -360,12 +373,7 @@ const LeaveList: React.FC = () => {
     columnStyle: {
       radius: [4, 4, 0, 0]
     },
-    color: ({ status }: { status: string }) => {
-      if (status === '已批准') return '#52c41a';
-      if (status === '待审批') return '#faad14';
-      if (status === '已拒绝') return '#f5222d';
-      return '#1890ff';
-    }
+    color: getColumnColor
   };
 
   return (
