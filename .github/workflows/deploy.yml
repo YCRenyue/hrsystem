@@ -1,0 +1,426 @@
+name: Deploy to Aliyun
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+    inputs:
+      deploy_backend:
+        description: 'Deploy Backend Service'
+        required: false
+        type: boolean
+        default: false
+      deploy_frontend:
+        description: 'Deploy Frontend Service'
+        required: false
+        type: boolean
+        default: false
+      deploy_all:
+        description: 'Deploy All Services'
+        required: false
+        type: boolean
+        default: true
+      skip_cache:
+        description: 'Skip Build Cache'
+        required: false
+        type: boolean
+        default: false
+      environment:
+        description: 'Deployment Environment'
+        required: false
+        type: choice
+        options:
+          - production
+          - staging
+        default: 'production'
+
+env:
+  ACR_REPOSITORY_BACKEND: hrsystem-backend
+  ACR_REPOSITORY_FRONTEND: hrsystem-frontend
+
+jobs:
+  prepare:
+    name: Prepare and Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      should_deploy_backend: ${{ steps.deployment_logic.outputs.should_deploy_backend }}
+      should_deploy_frontend: ${{ steps.deployment_logic.outputs.should_deploy_frontend }}
+      use_cache: ${{ steps.deployment_logic.outputs.use_cache }}
+      image_tag: ${{ steps.deployment_logic.outputs.image_tag }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect file changes
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'backend/Dockerfile'
+            frontend:
+              - 'frontend/**'
+              - 'frontend/Dockerfile'
+            shared:
+              - '**/package.json'
+              - '.github/workflows/deploy.yml'
+
+      - name: Deployment logic decision
+        id: deployment_logic
+        run: |
+          MANUAL_BACKEND="${{ github.event.inputs.deploy_backend }}"
+          MANUAL_FRONTEND="${{ github.event.inputs.deploy_frontend }}"
+          MANUAL_ALL="${{ github.event.inputs.deploy_all }}"
+          SKIP_CACHE="${{ github.event.inputs.skip_cache }}"
+
+          CHANGED_BACKEND="${{ steps.filter.outputs.backend }}"
+          CHANGED_FRONTEND="${{ steps.filter.outputs.frontend }}"
+          CHANGED_SHARED="${{ steps.filter.outputs.shared }}"
+
+          if [[ "$MANUAL_ALL" == "true" ]]; then
+            echo "should_deploy_backend=true" >> $GITHUB_OUTPUT
+            echo "should_deploy_frontend=true" >> $GITHUB_OUTPUT
+          elif [[ "$MANUAL_BACKEND" == "true" ]] || [[ "$MANUAL_FRONTEND" == "true" ]]; then
+            echo "should_deploy_backend=$MANUAL_BACKEND" >> $GITHUB_OUTPUT
+            echo "should_deploy_frontend=$MANUAL_FRONTEND" >> $GITHUB_OUTPUT
+          else
+            if [[ "$CHANGED_SHARED" == "true" ]]; then
+              echo "should_deploy_backend=true" >> $GITHUB_OUTPUT
+              echo "should_deploy_frontend=true" >> $GITHUB_OUTPUT
+            else
+              echo "should_deploy_backend=$CHANGED_BACKEND" >> $GITHUB_OUTPUT
+              echo "should_deploy_frontend=$CHANGED_FRONTEND" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+          echo "use_cache=true" >> $GITHUB_OUTPUT
+          if [[ "$SKIP_CACHE" == "true" ]]; then
+            echo "use_cache=false" >> $GITHUB_OUTPUT
+          fi
+
+          IMAGE_TAG=$(git rev-parse --short HEAD)
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Display deployment info
+        run: |
+          echo "Deployment Decision:"
+          echo "  - Deploy Backend: ${{ steps.deployment_logic.outputs.should_deploy_backend }}"
+          echo "  - Deploy Frontend: ${{ steps.deployment_logic.outputs.should_deploy_frontend }}"
+          echo "  - Use Cache: ${{ steps.deployment_logic.outputs.use_cache }}"
+          echo "  - Image Tag: ${{ steps.deployment_logic.outputs.image_tag }}"
+
+  build-and-push:
+    name: Build and Push Images
+    runs-on: ubuntu-latest
+    needs: prepare
+    if: ${{ needs.prepare.outputs.should_deploy_backend == 'true' || needs.prepare.outputs.should_deploy_frontend == 'true' }}
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      backend_image: ${{ steps.image_info.outputs.backend_image }}
+      frontend_image: ${{ steps.image_info.outputs.frontend_image }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Aliyun Container Registry
+        run: |
+          echo "${{ secrets.ACR_PASSWORD }}" | docker login \
+            --username "${{ secrets.ACR_USERNAME }}" \
+            --password-stdin \
+            "${{ secrets.ACR_REGISTRY }}"
+
+      - name: Build and push backend image
+        if: ${{ needs.prepare.outputs.should_deploy_backend == 'true' }}
+        env:
+          IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
+        run: |
+          cd backend
+
+          FULL_IMAGE="${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_BACKEND }}:${IMAGE_TAG}"
+          LATEST_IMAGE="${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_BACKEND }}:latest"
+
+          if [[ "${{ needs.prepare.outputs.use_cache }}" == "true" ]]; then
+            docker buildx build \
+              --platform linux/amd64 \
+              --cache-from type=registry,ref=${LATEST_IMAGE} \
+              --cache-to type=inline \
+              --tag ${FULL_IMAGE} \
+              --tag ${LATEST_IMAGE} \
+              --push .
+          else
+            docker build \
+              --tag ${FULL_IMAGE} \
+              --tag ${LATEST_IMAGE} .
+            docker push ${FULL_IMAGE}
+            docker push ${LATEST_IMAGE}
+          fi
+
+          echo "Backend image pushed: ${FULL_IMAGE}"
+
+      - name: Build and push frontend image
+        if: ${{ needs.prepare.outputs.should_deploy_frontend == 'true' }}
+        env:
+          IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
+          REACT_APP_API_URL: ${{ secrets.BACKEND_API_URL }}
+        run: |
+          cd frontend
+
+          FULL_IMAGE="${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_FRONTEND }}:${IMAGE_TAG}"
+          LATEST_IMAGE="${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_FRONTEND }}:latest"
+
+          if [[ "${{ needs.prepare.outputs.use_cache }}" == "true" ]]; then
+            docker buildx build \
+              --platform linux/amd64 \
+              --build-arg REACT_APP_API_URL=${REACT_APP_API_URL} \
+              --cache-from type=registry,ref=${LATEST_IMAGE} \
+              --cache-to type=inline \
+              --tag ${FULL_IMAGE} \
+              --tag ${LATEST_IMAGE} \
+              --push .
+          else
+            docker build \
+              --build-arg REACT_APP_API_URL=${REACT_APP_API_URL} \
+              --tag ${FULL_IMAGE} \
+              --tag ${LATEST_IMAGE} .
+            docker push ${FULL_IMAGE}
+            docker push ${LATEST_IMAGE}
+          fi
+
+          echo "Frontend image pushed: ${FULL_IMAGE}"
+
+      - name: Output image information
+        id: image_info
+        env:
+          IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
+        run: |
+          if [[ "${{ needs.prepare.outputs.should_deploy_backend }}" == "true" ]]; then
+            BACKEND_IMAGE="${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_BACKEND }}:${IMAGE_TAG}"
+            echo "backend_image=${BACKEND_IMAGE}" >> $GITHUB_OUTPUT
+          fi
+
+          if [[ "${{ needs.prepare.outputs.should_deploy_frontend }}" == "true" ]]; then
+            FRONTEND_IMAGE="${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_FRONTEND }}:${IMAGE_TAG}"
+            echo "frontend_image=${FRONTEND_IMAGE}" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-to-ecs:
+    name: Deploy to Aliyun ECS
+    runs-on: ubuntu-latest
+    needs: [prepare, build-and-push]
+    if: ${{ needs.build-and-push.result == 'success' }}
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Aliyun CLI
+        run: |
+          wget https://aliyuncli.alicdn.com/aliyun-cli-linux-latest-amd64.tgz
+          tar -xzf aliyun-cli-linux-latest-amd64.tgz
+          sudo mv aliyun /usr/local/bin/
+          aliyun version
+
+      - name: Configure Aliyun CLI
+        run: |
+          aliyun configure set \
+            --profile default \
+            --mode AK \
+            --region ${{ secrets.ALIYUN_REGION }} \
+            --access-key-id ${{ secrets.ALIYUN_ACCESS_KEY_ID }} \
+            --access-key-secret ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}
+
+      - name: Deploy backend to ECS
+        if: ${{ needs.prepare.outputs.should_deploy_backend == 'true' }}
+        env:
+          IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
+          BACKEND_IMAGE: ${{ needs.build-and-push.outputs.backend_image }}
+        run: |
+          # SSH to backend ECS instances and deploy
+          BACKEND_IPS="${{ secrets.BACKEND_ECS_IPS }}"
+
+          for IP in ${BACKEND_IPS//,/ }; do
+            echo "Deploying backend to ECS instance: $IP"
+
+            ssh -o StrictHostKeyChecking=no -i <(echo "${{ secrets.ECS_SSH_KEY }}") \
+              root@$IP << 'ENDSSH'
+              # Login to ACR
+              echo "${{ secrets.ACR_PASSWORD }}" | docker login \
+                --username "${{ secrets.ACR_USERNAME }}" \
+                --password-stdin \
+                "${{ secrets.ACR_REGISTRY }}"
+
+              # Pull new image
+              docker pull ${{ needs.build-and-push.outputs.backend_image }}
+
+              # Stop and remove old container
+              docker stop hrsystem-backend || true
+              docker rm hrsystem-backend || true
+
+              # Start new container
+              docker run -d \
+                --name hrsystem-backend \
+                --restart unless-stopped \
+                -p 3000:3000 \
+                -e NODE_ENV=production \
+                -e DB_HOST=${{ secrets.DB_HOST }} \
+                -e DB_PORT=${{ secrets.DB_PORT }} \
+                -e DB_NAME=${{ secrets.DB_NAME }} \
+                -e DB_USER=${{ secrets.DB_USER }} \
+                -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+                -e REDIS_HOST=${{ secrets.REDIS_HOST }} \
+                -e REDIS_PORT=${{ secrets.REDIS_PORT }} \
+                -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+                -e ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }} \
+                ${{ needs.build-and-push.outputs.backend_image }}
+
+              # Clean up old images
+              docker image prune -f
+
+              # Verify deployment
+              sleep 5
+              curl -f http://localhost:3000/health || exit 1
+              echo "Backend deployed successfully on $IP"
+          ENDSSH
+          done
+
+      - name: Deploy frontend to ECS
+        if: ${{ needs.prepare.outputs.should_deploy_frontend == 'true' }}
+        env:
+          IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
+          FRONTEND_IMAGE: ${{ needs.build-and-push.outputs.frontend_image }}
+        run: |
+          # SSH to frontend ECS instances and deploy
+          FRONTEND_IPS="${{ secrets.FRONTEND_ECS_IPS }}"
+
+          for IP in ${FRONTEND_IPS//,/ }; do
+            echo "Deploying frontend to ECS instance: $IP"
+
+            ssh -o StrictHostKeyChecking=no -i <(echo "${{ secrets.ECS_SSH_KEY }}") \
+              root@$IP << 'ENDSSH'
+              # Login to ACR
+              echo "${{ secrets.ACR_PASSWORD }}" | docker login \
+                --username "${{ secrets.ACR_USERNAME }}" \
+                --password-stdin \
+                "${{ secrets.ACR_REGISTRY }}"
+
+              # Pull new image
+              docker pull ${{ needs.build-and-push.outputs.frontend_image }}
+
+              # Stop and remove old container
+              docker stop hrsystem-frontend || true
+              docker rm hrsystem-frontend || true
+
+              # Start new container
+              docker run -d \
+                --name hrsystem-frontend \
+                --restart unless-stopped \
+                -p 80:80 \
+                ${{ needs.build-and-push.outputs.frontend_image }}
+
+              # Clean up old images
+              docker image prune -f
+
+              # Verify deployment
+              sleep 5
+              curl -f http://localhost/ || exit 1
+              echo "Frontend deployed successfully on $IP"
+          ENDSSH
+          done
+
+      - name: Update load balancer backend servers
+        if: ${{ needs.prepare.outputs.should_deploy_backend == 'true' || needs.prepare.outputs.should_deploy_frontend == 'true' }}
+        run: |
+          echo "Verifying load balancer configuration..."
+
+          # Check backend load balancer health
+          if [[ "${{ needs.prepare.outputs.should_deploy_backend }}" == "true" ]]; then
+            aliyun slb DescribeHealthStatus \
+              --RegionId ${{ secrets.ALIYUN_REGION }} \
+              --LoadBalancerId ${{ secrets.BACKEND_SLB_ID }}
+          fi
+
+          # Check frontend load balancer health
+          if [[ "${{ needs.prepare.outputs.should_deploy_frontend }}" == "true" ]]; then
+            aliyun slb DescribeHealthStatus \
+              --RegionId ${{ secrets.ALIYUN_REGION }} \
+              --LoadBalancerId ${{ secrets.FRONTEND_SLB_ID }}
+          fi
+
+          echo "Load balancer health check completed"
+
+      - name: Generate deployment summary
+        if: always()
+        run: |
+          cat > deployment-summary.md << EOF
+          # Deployment Summary
+
+          **Deployment Time**: $(date)
+          **Triggered By**: ${{ github.event_name }}
+          **Environment**: ${{ github.event.inputs.environment || 'production' }}
+          **Commit**: ${{ github.sha }}
+
+          ## Services Deployed
+
+          | Service | Status | Image |
+          |---------|--------|-------|
+          | Backend | ${{ needs.prepare.outputs.should_deploy_backend == 'true' && '✅ Deployed' || '⏭️ Skipped' }} | ${{ needs.build-and-push.outputs.backend_image || 'N/A' }} |
+          | Frontend | ${{ needs.prepare.outputs.should_deploy_frontend == 'true' && '✅ Deployed' || '⏭️ Skipped' }} | ${{ needs.build-and-push.outputs.frontend_image || 'N/A' }} |
+
+          ## Infrastructure
+
+          - **ACR Registry**: ${{ secrets.ACR_REGISTRY }}
+          - **Region**: ${{ secrets.ALIYUN_REGION }}
+          - **Backend ECS**: Deployed to instances behind SLB ${{ secrets.BACKEND_SLB_ID }}
+          - **Frontend ECS**: Deployed to instances behind SLB ${{ secrets.FRONTEND_SLB_ID }}
+
+          ## Next Steps
+
+          1. Verify services are healthy via load balancer endpoints
+          2. Check application logs on ECS instances
+          3. Monitor application metrics
+          4. Run smoke tests on deployed services
+
+          ---
+          *Generated by GitHub Actions - Run #${{ github.run_number }}*
+          EOF
+
+          cat deployment-summary.md
+
+      - name: Upload deployment summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-summary-${{ github.run_number }}
+          path: deployment-summary.md
+          retention-days: 30
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [[ "${{ job.status }}" == "success" ]]; then
+            echo "✅ Deployment completed successfully!"
+          else
+            echo "❌ Deployment failed. Please check the logs."
+            exit 1
+          fi
