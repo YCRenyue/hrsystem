@@ -9,9 +9,9 @@ const { sequelize } = require('../config/database');
 
 const Leave = sequelize.define('Leave', {
   leave_id: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     primaryKey: true,
-    defaultValue: DataTypes.UUIDV4,
+    autoIncrement: true,
     comment: '假期记录ID'
   },
   employee_id: {

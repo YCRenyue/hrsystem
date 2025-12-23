@@ -1,4 +1,4 @@
-name: Deploy to Aliyun
+name: 🚀 Deploy to Aliyun ECS
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -14,41 +14,36 @@ on:
   workflow_dispatch:
     inputs:
       deploy_backend:
-        description: 'Deploy Backend Service'
+        description: '🖥️ 部署后端服务'
         required: false
         type: boolean
         default: false
       deploy_frontend:
-        description: 'Deploy Frontend Service'
+        description: '🌐 部署前端服务'
         required: false
         type: boolean
         default: false
       deploy_all:
-        description: 'Deploy All Services'
+        description: '🚀 部署所有服务 (优先级最高)'
         required: false
         type: boolean
         default: true
       skip_cache:
-        description: 'Skip Build Cache'
+        description: '❌ 跳过构建缓存'
         required: false
         type: boolean
         default: false
-      environment:
-        description: 'Deployment Environment'
-        required: false
-        type: choice
-        options:
-          - production
-          - staging
-        default: 'production'
 
 env:
   ACR_REPOSITORY_BACKEND: hrsystem-backend
   ACR_REPOSITORY_FRONTEND: hrsystem-frontend
+  BACKEND_PORT: 3001
+  FRONTEND_PORT: 80
 
 jobs:
+  # 1. 检测变更和配置
   prepare:
-    name: Prepare and Detect Changes
+    name: 📋 准备和检测
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
@@ -58,12 +53,12 @@ jobs:
       use_cache: ${{ steps.deployment_logic.outputs.use_cache }}
       image_tag: ${{ steps.deployment_logic.outputs.image_tag }}
     steps:
-      - name: Checkout repository
+      - name: 🔄 Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Detect file changes
+      - name: 🔍 检测文件变更
         uses: dorny/paths-filter@v2
         id: filter
         with:
@@ -78,7 +73,7 @@ jobs:
               - '**/package.json'
               - '.github/workflows/deploy.yml'
 
-      - name: Deployment logic decision
+      - name: 🧠 部署逻辑决策
         id: deployment_logic
         run: |
           MANUAL_BACKEND="${{ github.event.inputs.deploy_backend }}"
@@ -90,6 +85,7 @@ jobs:
           CHANGED_FRONTEND="${{ steps.filter.outputs.frontend }}"
           CHANGED_SHARED="${{ steps.filter.outputs.shared }}"
 
+          # 优先级：手动部署所有 > 手动指定 > 自动检测
           if [[ "$MANUAL_ALL" == "true" ]]; then
             echo "should_deploy_backend=true" >> $GITHUB_OUTPUT
             echo "should_deploy_frontend=true" >> $GITHUB_OUTPUT
@@ -97,6 +93,7 @@ jobs:
             echo "should_deploy_backend=$MANUAL_BACKEND" >> $GITHUB_OUTPUT
             echo "should_deploy_frontend=$MANUAL_FRONTEND" >> $GITHUB_OUTPUT
           else
+            # 共享配置变更时同时部署前后端
             if [[ "$CHANGED_SHARED" == "true" ]]; then
               echo "should_deploy_backend=true" >> $GITHUB_OUTPUT
               echo "should_deploy_frontend=true" >> $GITHUB_OUTPUT
@@ -114,16 +111,17 @@ jobs:
           IMAGE_TAG=$(git rev-parse --short HEAD)
           echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Display deployment info
+      - name: 📊 环境信息展示
         run: |
-          echo "Deployment Decision:"
-          echo "  - Deploy Backend: ${{ steps.deployment_logic.outputs.should_deploy_backend }}"
-          echo "  - Deploy Frontend: ${{ steps.deployment_logic.outputs.should_deploy_frontend }}"
-          echo "  - Use Cache: ${{ steps.deployment_logic.outputs.use_cache }}"
-          echo "  - Image Tag: ${{ steps.deployment_logic.outputs.image_tag }}"
+          echo "🔧 部署决策结果:"
+          echo "  - 部署后端: ${{ steps.deployment_logic.outputs.should_deploy_backend }}"
+          echo "  - 部署前端: ${{ steps.deployment_logic.outputs.should_deploy_frontend }}"
+          echo "  - 使用缓存: ${{ steps.deployment_logic.outputs.use_cache }}"
+          echo "  - 镜像标签: ${{ steps.deployment_logic.outputs.image_tag }}"
 
+  # 2. 构建和推送镜像
   build-and-push:
-    name: Build and Push Images
+    name: 🏗️ 构建和推送镜像
     runs-on: ubuntu-latest
     needs: prepare
     if: ${{ needs.prepare.outputs.should_deploy_backend == 'true' || needs.prepare.outputs.should_deploy_frontend == 'true' }}
@@ -135,20 +133,21 @@ jobs:
       frontend_image: ${{ steps.image_info.outputs.frontend_image }}
 
     steps:
-      - name: Checkout repository
+      - name: 🔄 Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
+      - name: ⚙️ 设置 Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Aliyun Container Registry
+      - name: 🔐 登录 ACR
         run: |
           echo "${{ secrets.ACR_PASSWORD }}" | docker login \
             --username "${{ secrets.ACR_USERNAME }}" \
             --password-stdin \
             "${{ secrets.ACR_REGISTRY }}"
 
-      - name: Build and push backend image
+      # 构建和推送后端镜像
+      - name: 🏗️ 构建和推送后端镜像
         if: ${{ needs.prepare.outputs.should_deploy_backend == 'true' }}
         env:
           IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
@@ -165,18 +164,22 @@ jobs:
               --cache-to type=inline \
               --tag ${FULL_IMAGE} \
               --tag ${LATEST_IMAGE} \
-              --push .
+              --push . || {
+              echo "⚠️ Buildx 失败，使用传统构建"
+              docker build --tag ${FULL_IMAGE} --tag ${LATEST_IMAGE} .
+              docker push ${FULL_IMAGE}
+              docker push ${LATEST_IMAGE}
+            }
           else
-            docker build \
-              --tag ${FULL_IMAGE} \
-              --tag ${LATEST_IMAGE} .
+            docker build --tag ${FULL_IMAGE} --tag ${LATEST_IMAGE} .
             docker push ${FULL_IMAGE}
             docker push ${LATEST_IMAGE}
           fi
 
-          echo "Backend image pushed: ${FULL_IMAGE}"
+          echo "✅ Backend image pushed: ${FULL_IMAGE}"
 
-      - name: Build and push frontend image
+      # 构建和推送前端镜像
+      - name: 🌐 构建和推送前端镜像
         if: ${{ needs.prepare.outputs.should_deploy_frontend == 'true' }}
         env:
           IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
@@ -195,7 +198,15 @@ jobs:
               --cache-to type=inline \
               --tag ${FULL_IMAGE} \
               --tag ${LATEST_IMAGE} \
-              --push .
+              --push . || {
+              echo "⚠️ Buildx 失败，使用传统构建"
+              docker build \
+                --build-arg REACT_APP_API_URL=${REACT_APP_API_URL} \
+                --tag ${FULL_IMAGE} \
+                --tag ${LATEST_IMAGE} .
+              docker push ${FULL_IMAGE}
+              docker push ${LATEST_IMAGE}
+            }
           else
             docker build \
               --build-arg REACT_APP_API_URL=${REACT_APP_API_URL} \
@@ -205,9 +216,9 @@ jobs:
             docker push ${LATEST_IMAGE}
           fi
 
-          echo "Frontend image pushed: ${FULL_IMAGE}"
+          echo "✅ Frontend image pushed: ${FULL_IMAGE}"
 
-      - name: Output image information
+      - name: 📝 输出镜像信息
         id: image_info
         env:
           IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
@@ -222,67 +233,57 @@ jobs:
             echo "frontend_image=${FRONTEND_IMAGE}" >> $GITHUB_OUTPUT
           fi
 
+  # 3. 部署到 ECS
   deploy-to-ecs:
-    name: Deploy to Aliyun ECS
+    name: 🚀 部署到 ECS
     runs-on: ubuntu-latest
     needs: [prepare, build-and-push]
     if: ${{ needs.build-and-push.result == 'success' }}
-    environment:
-      name: ${{ github.event.inputs.environment || 'production' }}
 
     steps:
-      - name: Checkout repository
+      - name: 🔄 Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Aliyun CLI
+      - name: 🔐 配置 SSH 密钥
         run: |
-          wget https://aliyuncli.alicdn.com/aliyun-cli-linux-latest-amd64.tgz
-          tar -xzf aliyun-cli-linux-latest-amd64.tgz
-          sudo mv aliyun /usr/local/bin/
-          aliyun version
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ECS_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.BACKEND_ECS_IPS }} >> ~/.ssh/known_hosts || true
+          ssh-keyscan -H ${{ secrets.FRONTEND_ECS_IPS }} >> ~/.ssh/known_hosts || true
 
-      - name: Configure Aliyun CLI
-        run: |
-          aliyun configure set \
-            --profile default \
-            --mode AK \
-            --region ${{ secrets.ALIYUN_REGION }} \
-            --access-key-id ${{ secrets.ALIYUN_ACCESS_KEY_ID }} \
-            --access-key-secret ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}
-
-      - name: Deploy backend to ECS
+      - name: 🖥️ 部署后端到 ECS
         if: ${{ needs.prepare.outputs.should_deploy_backend == 'true' }}
         env:
           IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
           BACKEND_IMAGE: ${{ needs.build-and-push.outputs.backend_image }}
         run: |
-          # SSH to backend ECS instances and deploy
           BACKEND_IPS="${{ secrets.BACKEND_ECS_IPS }}"
 
           for IP in ${BACKEND_IPS//,/ }; do
-            echo "Deploying backend to ECS instance: $IP"
+            echo "🚀 部署后端到 ECS: $IP"
 
-            ssh -o StrictHostKeyChecking=no -i <(echo "${{ secrets.ECS_SSH_KEY }}") \
-              root@$IP << 'ENDSSH'
-              # Login to ACR
+            ssh -o StrictHostKeyChecking=no root@$IP << 'ENDSSH'
+              # 登录 ACR
               echo "${{ secrets.ACR_PASSWORD }}" | docker login \
                 --username "${{ secrets.ACR_USERNAME }}" \
                 --password-stdin \
                 "${{ secrets.ACR_REGISTRY }}"
 
-              # Pull new image
+              # 拉取新镜像
               docker pull ${{ needs.build-and-push.outputs.backend_image }}
 
-              # Stop and remove old container
+              # 停止并删除旧容器
               docker stop hrsystem-backend || true
               docker rm hrsystem-backend || true
 
-              # Start new container
+              # 启动新容器
               docker run -d \
                 --name hrsystem-backend \
                 --restart unless-stopped \
-                -p 3000:3000 \
+                -p ${{ env.BACKEND_PORT }}:3001 \
                 -e NODE_ENV=production \
+                -e PORT=3001 \
                 -e DB_HOST=${{ secrets.DB_HOST }} \
                 -e DB_PORT=${{ secrets.DB_PORT }} \
                 -e DB_NAME=${{ secrets.DB_NAME }} \
@@ -292,135 +293,150 @@ jobs:
                 -e REDIS_PORT=${{ secrets.REDIS_PORT }} \
                 -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
                 -e ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }} \
+                -e FRONTEND_URL=${{ secrets.BACKEND_API_URL }} \
                 ${{ needs.build-and-push.outputs.backend_image }}
 
-              # Clean up old images
-              docker image prune -f
+              # 清理旧镜像
+              docker image prune -af --filter "until=24h"
 
-              # Verify deployment
-              sleep 5
-              curl -f http://localhost:3000/health || exit 1
-              echo "Backend deployed successfully on $IP"
+              # 验证部署
+              echo "⏳ 等待服务启动..."
+              sleep 10
+              if curl -f http://localhost:${{ env.BACKEND_PORT }}/health; then
+                echo "✅ 后端部署成功在 $IP"
+              else
+                echo "❌ 后端健康检查失败在 $IP"
+                docker logs hrsystem-backend --tail 50
+                exit 1
+              fi
           ENDSSH
+
+            if [ $? -eq 0 ]; then
+              echo "✅ 后端成功部署到 $IP"
+            else
+              echo "❌ 后端部署失败到 $IP"
+              exit 1
+            fi
           done
 
-      - name: Deploy frontend to ECS
+      - name: 🌐 部署前端到 ECS
         if: ${{ needs.prepare.outputs.should_deploy_frontend == 'true' }}
         env:
           IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
           FRONTEND_IMAGE: ${{ needs.build-and-push.outputs.frontend_image }}
         run: |
-          # SSH to frontend ECS instances and deploy
           FRONTEND_IPS="${{ secrets.FRONTEND_ECS_IPS }}"
 
           for IP in ${FRONTEND_IPS//,/ }; do
-            echo "Deploying frontend to ECS instance: $IP"
+            echo "🚀 部署前端到 ECS: $IP"
 
-            ssh -o StrictHostKeyChecking=no -i <(echo "${{ secrets.ECS_SSH_KEY }}") \
-              root@$IP << 'ENDSSH'
-              # Login to ACR
+            ssh -o StrictHostKeyChecking=no root@$IP << 'ENDSSH'
+              # 登录 ACR
               echo "${{ secrets.ACR_PASSWORD }}" | docker login \
                 --username "${{ secrets.ACR_USERNAME }}" \
                 --password-stdin \
                 "${{ secrets.ACR_REGISTRY }}"
 
-              # Pull new image
+              # 拉取新镜像
               docker pull ${{ needs.build-and-push.outputs.frontend_image }}
 
-              # Stop and remove old container
+              # 停止并删除旧容器
               docker stop hrsystem-frontend || true
               docker rm hrsystem-frontend || true
 
-              # Start new container
+              # 启动新容器
               docker run -d \
                 --name hrsystem-frontend \
                 --restart unless-stopped \
-                -p 80:80 \
+                -p ${{ env.FRONTEND_PORT }}:80 \
                 ${{ needs.build-and-push.outputs.frontend_image }}
 
-              # Clean up old images
-              docker image prune -f
+              # 清理旧镜像
+              docker image prune -af --filter "until=24h"
 
-              # Verify deployment
+              # 验证部署
+              echo "⏳ 等待服务启动..."
               sleep 5
-              curl -f http://localhost/ || exit 1
-              echo "Frontend deployed successfully on $IP"
+              if curl -f http://localhost/; then
+                echo "✅ 前端部署成功在 $IP"
+              else
+                echo "❌ 前端健康检查失败在 $IP"
+                docker logs hrsystem-frontend --tail 50
+                exit 1
+              fi
           ENDSSH
+
+            if [ $? -eq 0 ]; then
+              echo "✅ 前端成功部署到 $IP"
+            else
+              echo "❌ 前端部署失败到 $IP"
+              exit 1
+            fi
           done
 
-      - name: Update load balancer backend servers
-        if: ${{ needs.prepare.outputs.should_deploy_backend == 'true' || needs.prepare.outputs.should_deploy_frontend == 'true' }}
-        run: |
-          echo "Verifying load balancer configuration..."
-
-          # Check backend load balancer health
-          if [[ "${{ needs.prepare.outputs.should_deploy_backend }}" == "true" ]]; then
-            aliyun slb DescribeHealthStatus \
-              --RegionId ${{ secrets.ALIYUN_REGION }} \
-              --LoadBalancerId ${{ secrets.BACKEND_SLB_ID }}
-          fi
-
-          # Check frontend load balancer health
-          if [[ "${{ needs.prepare.outputs.should_deploy_frontend }}" == "true" ]]; then
-            aliyun slb DescribeHealthStatus \
-              --RegionId ${{ secrets.ALIYUN_REGION }} \
-              --LoadBalancerId ${{ secrets.FRONTEND_SLB_ID }}
-          fi
-
-          echo "Load balancer health check completed"
-
-      - name: Generate deployment summary
+      - name: 📊 生成部署摘要
         if: always()
         run: |
-          cat > deployment-summary.md << EOF
-          # Deployment Summary
+          mkdir -p deployment-manifests
 
-          **Deployment Time**: $(date)
-          **Triggered By**: ${{ github.event_name }}
-          **Environment**: ${{ github.event.inputs.environment || 'production' }}
-          **Commit**: ${{ github.sha }}
+          cat > deployment-manifests/deployment-summary.md << EOF
+          # 🚀 部署成功摘要
 
-          ## Services Deployed
+          **部署时间**: $(date)
+          **触发方式**: ${{ github.event_name }}
+          **提交哈希**: ${{ github.sha }}
+          **镜像标签**: ${{ needs.prepare.outputs.image_tag }}
 
-          | Service | Status | Image |
-          |---------|--------|-------|
-          | Backend | ${{ needs.prepare.outputs.should_deploy_backend == 'true' && '✅ Deployed' || '⏭️ Skipped' }} | ${{ needs.build-and-push.outputs.backend_image || 'N/A' }} |
-          | Frontend | ${{ needs.prepare.outputs.should_deploy_frontend == 'true' && '✅ Deployed' || '⏭️ Skipped' }} | ${{ needs.build-and-push.outputs.frontend_image || 'N/A' }} |
+          ## 📋 服务部署情况
 
-          ## Infrastructure
+          | 服务 | 状态 | 镜像地址 |
+          |------|------|----------|
+          | 后端服务 | ${{ needs.prepare.outputs.should_deploy_backend == 'true' && '🟢 已部署' || '⭕ 未部署' }} | ${{ needs.build-and-push.outputs.backend_image || 'N/A' }} |
+          | 前端服务 | ${{ needs.prepare.outputs.should_deploy_frontend == 'true' && '🟢 已部署' || '⭕ 未部署' }} | ${{ needs.build-and-push.outputs.frontend_image || 'N/A' }} |
 
-          - **ACR Registry**: ${{ secrets.ACR_REGISTRY }}
-          - **Region**: ${{ secrets.ALIYUN_REGION }}
-          - **Backend ECS**: Deployed to instances behind SLB ${{ secrets.BACKEND_SLB_ID }}
-          - **Frontend ECS**: Deployed to instances behind SLB ${{ secrets.FRONTEND_SLB_ID }}
+          ## 🔧 环境信息
 
-          ## Next Steps
+          - **ACR 注册表**: \`${{ secrets.ACR_REGISTRY }}\`
+          - **命名空间**: \`${{ secrets.ACR_NAMESPACE }}\`
+          - **后端 ECS**: \`${{ secrets.BACKEND_ECS_IPS }}\`
+          - **前端 ECS**: \`${{ secrets.FRONTEND_ECS_IPS }}\`
+          - **后端端口**: \`${{ env.BACKEND_PORT }}\`
+          - **前端端口**: \`${{ env.FRONTEND_PORT }}\`
 
-          1. Verify services are healthy via load balancer endpoints
-          2. Check application logs on ECS instances
-          3. Monitor application metrics
-          4. Run smoke tests on deployed services
+          ## 📈 下一步操作
+
+          1. ✅ 验证服务健康状态
+          2. 📊 检查应用日志
+          3. 🧪 运行冒烟测试
+          4. 📱 测试前后端连接
+
+          ## 🔗 访问地址
+
+          - **后端 API**: \`${{ secrets.BACKEND_API_URL }}\`
+          - **前端应用**: 通过负载均衡器访问
 
           ---
           *Generated by GitHub Actions - Run #${{ github.run_number }}*
           EOF
 
-          cat deployment-summary.md
+          cat deployment-manifests/deployment-summary.md
 
-      - name: Upload deployment summary
+      - name: 📦 归档部署摘要
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: deployment-summary-${{ github.run_number }}
-          path: deployment-summary.md
+          path: deployment-manifests/
           retention-days: 30
 
-      - name: Notify deployment status
+      - name: 🎯 显示最终结果
         if: always()
         run: |
           if [[ "${{ job.status }}" == "success" ]]; then
-            echo "✅ Deployment completed successfully!"
+            echo "🎉 部署成功完成!"
+            echo "✅ 后端部署: ${{ needs.prepare.outputs.should_deploy_backend }}"
+            echo "✅ 前端部署: ${{ needs.prepare.outputs.should_deploy_frontend }}"
           else
-            echo "❌ Deployment failed. Please check the logs."
+            echo "❌ 部署失败，请检查日志"
             exit 1
           fi

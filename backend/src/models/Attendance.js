@@ -9,9 +9,9 @@ const { sequelize } = require('../config/database');
 
 const Attendance = sequelize.define('Attendance', {
   attendance_id: {
-    type: DataTypes.UUID,
+    type: DataTypes.INTEGER,
     primaryKey: true,
-    defaultValue: DataTypes.UUIDV4,
+    autoIncrement: true,
     comment: '考勤记录ID'
   },
   employee_id: {

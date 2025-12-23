@@ -183,15 +183,15 @@ const getHiringTrend = async (req, res) => {
     // Get hired employees grouped by month
     const hiredData = await Employee.findAll({
       attributes: [
-        [sequelize.fn('DATE_FORMAT', sequelize.col('hired_at'), '%Y-%m'), 'month'],
+        [sequelize.fn('DATE_FORMAT', sequelize.col('entry_date'), '%Y-%m'), 'month'],
         [sequelize.fn('COUNT', sequelize.col('employee_id')), 'count']
       ],
       where: {
-        hired_at: {
+        entry_date: {
           [Op.gte]: twelveMonthsAgo
         }
       },
-      group: [sequelize.fn('DATE_FORMAT', sequelize.col('hired_at'), '%Y-%m')],
+      group: [sequelize.fn('DATE_FORMAT', sequelize.col('entry_date'), '%Y-%m')],
       raw: true
     });
 
