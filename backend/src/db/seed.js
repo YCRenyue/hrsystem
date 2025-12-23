@@ -87,6 +87,7 @@ async function seed() {
     // Create test users with hashed passwords
     const defaultPassword = 'password123'; // Default password for all test accounts
     const passwordHash = await encryptionService.hashPassword(defaultPassword);
+    const { ROLE_PERMISSIONS_MAP } = require('../constants/permissions');
 
     const users = [];
 
@@ -99,7 +100,9 @@ async function seed() {
       email: 'admin@hrsystem.com',
       phone: '13800000001',
       role: 'admin',
-      permissions: ['*'],
+      permissions: ROLE_PERMISSIONS_MAP.admin,
+      data_scope: 'all',
+      can_view_sensitive: true,
       status: 'active',
       is_active: true,
       created_by: 'system'
@@ -114,7 +117,9 @@ async function seed() {
       email: 'hr@hrsystem.com',
       phone: '13800000002',
       role: 'hr_admin',
-      permissions: ['employees:read', 'employees:write', 'departments:read'],
+      permissions: ROLE_PERMISSIONS_MAP.hr_admin,
+      data_scope: 'all',
+      can_view_sensitive: true,
       status: 'active',
       is_active: true,
       created_by: 'system'
@@ -129,7 +134,10 @@ async function seed() {
       email: 'manager@hrsystem.com',
       phone: '13800000003',
       role: 'department_manager',
-      permissions: ['employees:read', 'departments:read'],
+      department_id: departments[0].department_id,
+      permissions: ROLE_PERMISSIONS_MAP.department_manager,
+      data_scope: 'department',
+      can_view_sensitive: true,
       status: 'active',
       is_active: true,
       created_by: 'system'
@@ -144,7 +152,9 @@ async function seed() {
       email: 'employee@hrsystem.com',
       phone: '13800000004',
       role: 'employee',
-      permissions: ['employees:read:self'],
+      permissions: ROLE_PERMISSIONS_MAP.employee,
+      data_scope: 'self',
+      can_view_sensitive: false,
       status: 'active',
       is_active: true,
       created_by: 'system'
