@@ -265,7 +265,6 @@ jobs:
           FRONTEND_IMAGE: ${{ needs.build-and-push.outputs.frontend_image }}
           DEPLOY_BACKEND: ${{ needs.prepare.outputs.should_deploy_backend }}
           DEPLOY_FRONTEND: ${{ needs.prepare.outputs.should_deploy_frontend }}
-          FRONTEND_URL: ${{ vars.FRONTEND_URL }}
         run: |
           # SSH 通过 NAT 网关连接 (NAT_IP:SSH_PORT -> ECS:22)
           NAT_IP="${{ secrets.ECS_NAT_IP }}"
@@ -313,7 +312,7 @@ jobs:
                 -p ${{ env.BACKEND_PORT }}:3001 \
                 -e NODE_ENV=production \
                 -e PORT=3001 \
-                -e FRONTEND_URL=$FRONTEND_URL \
+                -e FRONTEND_URL=${{ vars.FRONTEND_URL }} \
                 -e DB_HOST=${{ vars.DB_HOST }} \
                 -e DB_PORT=${{ vars.DB_PORT }} \
                 -e DB_NAME=${{ vars.DB_NAME }} \
