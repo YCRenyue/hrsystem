@@ -311,6 +311,7 @@ jobs:
                 -p ${{ env.BACKEND_PORT }}:3001 \
                 -e NODE_ENV=production \
                 -e PORT=3001 \
+                -e FRONTEND_URL=${{ vars.FRONTEND_URL }} \
                 -e DB_HOST=${{ vars.DB_HOST }} \
                 -e DB_PORT=${{ vars.DB_PORT }} \
                 -e DB_NAME=${{ vars.DB_NAME }} \
