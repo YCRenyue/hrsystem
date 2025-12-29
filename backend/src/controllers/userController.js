@@ -130,7 +130,7 @@ const changePassword = async (req, res) => {
       });
     }
 
-    const user = await User.findByPk(req.user.user_id);
+    const user = await User.scope('withPassword').findByPk(req.user.user_id);
     if (!user) {
       return res.status(404).json({
         success: false,
