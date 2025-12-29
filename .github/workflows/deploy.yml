@@ -290,9 +290,21 @@ jobs:
               docker stop hrsystem-backend 2>/dev/null || true
               docker rm hrsystem-backend 2>/dev/null || true
 
+              # 获取 MySQL 容器所在的网络 (尝试 hrsystem-db 或 root-db-1)
+              MYSQL_NETWORK=$(docker inspect hrsystem-db --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null || \
+                             docker inspect root-db-1 --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null || echo "")
+
+              # 构建网络参数
+              NETWORK_PARAM=""
+              if [ -n "$MYSQL_NETWORK" ]; then
+                echo "MySQL 容器在网络: $MYSQL_NETWORK"
+                NETWORK_PARAM="--network $MYSQL_NETWORK"
+              fi
+
               docker run -d \
                 --name hrsystem-backend \
                 --restart unless-stopped \
+                $NETWORK_PARAM \
                 -p ${{ env.BACKEND_PORT }}:3001 \
                 -e NODE_ENV=production \
                 -e PORT=3001 \
