@@ -291,20 +291,6 @@ jobs:
               docker stop hrsystem-backend 2>/dev/null || true
               docker rm hrsystem-backend 2>/dev/null || true
 
-              # 获取 MySQL 容器所在的网络 (尝试 hrsystem-db 或 root-db-1)
-              MYSQL_NETWORK=$(docker inspect hrsystem-db --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null || \
-                             docker inspect root-db-1 --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null || echo "")
-
-              # 如果没有检测到网络，使用默认的 hrsystem-network
-              if [ -z "$MYSQL_NETWORK" ]; then
-                MYSQL_NETWORK="hrsystem-network"
-                # 确保网络存在
-                docker network create $MYSQL_NETWORK 2>/dev/null || true
-              fi
-
-              echo "使用网络: $MYSQL_NETWORK"
-              NETWORK_PARAM="--network $MYSQL_NETWORK"
-
               docker run -d \
                 --name hrsystem-backend \
                 --restart unless-stopped \
