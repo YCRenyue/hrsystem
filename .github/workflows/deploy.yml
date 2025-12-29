@@ -291,10 +291,14 @@ jobs:
               docker stop hrsystem-backend 2>/dev/null || true
               docker rm hrsystem-backend 2>/dev/null || true
 
+              # 确保 hrsystem-network 网络存在
+              docker network inspect hrsystem-network >/dev/null 2>&1 || \
+                docker network create hrsystem-network
+
               docker run -d \
                 --name hrsystem-backend \
                 --restart unless-stopped \
-                $NETWORK_PARAM \
+                --network hrsystem-network \
                 -p ${{ env.BACKEND_PORT }}:3001 \
                 -e NODE_ENV=production \
                 -e PORT=3001 \
