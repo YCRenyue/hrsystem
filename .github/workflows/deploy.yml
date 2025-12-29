@@ -322,8 +322,17 @@ jobs:
 
               docker pull ${FRONTEND_IMAGE}
 
+              # 停止所有可能占用端口的容器
               docker stop hrsystem-frontend 2>/dev/null || true
               docker rm hrsystem-frontend 2>/dev/null || true
+
+              # 查找并停止占用 80 端口的容器
+              CONTAINER_ON_PORT=$(docker ps -q --filter "publish=${{ env.FRONTEND_PORT }}")
+              if [ -n "$CONTAINER_ON_PORT" ]; then
+                echo "发现占用端口 ${{ env.FRONTEND_PORT }} 的容器，正在停止..."
+                docker stop $CONTAINER_ON_PORT 2>/dev/null || true
+                docker rm $CONTAINER_ON_PORT 2>/dev/null || true
+              fi
 
               docker run -d \
                 --name hrsystem-frontend \
