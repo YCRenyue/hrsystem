@@ -24,6 +24,7 @@ import AnnualLeaveList from './pages/AnnualLeave/AnnualLeaveList';
 import SocialSecurityList from './pages/SocialSecurity/SocialSecurityList';
 import BusinessTripList from './pages/BusinessTrip/BusinessTripList';
 import CanteenMealList from './pages/CanteenMeal/CanteenMealList';
+import UserManagement from './pages/UserManagement/UserManagement';
 import './App.css';
 
 function App() {
@@ -162,6 +163,16 @@ function App() {
                     element={
                       <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
                         <CanteenMealList />
+                      </RoleGuard>
+                    }
+                  />
+
+                  {/* User management - admin only */}
+                  <Route
+                    path="users"
+                    element={
+                      <RoleGuard requiredRoles={['admin']}>
+                        <UserManagement />
                       </RoleGuard>
                     }
                   />

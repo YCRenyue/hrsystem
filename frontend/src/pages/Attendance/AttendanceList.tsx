@@ -117,7 +117,7 @@ const AttendanceList: React.FC = () => {
     try {
       const response = await fetch('/api/departments', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
         },
       });
       const result = await response.json();
@@ -267,7 +267,7 @@ const AttendanceList: React.FC = () => {
 
       const response = await fetch(`/api/attendance/export?${params.toString()}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
         },
       });
 

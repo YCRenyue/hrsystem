@@ -21,7 +21,7 @@ const DepartmentDistributionChart: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('auth_token');
         const response = await axios.get(
           `${process.env.REACT_APP_API_URL}/api/dashboard/charts/department-distribution`,
           {

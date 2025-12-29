@@ -2,8 +2,15 @@
  * Employee Controller
  */
 const { Op } = require('sequelize');
-const { Employee, Department } = require('../models');
+const { Employee, Department, User } = require('../models');
 const { NotFoundError, ValidationError } = require('../middleware/errorHandler');
+const { encryptionService } = require('../utils/encryption');
+const { sequelize } = require('../config/database');
+
+/**
+ * Default password for new employee accounts
+ */
+const DEFAULT_PASSWORD = '123456';
 
 /**
  * Get paginated list of employees
@@ -144,6 +151,46 @@ const getEmployeeById = async (req, res) => {
 };
 
 /**
+ * Create user account for an employee
+ * @param {Object} employee - Employee instance
+ * @param {string} employeeName - Employee name for display
+ * @param {Object} transaction - Sequelize transaction
+ * @returns {Promise<Object>} Created user instance
+ */
+const createUserForEmployee = async (employee, employeeName, transaction) => {
+  // Check if username already exists
+  const existingUser = await User.findOne({
+    where: { username: employee.employee_number },
+    transaction
+  });
+
+  if (existingUser) {
+    throw new ValidationError(`Username ${employee.employee_number} already exists`);
+  }
+
+  // Hash the default password
+  const passwordHash = await encryptionService.hashPassword(DEFAULT_PASSWORD);
+
+  // Create user account
+  const user = await User.create({
+    employee_id: employee.employee_id,
+    username: employee.employee_number,
+    password_hash: passwordHash,
+    display_name: employeeName,
+    email: employee.email,
+    role: 'employee',
+    department_id: employee.department_id,
+    data_scope: 'self',
+    can_view_sensitive: false,
+    status: 'active',
+    is_active: true,
+    must_change_password: true
+  }, { transaction });
+
+  return user;
+};
+
+/**
  * Create new employee
  */
 const createEmployee = async (req, res) => {
@@ -163,36 +210,50 @@ const createEmployee = async (req, res) => {
     throw new ValidationError('Employee number already exists');
   }
 
-  // Create employee instance
-  const employee = Employee.build({
-    employee_number: employeeData.employee_number,
-    email: employeeData.email,
-    department_id: employeeData.department_id,
-    position: employeeData.position,
-    employment_type: employeeData.employment_type,
-    entry_date: employeeData.entry_date,
-    probation_end_date: employeeData.probation_end_date,
-    status: employeeData.status || 'pending',
-    gender: employeeData.gender,
-    address: employeeData.address,
-    emergency_contact: employeeData.emergency_contact,
-    emergency_phone: employeeData.emergency_phone,
-    created_by: req.user?.user_id
-  });
+  // Use transaction to ensure both employee and user are created together
+  const transaction = await sequelize.transaction();
 
-  // Set encrypted fields using helper methods
-  if (employeeData.name) employee.setName(employeeData.name);
-  if (employeeData.phone) employee.setPhone(employeeData.phone);
-  if (employeeData.id_card) employee.setIdCard(employeeData.id_card);
-  if (employeeData.bank_card) employee.setBankCard(employeeData.bank_card);
-  if (employeeData.birth_date) employee.setBirthDate(employeeData.birth_date);
+  try {
+    // Create employee instance
+    const employee = Employee.build({
+      employee_number: employeeData.employee_number,
+      email: employeeData.email,
+      department_id: employeeData.department_id,
+      position: employeeData.position,
+      employment_type: employeeData.employment_type,
+      entry_date: employeeData.entry_date,
+      probation_end_date: employeeData.probation_end_date,
+      status: employeeData.status || 'pending',
+      gender: employeeData.gender,
+      address: employeeData.address,
+      emergency_contact: employeeData.emergency_contact,
+      emergency_phone: employeeData.emergency_phone,
+      created_by: req.user?.user_id
+    });
 
-  await employee.save();
+    // Set encrypted fields using helper methods
+    if (employeeData.name) employee.setName(employeeData.name);
+    if (employeeData.phone) employee.setPhone(employeeData.phone);
+    if (employeeData.id_card) employee.setIdCard(employeeData.id_card);
+    if (employeeData.bank_card) employee.setBankCard(employeeData.bank_card);
+    if (employeeData.birth_date) employee.setBirthDate(employeeData.birth_date);
 
-  res.status(201).json({
-    success: true,
-    data: employee.toSafeObject(true)
-  });
+    await employee.save({ transaction });
+
+    // Create user account for the employee
+    await createUserForEmployee(employee, employeeData.name, transaction);
+
+    await transaction.commit();
+
+    res.status(201).json({
+      success: true,
+      data: employee.toSafeObject(true),
+      message: 'Employee created successfully. User account created with default password: 123456'
+    });
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
 };
 
 /**
@@ -439,31 +500,44 @@ const importFromExcel = async (req, res) => {
         continue;
       }
 
-      // Create employee
-      const employee = Employee.build({
-        employee_number: employeeData.employee_number,
-        email: employeeData.email,
-        department_id: employeeData.department_id,
-        position: employeeData.position,
-        employment_type: employeeData.employment_type,
-        entry_date: employeeData.entry_date,
-        status: employeeData.status,
-        gender: employeeData.gender,
-        address: employeeData.address,
-        emergency_contact: employeeData.emergency_contact,
-        emergency_phone: employeeData.emergency_phone,
-        created_by: req.user?.user_id
-      });
+      // Use transaction to create employee and user together
+      const transaction = await sequelize.transaction();
 
-      // Set encrypted fields
-      if (employeeData.name) employee.setName(employeeData.name);
-      if (employeeData.phone) employee.setPhone(employeeData.phone);
-      if (employeeData.id_card) employee.setIdCard(employeeData.id_card);
-      if (employeeData.bank_card) employee.setBankCard(employeeData.bank_card);
-      if (employeeData.birth_date) employee.setBirthDate(employeeData.birth_date);
+      try {
+        // Create employee
+        const employee = Employee.build({
+          employee_number: employeeData.employee_number,
+          email: employeeData.email,
+          department_id: employeeData.department_id,
+          position: employeeData.position,
+          employment_type: employeeData.employment_type,
+          entry_date: employeeData.entry_date,
+          status: employeeData.status,
+          gender: employeeData.gender,
+          address: employeeData.address,
+          emergency_contact: employeeData.emergency_contact,
+          emergency_phone: employeeData.emergency_phone,
+          created_by: req.user?.user_id
+        });
 
-      await employee.save();
-      results.success_count++;
+        // Set encrypted fields
+        if (employeeData.name) employee.setName(employeeData.name);
+        if (employeeData.phone) employee.setPhone(employeeData.phone);
+        if (employeeData.id_card) employee.setIdCard(employeeData.id_card);
+        if (employeeData.bank_card) employee.setBankCard(employeeData.bank_card);
+        if (employeeData.birth_date) employee.setBirthDate(employeeData.birth_date);
+
+        await employee.save({ transaction });
+
+        // Create user account for the employee
+        await createUserForEmployee(employee, employeeData.name, transaction);
+
+        await transaction.commit();
+        results.success_count++;
+      } catch (innerError) {
+        await transaction.rollback();
+        throw innerError;
+      }
     } catch (error) {
       results.errors.push({
         row: rowNum,

@@ -35,6 +35,10 @@ on:
         default: false
 
 env:
+  # Aliyun ACR Configuration
+  ACR_REGISTRY: crpi-1f9h7rkbm8zj38tu.cn-zhangjiakou.personal.cr.aliyuncs.com
+  ACR_REGISTRY_VPC: crpi-1f9h7rkbm8zj38tu-vpc.cn-zhangjiakou.personal.cr.aliyuncs.com
+  ACR_NAMESPACE: ycrenyue
   ACR_REPOSITORY_BACKEND: hrsystem-backend
   ACR_REPOSITORY_FRONTEND: hrsystem-frontend
   BACKEND_PORT: 3001
@@ -144,7 +148,7 @@ jobs:
           echo "${{ secrets.ACR_PASSWORD }}" | docker login \
             --username "${{ secrets.ACR_USERNAME }}" \
             --password-stdin \
-            "${{ secrets.ACR_REGISTRY }}"
+            "${{ env.ACR_REGISTRY }}"
 
       # 构建和推送后端镜像
       - name: 🏗️ 构建和推送后端镜像
@@ -154,8 +158,8 @@ jobs:
         run: |
           cd backend
 
-          FULL_IMAGE="${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_BACKEND }}:${IMAGE_TAG}"
-          LATEST_IMAGE="${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_BACKEND }}:latest"
+          FULL_IMAGE="${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_BACKEND }}:${IMAGE_TAG}"
+          LATEST_IMAGE="${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_BACKEND }}:latest"
 
           if [[ "${{ needs.prepare.outputs.use_cache }}" == "true" ]]; then
             docker buildx build \
@@ -187,8 +191,8 @@ jobs:
         run: |
           cd frontend
 
-          FULL_IMAGE="${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_FRONTEND }}:${IMAGE_TAG}"
-          LATEST_IMAGE="${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_FRONTEND }}:latest"
+          FULL_IMAGE="${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_FRONTEND }}:${IMAGE_TAG}"
+          LATEST_IMAGE="${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_FRONTEND }}:latest"
 
           if [[ "${{ needs.prepare.outputs.use_cache }}" == "true" ]]; then
             docker buildx build \
@@ -224,16 +228,18 @@ jobs:
           IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
         run: |
           if [[ "${{ needs.prepare.outputs.should_deploy_backend }}" == "true" ]]; then
-            BACKEND_IMAGE="${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_BACKEND }}:${IMAGE_TAG}"
+            # Use VPC registry for ECS deployment (internal network)
+            BACKEND_IMAGE="${{ env.ACR_REGISTRY_VPC }}/${{ env.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_BACKEND }}:${IMAGE_TAG}"
             echo "backend_image=${BACKEND_IMAGE}" >> $GITHUB_OUTPUT
           fi
 
           if [[ "${{ needs.prepare.outputs.should_deploy_frontend }}" == "true" ]]; then
-            FRONTEND_IMAGE="${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_FRONTEND }}:${IMAGE_TAG}"
+            # Use VPC registry for ECS deployment (internal network)
+            FRONTEND_IMAGE="${{ env.ACR_REGISTRY_VPC }}/${{ env.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_FRONTEND }}:${IMAGE_TAG}"
             echo "frontend_image=${FRONTEND_IMAGE}" >> $GITHUB_OUTPUT
           fi
 
-  # 3. 部署到 ECS
+  # 3. 部署到 ECS (前后端在同一实例，通过 NAT 网关 DNAT 访问)
   deploy-to-ecs:
     name: 🚀 部署到 ECS
     runs-on: ubuntu-latest
@@ -249,130 +255,106 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.ECS_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.BACKEND_ECS_IPS }} >> ~/.ssh/known_hosts || true
-          ssh-keyscan -H ${{ secrets.FRONTEND_ECS_IPS }} >> ~/.ssh/known_hosts || true
+          # 通过 NAT 网关的自定义端口扫描 SSH host key
+          ssh-keyscan -p ${{ secrets.ECS_SSH_PORT }} -H ${{ secrets.ECS_NAT_IP }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      - name: 🖥️ 部署后端到 ECS
-        if: ${{ needs.prepare.outputs.should_deploy_backend == 'true' }}
+      - name: 🚀 部署服务到 ECS
         env:
           IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
           BACKEND_IMAGE: ${{ needs.build-and-push.outputs.backend_image }}
+          FRONTEND_IMAGE: ${{ needs.build-and-push.outputs.frontend_image }}
+          DEPLOY_BACKEND: ${{ needs.prepare.outputs.should_deploy_backend }}
+          DEPLOY_FRONTEND: ${{ needs.prepare.outputs.should_deploy_frontend }}
         run: |
-          BACKEND_IPS="${{ secrets.BACKEND_ECS_IPS }}"
+          # SSH 通过 NAT 网关连接 (NAT_IP:SSH_PORT -> ECS:22)
+          NAT_IP="${{ secrets.ECS_NAT_IP }}"
+          SSH_PORT="${{ secrets.ECS_SSH_PORT }}"
 
-          for IP in ${BACKEND_IPS//,/ }; do
-            echo "🚀 部署后端到 ECS: $IP"
+          echo "🔗 通过 NAT 网关连接 ECS: ${NAT_IP}:${SSH_PORT}"
 
-            ssh -o StrictHostKeyChecking=no root@$IP << 'ENDSSH'
-              # 登录 ACR
-              echo "${{ secrets.ACR_PASSWORD }}" | docker login \
-                --username "${{ secrets.ACR_USERNAME }}" \
-                --password-stdin \
-                "${{ secrets.ACR_REGISTRY }}"
+          ssh -o StrictHostKeyChecking=no -p ${SSH_PORT} root@${NAT_IP} << ENDSSH
+            set -e
 
-              # 拉取新镜像
-              docker pull ${{ needs.build-and-push.outputs.backend_image }}
+            echo "📦 登录阿里云 ACR..."
+            echo "${{ secrets.ACR_PASSWORD }}" | docker login \
+              --username "${{ secrets.ACR_USERNAME }}" \
+              --password-stdin \
+              "${{ env.ACR_REGISTRY_VPC }}"
 
-              # 停止并删除旧容器
-              docker stop hrsystem-backend || true
-              docker rm hrsystem-backend || true
+            # 部署后端
+            if [[ "${DEPLOY_BACKEND}" == "true" ]]; then
+              echo "🖥️ 部署后端服务..."
 
-              # 启动新容器
+              docker pull ${BACKEND_IMAGE}
+
+              docker stop hrsystem-backend 2>/dev/null || true
+              docker rm hrsystem-backend 2>/dev/null || true
+
               docker run -d \
                 --name hrsystem-backend \
                 --restart unless-stopped \
                 -p ${{ env.BACKEND_PORT }}:3001 \
                 -e NODE_ENV=production \
                 -e PORT=3001 \
-                -e DB_HOST=${{ secrets.DB_HOST }} \
-                -e DB_PORT=${{ secrets.DB_PORT }} \
-                -e DB_NAME=${{ secrets.DB_NAME }} \
-                -e DB_USER=${{ secrets.DB_USER }} \
+                -e DB_HOST=${{ vars.DB_HOST }} \
+                -e DB_PORT=${{ vars.DB_PORT }} \
+                -e DB_NAME=${{ vars.DB_NAME }} \
+                -e DB_USER=${{ vars.DB_USER }} \
                 -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-                -e REDIS_HOST=${{ secrets.REDIS_HOST }} \
-                -e REDIS_PORT=${{ secrets.REDIS_PORT }} \
+                -e DB_TIMEZONE=${{ vars.DB_TIMEZONE }} \
                 -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
                 -e ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }} \
-                -e FRONTEND_URL=${{ secrets.BACKEND_API_URL }} \
-                ${{ needs.build-and-push.outputs.backend_image }}
+                ${BACKEND_IMAGE}
 
-              # 清理旧镜像
-              docker image prune -af --filter "until=24h"
-
-              # 验证部署
-              echo "⏳ 等待服务启动..."
+              echo "⏳ 等待后端服务启动..."
               sleep 10
-              if curl -f http://localhost:${{ env.BACKEND_PORT }}/health; then
-                echo "✅ 后端部署成功在 $IP"
+              if curl -sf http://localhost:${{ env.BACKEND_PORT }}/health > /dev/null; then
+                echo "✅ 后端服务部署成功"
               else
-                echo "❌ 后端健康检查失败在 $IP"
-                docker logs hrsystem-backend --tail 50
-                exit 1
+                echo "⚠️ 后端健康检查失败，查看日志："
+                docker logs hrsystem-backend --tail 30
               fi
-          ENDSSH
-
-            if [ $? -eq 0 ]; then
-              echo "✅ 后端成功部署到 $IP"
-            else
-              echo "❌ 后端部署失败到 $IP"
-              exit 1
             fi
-          done
 
-      - name: 🌐 部署前端到 ECS
-        if: ${{ needs.prepare.outputs.should_deploy_frontend == 'true' }}
-        env:
-          IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
-          FRONTEND_IMAGE: ${{ needs.build-and-push.outputs.frontend_image }}
-        run: |
-          FRONTEND_IPS="${{ secrets.FRONTEND_ECS_IPS }}"
+            # 部署前端
+            if [[ "${DEPLOY_FRONTEND}" == "true" ]]; then
+              echo "🌐 部署前端服务..."
 
-          for IP in ${FRONTEND_IPS//,/ }; do
-            echo "🚀 部署前端到 ECS: $IP"
+              docker pull ${FRONTEND_IMAGE}
 
-            ssh -o StrictHostKeyChecking=no root@$IP << 'ENDSSH'
-              # 登录 ACR
-              echo "${{ secrets.ACR_PASSWORD }}" | docker login \
-                --username "${{ secrets.ACR_USERNAME }}" \
-                --password-stdin \
-                "${{ secrets.ACR_REGISTRY }}"
+              docker stop hrsystem-frontend 2>/dev/null || true
+              docker rm hrsystem-frontend 2>/dev/null || true
 
-              # 拉取新镜像
-              docker pull ${{ needs.build-and-push.outputs.frontend_image }}
-
-              # 停止并删除旧容器
-              docker stop hrsystem-frontend || true
-              docker rm hrsystem-frontend || true
-
-              # 启动新容器
               docker run -d \
                 --name hrsystem-frontend \
                 --restart unless-stopped \
                 -p ${{ env.FRONTEND_PORT }}:80 \
-                ${{ needs.build-and-push.outputs.frontend_image }}
+                ${FRONTEND_IMAGE}
 
-              # 清理旧镜像
-              docker image prune -af --filter "until=24h"
-
-              # 验证部署
-              echo "⏳ 等待服务启动..."
+              echo "⏳ 等待前端服务启动..."
               sleep 5
-              if curl -f http://localhost/; then
-                echo "✅ 前端部署成功在 $IP"
+              if curl -sf http://localhost:${{ env.FRONTEND_PORT }}/ > /dev/null; then
+                echo "✅ 前端服务部署成功"
               else
-                echo "❌ 前端健康检查失败在 $IP"
-                docker logs hrsystem-frontend --tail 50
-                exit 1
+                echo "⚠️ 前端健康检查失败，查看日志："
+                docker logs hrsystem-frontend --tail 30
               fi
+            fi
+
+            # 清理旧镜像
+            echo "🧹 清理旧镜像..."
+            docker image prune -af --filter "until=24h" || true
+
+            echo "📊 当前运行的容器："
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
           ENDSSH
 
-            if [ $? -eq 0 ]; then
-              echo "✅ 前端成功部署到 $IP"
-            else
-              echo "❌ 前端部署失败到 $IP"
-              exit 1
-            fi
-          done
+          if [ $? -eq 0 ]; then
+            echo "🎉 部署完成"
+          else
+            echo "❌ 部署失败"
+            exit 1
+          fi
 
       - name: 📊 生成部署摘要
         if: always()
@@ -396,24 +378,23 @@ jobs:
 
           ## 🔧 环境信息
 
-          - **ACR 注册表**: \`${{ secrets.ACR_REGISTRY }}\`
-          - **命名空间**: \`${{ secrets.ACR_NAMESPACE }}\`
-          - **后端 ECS**: \`${{ secrets.BACKEND_ECS_IPS }}\`
-          - **前端 ECS**: \`${{ secrets.FRONTEND_ECS_IPS }}\`
+          - **ACR 注册表**: \`${{ env.ACR_REGISTRY }}\`
+          - **ACR VPC 地址**: \`${{ env.ACR_REGISTRY_VPC }}\`
+          - **命名空间**: \`${{ env.ACR_NAMESPACE }}\`
           - **后端端口**: \`${{ env.BACKEND_PORT }}\`
           - **前端端口**: \`${{ env.FRONTEND_PORT }}\`
 
           ## 📈 下一步操作
 
-          1. ✅ 验证服务健康状态
-          2. 📊 检查应用日志
-          3. 🧪 运行冒烟测试
-          4. 📱 测试前后端连接
+          1. 验证服务健康状态
+          2. 检查应用日志
+          3. 运行冒烟测试
+          4. 测试前后端连接
 
-          ## 🔗 访问地址
+          ## 🔗 数据库配置
 
-          - **后端 API**: \`${{ secrets.BACKEND_API_URL }}\`
-          - **前端应用**: 通过负载均衡器访问
+          - **DB_HOST**: \`${{ vars.DB_HOST }}\`
+          - **DB_NAME**: \`${{ vars.DB_NAME }}\`
 
           ---
           *Generated by GitHub Actions - Run #${{ github.run_number }}*

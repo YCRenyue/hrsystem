@@ -1,10 +1,12 @@
 # 员工信息录入和登入功能详细需求
 
-> **最后更新时间**: 2025-12-22
+> **最后更新时间**: 2025-12-29
 >
 > **文档说明**: 本文档为HR管理系统的详细需求和开发进度跟踪文档。每次开发前请先阅读，开发完成后请更新进度。
 >
 > **最新更新**:
+> - (2025-12-29) 新增员工创建时自动创建用户账户功能（手动创建和Excel导入均支持）
+> - (2025-12-29) 新增用户管理页面（admin专属），支持调整用户权限和重置密码
 > - (2025-12-22) 修复Dashboard数据加载问题，完善考勤和请假数据展示
 > - (2025-12-22) 更新Attendance和Leave模型使用整数ID自增
 > - (2025-12-22) 创建考勤和请假数据库表迁移文件和种子数据
@@ -150,6 +152,11 @@ hrsystem/
   - 角色：role (admin/hr/employee)
   - 权限：permissions (JSON)
   - 部门范围：department_scope
+  - 自动创建：员工创建时自动创建用户账户（已完成 - 2025-12-29）
+    - 用户名：员工号（employee_number）
+    - 初始密码：123456
+    - 角色：employee
+    - 支持手动创建和Excel批量导入
 
 - [x] 创建部门表(departments) (已完成 - 2025-01-08)
   - 部门ID：department_id
@@ -329,11 +336,14 @@ hrsystem/
   - `canUserAccessEmployee(user, employeeId)` - 访问权限验证
   - 集成到所有查询方法
 
-- [ ] 实现用户角色分配API
-  - API端点：POST /api/users/:id/role
-  - API端点：PUT /api/users/:id/department
+- [x] 实现用户角色分配API (已完成 - 2025-12-29)
+  - API端点：GET /api/users - 获取用户列表
+  - API端点：GET /api/users/:id - 获取单个用户
+  - API端点：PUT /api/users/:id/role - 更新用户权限
+  - API端点：POST /api/users/:id/reset-password - 重置密码
+  - API端点：DELETE /api/users/:id - 删除用户
   - 权限检查（仅admin）
-  - 审计日志记录
+  - 前端用户管理页面（/users）
 
 ###### 3.2.3 前端权限基础设施  待开始
 

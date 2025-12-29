@@ -16,6 +16,7 @@ import {
   SafetyOutlined,
   CarOutlined,
   CoffeeOutlined,
+  UsergroupAddOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -119,6 +120,15 @@ const MainLayout: React.FC = () => {
       label: '食堂餐费',
       onClick: () => navigate('/canteen-meals'),
     },
+    // Admin-only menu items
+    ...(user?.role === 'admin' ? [
+      {
+        key: '/users',
+        icon: <UsergroupAddOutlined />,
+        label: '用户管理',
+        onClick: () => navigate('/users'),
+      },
+    ] : []),
   ];
 
   return (
@@ -164,6 +174,7 @@ const MainLayout: React.FC = () => {
             {location.pathname === '/social-security' && '社保管理'}
             {location.pathname === '/business-trips' && '出差管理'}
             {location.pathname === '/canteen-meals' && '食堂餐费'}
+            {location.pathname === '/users' && '用户管理'}
             {location.pathname === '/profile' && '个人资料'}
             {location.pathname === '/settings' && '用户设置'}
           </div>
