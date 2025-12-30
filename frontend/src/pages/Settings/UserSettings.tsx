@@ -21,7 +21,6 @@ import {
 import {
   UserOutlined,
   LockOutlined,
-  BgColorsOutlined,
   SaveOutlined
 } from '@ant-design/icons';
 import { userService, UserProfile, UserPreferences, ChangePasswordData } from '../../services/userService';
@@ -133,12 +132,12 @@ const UserSettings: React.FC = () => {
     }
 
     if (prefs.fontSize) {
-      const fontSizeMap = {
+      const fontSizeMap: Record<string, string> = {
         small: '12px',
         medium: '14px',
         large: '16px'
       };
-      document.documentElement.style.fontSize = fontSizeMap[prefs.fontSize];
+      document.documentElement.style.fontSize = fontSizeMap[prefs.fontSize] || '14px';
     }
   };
 
@@ -408,12 +407,12 @@ const UserSettings: React.FC = () => {
       key: 'password',
       icon: <LockOutlined />,
       label: '修改密码'
-    },
-    {
-      key: 'preferences',
-      icon: <BgColorsOutlined />,
-      label: '个性化偏好'
     }
+    // {
+    //   key: 'preferences',
+    //   icon: <BgColorsOutlined />,
+    //   label: '个性化偏好'
+    // }
   ];
 
   /**

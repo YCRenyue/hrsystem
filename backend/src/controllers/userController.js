@@ -56,7 +56,8 @@ const getUserProfile = async (req, res) => {
  */
 const updateUserProfile = async (req, res) => {
   const {
-    email, emergency_contact, emergency_phone, address, status: _status, role: _role
+    email, emergency_contact, emergency_phone, address, display_name, username,
+    status: _status, role: _role
   } = req.body;
 
   // Check for restricted fields
@@ -79,6 +80,52 @@ const updateUserProfile = async (req, res) => {
     });
   }
 
+  // Validate username if provided
+  if (username !== undefined) {
+    if (username.length < 3 || username.length > 50) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username must be between 3 and 50 characters'
+      });
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username can only contain letters, numbers, and underscores'
+      });
+    }
+    // Check if username is already taken
+    const existingUser = await User.findOne({ where: { username } });
+    if (existingUser && existingUser.user_id !== req.user.user_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username is already taken'
+      });
+    }
+  }
+
+  // Validate display_name if provided
+  if (display_name !== undefined && display_name.length > 100) {
+    return res.status(400).json({
+      success: false,
+      message: 'Display name must be 100 characters or less'
+    });
+  }
+
+  // Build update object with only the fields that need to be updated
+  const updateFields = {};
+  if (email !== undefined) updateFields.email = email;
+  if (display_name !== undefined) updateFields.display_name = display_name;
+  if (username !== undefined) updateFields.username = username;
+
+  // Only update if there are fields to update
+  if (Object.keys(updateFields).length > 0) {
+    await User.update(updateFields, {
+      where: { user_id: req.user.user_id }
+    });
+  }
+
+  // Fetch updated user for response
   const user = await User.findByPk(req.user.user_id);
   if (!user) {
     return res.status(404).json({
@@ -86,10 +133,6 @@ const updateUserProfile = async (req, res) => {
       message: 'User not found'
     });
   }
-
-  // Update allowed user fields
-  if (email !== undefined) user.email = email;
-  await user.save();
 
   // Update employee fields if exists
   if (user.employee_id) {
@@ -100,15 +143,10 @@ const updateUserProfile = async (req, res) => {
       if (emergency_phone !== undefined) employee.emergency_phone = emergency_phone;
       if (address !== undefined) employee.address = address;
       await employee.save();
-
-      return res.json({
-        success: true,
-        message: 'Profile updated successfully',
-        data: employee.toSafeObject(false)
-      });
     }
   }
 
+  // Always return user data to reflect any user field changes (like username)
   res.json({
     success: true,
     message: 'Profile updated successfully',

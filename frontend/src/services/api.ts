@@ -41,13 +41,17 @@ apiClient.interceptors.response.use(
   },
   (error: AxiosError) => {
     if (error.response) {
-      const { status } = error.response;
+      const { status, config } = error.response;
 
       // Handle 401 Unauthorized - redirect to login
+      // Skip redirect for login endpoint to allow showing error message
       if (status === 401) {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user_info');
-        window.location.href = '/login';
+        const isLoginRequest = config.url?.includes('/auth/login');
+        if (!isLoginRequest) {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('user_info');
+          window.location.href = '/login';
+        }
       }
 
       // Handle 403 Forbidden

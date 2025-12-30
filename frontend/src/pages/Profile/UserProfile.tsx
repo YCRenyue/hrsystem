@@ -14,14 +14,11 @@ import {
   Avatar,
   Row,
   Col,
-  Divider,
   Modal,
   Space,
 } from 'antd';
 import {
   EditOutlined,
-  SaveOutlined,
-  CloseOutlined,
   UserOutlined,
   LockOutlined,
 } from '@ant-design/icons';
@@ -52,11 +49,11 @@ interface UserProfileData {
 
 const UserProfile = () => {
   const [loading, setLoading] = useState(false);
-  const [editing, setEditing] = useState(false);
   const [profileData, setProfileData] = useState<UserProfileData | null>(null);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
-  const [form] = Form.useForm();
+  const [usernameModalVisible, setUsernameModalVisible] = useState(false);
   const [passwordForm] = Form.useForm();
+  const [usernameForm] = Form.useForm();
 
   useEffect(() => {
     fetchProfileData();
@@ -69,37 +66,12 @@ const UserProfile = () => {
       const response = await api.get('/users/profile');
       if (response.data.success) {
         setProfileData(response.data.data);
-        form.setFieldsValue({
-          email: response.data.data.employee?.email,
-          emergency_contact: response.data.data.employee?.emergency_contact,
-          emergency_phone: response.data.data.employee?.emergency_phone,
-          address: response.data.data.employee?.address,
-        });
       }
     } catch (error) {
       message.error('加载个人信息失败');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSave = async () => {
-    try {
-      const values = await form.validateFields();
-      const response = await api.put('/users/profile', values);
-      if (response.data.success) {
-        message.success('个人信息更新成功');
-        setEditing(false);
-        fetchProfileData();
-      }
-    } catch (error: any) {
-      message.error(error.response?.data?.message || '更新个人信息失败');
-    }
-  };
-
-  const handleCancel = () => {
-    setEditing(false);
-    form.resetFields();
   };
 
   const handleChangePassword = async () => {
@@ -114,6 +86,30 @@ const UserProfile = () => {
     } catch (error: any) {
       message.error(error.response?.data?.message || '修改密码失败');
     }
+  };
+
+  const handleUpdateUsername = async () => {
+    try {
+      const values = await usernameForm.validateFields();
+      const response = await api.put('/users/profile', {
+        username: values.username
+      });
+      if (response.data.success) {
+        message.success('用户名更新成功');
+        setUsernameModalVisible(false);
+        usernameForm.resetFields();
+        fetchProfileData();
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || '更新用户名失败');
+    }
+  };
+
+  const openUsernameModal = () => {
+    usernameForm.setFieldsValue({
+      username: profileData?.user.username || ''
+    });
+    setUsernameModalVisible(true);
   };
 
   const getRoleLabel = (role: string) => {
@@ -169,28 +165,12 @@ const UserProfile = () => {
               >
                 修改密码
               </Button>
-              {!editing ? (
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  onClick={() => setEditing(true)}
-                >
-                  编辑信息
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    type="primary"
-                    icon={<SaveOutlined />}
-                    onClick={handleSave}
-                  >
-                    保存
-                  </Button>
-                  <Button icon={<CloseOutlined />} onClick={handleCancel}>
-                    取消
-                  </Button>
-                </>
-              )}
+              <Button
+                icon={<EditOutlined />}
+                onClick={openUsernameModal}
+              >
+                编辑信息
+              </Button>
             </Space>
           </Col>
         </Row>
@@ -214,87 +194,35 @@ const UserProfile = () => {
       {/* Employee Information */}
       {profileData.employee && (
         <Card title="员工信息">
-          {!editing ? (
-            <Descriptions bordered column={2}>
-              <Descriptions.Item label="姓名">
-                {profileData.employee.name}
-              </Descriptions.Item>
-              <Descriptions.Item label="部门">
-                {profileData.employee.department?.name || '未分配'}
-              </Descriptions.Item>
-              <Descriptions.Item label="职位">
-                {profileData.employee.position || '未设置'}
-              </Descriptions.Item>
-              <Descriptions.Item label="入职日期">
-                {profileData.employee.entry_date || '未设置'}
-              </Descriptions.Item>
-              <Descriptions.Item label="手机号码">
-                {profileData.employee.phone}
-              </Descriptions.Item>
-              <Descriptions.Item label="邮箱">
-                {profileData.employee.email || '未设置'}
-              </Descriptions.Item>
-              <Descriptions.Item label="紧急联系人">
-                {profileData.employee.emergency_contact || '未设置'}
-              </Descriptions.Item>
-              <Descriptions.Item label="紧急联系电话">
-                {profileData.employee.emergency_phone || '未设置'}
-              </Descriptions.Item>
-              <Descriptions.Item label="家庭地址" span={2}>
-                {profileData.employee.address || '未设置'}
-              </Descriptions.Item>
-            </Descriptions>
-          ) : (
-            <Form form={form} layout="vertical">
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Form.Item
-                    name="email"
-                    label="邮箱"
-                    rules={[
-                      { type: 'email', message: '请输入有效的邮箱地址' },
-                    ]}
-                  >
-                    <Input placeholder="请输入邮箱" />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="emergency_contact" label="紧急联系人">
-                    <Input placeholder="请输入紧急联系人姓名" />
-                  </Form.Item>
-                </Col>
-              </Row>
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Form.Item
-                    name="emergency_phone"
-                    label="紧急联系电话"
-                    rules={[
-                      {
-                        pattern: /^1[3-9]\d{9}$/,
-                        message: '请输入有效的手机号码',
-                      },
-                    ]}
-                  >
-                    <Input placeholder="请输入紧急联系电话" />
-                  </Form.Item>
-                </Col>
-              </Row>
-              <Form.Item name="address" label="家庭地址">
-                <Input.TextArea
-                  rows={3}
-                  placeholder="请输入家庭地址"
-                  maxLength={200}
-                  showCount
-                />
-              </Form.Item>
-
-              <Divider />
-              <div style={{ color: '#666', fontSize: 12 }}>
-                注：姓名、工号、部门、职位、入职日期等信息为只读，如需修改请联系HR管理员。
-              </div>
-            </Form>
-          )}
+          <Descriptions bordered column={2}>
+            <Descriptions.Item label="姓名">
+              {profileData.employee.name}
+            </Descriptions.Item>
+            <Descriptions.Item label="部门">
+              {profileData.employee.department?.name || '未分配'}
+            </Descriptions.Item>
+            <Descriptions.Item label="职位">
+              {profileData.employee.position || '未设置'}
+            </Descriptions.Item>
+            <Descriptions.Item label="入职日期">
+              {profileData.employee.entry_date || '未设置'}
+            </Descriptions.Item>
+            <Descriptions.Item label="手机号码">
+              {profileData.employee.phone}
+            </Descriptions.Item>
+            <Descriptions.Item label="邮箱">
+              {profileData.employee.email || '未设置'}
+            </Descriptions.Item>
+            <Descriptions.Item label="紧急联系人">
+              {profileData.employee.emergency_contact || '未设置'}
+            </Descriptions.Item>
+            <Descriptions.Item label="紧急联系电话">
+              {profileData.employee.emergency_phone || '未设置'}
+            </Descriptions.Item>
+            <Descriptions.Item label="家庭地址" span={2}>
+              {profileData.employee.address || '未设置'}
+            </Descriptions.Item>
+          </Descriptions>
         </Card>
       )}
 
@@ -355,6 +283,41 @@ const UserProfile = () => {
               placeholder="请再次输入新密码"
             />
           </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Edit Username Modal */}
+      <Modal
+        title="编辑用户名"
+        open={usernameModalVisible}
+        onOk={handleUpdateUsername}
+        onCancel={() => {
+          setUsernameModalVisible(false);
+          usernameForm.resetFields();
+        }}
+        okText="确认修改"
+        cancelText="取消"
+      >
+        <Form form={usernameForm} layout="vertical">
+          <Form.Item
+            name="username"
+            label="用户名"
+            rules={[
+              { required: true, message: '请输入用户名' },
+              { min: 3, message: '用户名至少3个字符' },
+              { max: 50, message: '用户名不能超过50个字符' },
+              { pattern: /^[a-zA-Z0-9_]+$/, message: '用户名只能包含字母、数字和下划线' },
+            ]}
+          >
+            <Input
+              prefix={<UserOutlined />}
+              placeholder="请输入用户名"
+              maxLength={50}
+            />
+          </Form.Item>
+          <div style={{ color: '#666', fontSize: 12 }}>
+            提示：用户名用于系统登录，只能包含字母、数字和下划线，长度3-50个字符。
+          </div>
         </Form>
       </Modal>
     </div>

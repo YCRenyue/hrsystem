@@ -1,7 +1,7 @@
 /**
  * Main Layout - Layout wrapper with navigation and header
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Avatar, Dropdown, theme } from 'antd';
 import {
   UserOutlined,
@@ -20,9 +20,27 @@ import {
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { userService, UserPreferences } from '../../services/userService';
 import type { MenuProps } from 'antd';
 
 const { Header, Sider, Content } = Layout;
+
+/**
+ * Apply user preferences to the document
+ */
+const applyPreferences = (prefs: UserPreferences) => {
+  if (prefs.backgroundColor) {
+    document.body.style.backgroundColor = prefs.backgroundColor;
+  }
+  if (prefs.fontSize) {
+    const fontSizeMap: Record<string, string> = {
+      small: '12px',
+      medium: '14px',
+      large: '16px'
+    };
+    document.documentElement.style.fontSize = fontSizeMap[prefs.fontSize] || '14px';
+  }
+};
 
 const MainLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -32,6 +50,19 @@ const MainLayout: React.FC = () => {
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
+
+  // Load and apply user preferences on mount
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const prefs = await userService.getPreferences();
+        applyPreferences(prefs);
+      } catch (error) {
+        console.error('Failed to load user preferences:', error);
+      }
+    };
+    loadPreferences();
+  }, []);
 
   const handleLogout = async () => {
     await logout();

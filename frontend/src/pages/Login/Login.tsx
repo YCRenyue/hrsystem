@@ -83,7 +83,7 @@ const Login: React.FC = () => {
           block
           size="large"
         >
-          使用钉钉登录
+          使用钉钉登录 (等待配置)
         </Button>
 
         <Button
@@ -93,7 +93,7 @@ const Login: React.FC = () => {
           size="large"
           style={{ marginTop: 12, backgroundColor: '#07C160', borderColor: '#07C160', color: '#fff' }}
         >
-          使用微信登录
+          使用微信登录 (等待配置)
         </Button>
 
         <div style={{ textAlign: 'center', marginTop: 24, color: '#999' }}>
