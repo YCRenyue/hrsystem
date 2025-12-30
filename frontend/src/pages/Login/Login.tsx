@@ -2,7 +2,7 @@
  * Login Page - User authentication
  */
 import React, { useState } from 'react';
-import { Form, Input, Button, Card, message, Divider } from 'antd';
+import { Form, Input, Button, Card, Divider, App } from 'antd';
 import { UserOutlined, LockOutlined, DingdingOutlined, WechatOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -12,6 +12,7 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { message } = App.useApp();
 
   const onFinish = async (values: { username: string; password: string }) => {
     setLoading(true);

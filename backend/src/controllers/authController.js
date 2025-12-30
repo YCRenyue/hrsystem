@@ -30,7 +30,7 @@ const login = async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
-    throw new ValidationError('Username and password are required');
+    throw new ValidationError('请输入用户名和密码');
   }
 
   // Find user by username (use withPassword scope to include password_hash)
@@ -39,24 +39,24 @@ const login = async (req, res) => {
   });
 
   if (!user) {
-    throw new UnauthorizedError('Invalid username or password');
+    throw new UnauthorizedError('用户名或密码错误');
   }
 
   // Check if user is active
   if (!user.is_active) {
-    throw new UnauthorizedError('Account is inactive');
+    throw new UnauthorizedError('账户已被禁用');
   }
 
   // Check if account is locked
   if (user.isLocked()) {
-    throw new UnauthorizedError('Account is locked due to too many failed login attempts');
+    throw new UnauthorizedError('账户已被锁定，登录失败次数过多，请稍后再试');
   }
 
   // Verify password
   const isPasswordValid = await user.verifyPassword(password);
   if (!isPasswordValid) {
     await user.recordFailedLogin();
-    throw new UnauthorizedError('Invalid username or password');
+    throw new UnauthorizedError('用户名或密码错误');
   }
 
   // Check if password is expired
@@ -64,7 +64,7 @@ const login = async (req, res) => {
     return res.json({
       success: false,
       must_change_password: true,
-      message: 'Password has expired. Please change your password.'
+      message: '密码已过期，请修改密码'
     });
   }
 
