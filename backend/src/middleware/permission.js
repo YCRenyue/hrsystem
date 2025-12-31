@@ -39,7 +39,7 @@ exports.checkPermission = (requiredPermission) => async (req, res, next) => {
       });
     }
 
-    next();
+    return next();
   } catch (error) {
     console.error('Permission check error:', error);
     return res.status(500).json({
@@ -83,7 +83,7 @@ exports.checkDataScope = (resourceType = 'employee') => async (req, res, next) =
     req.dataScopeFilter = filter;
     req.dataScope = user.data_scope;
 
-    next();
+    return next();
   } catch (error) {
     console.error('Data scope check error:', error);
     return res.status(500).json({
@@ -142,7 +142,7 @@ exports.requireDepartmentAccess = (deptIdParam = 'departmentId') => async (req, 
       });
     }
 
-    next();
+    return next();
   } catch (error) {
     console.error('Department access check error:', error);
     return res.status(500).json({
@@ -195,7 +195,7 @@ exports.checkSensitiveDataAccess = (employeeIdParam = 'id') => async (req, res, 
     // 将结果附加到请求对象
     req.canViewSensitive = canView;
 
-    next();
+    return next();
   } catch (error) {
     console.error('Sensitive data access check error:', error);
     return res.status(500).json({
@@ -234,12 +234,13 @@ exports.requirePermissions = (...middlewares) => async (req, res, next) => {
     const middleware = middlewares[index++];
     try {
       await middleware(req, res, runNext);
+      return undefined;
     } catch (error) {
-      next(error);
+      return next(error);
     }
   };
 
-  await runNext();
+  return runNext();
 };
 
 /**
@@ -305,7 +306,7 @@ exports.checkEditableFields = (employeeIdParam = 'id', requestedFields = []) => 
     // 将可编辑字段附加到请求对象
     req.editableFields = editableFields;
 
-    next();
+    return next();
   } catch (error) {
     console.error('Editable fields check error:', error);
     return res.status(500).json({

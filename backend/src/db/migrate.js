@@ -87,7 +87,7 @@ async function runMigrations() {
     console.log('Database connection successful\n');
 
     const queryInterface = sequelize.getQueryInterface();
-    const Sequelize = sequelize.Sequelize;
+    const { Sequelize } = sequelize;
 
     // Ensure migrations table exists
     await ensureMigrationsTable(queryInterface, Sequelize);
@@ -149,7 +149,7 @@ async function rollbackMigration() {
     console.log('Database connection successful\n');
 
     const queryInterface = sequelize.getQueryInterface();
-    const Sequelize = sequelize.Sequelize;
+    const { Sequelize } = sequelize;
 
     // Get executed migrations
     const executedMigrations = await getExecutedMigrations(queryInterface);

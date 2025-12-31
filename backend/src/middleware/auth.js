@@ -19,7 +19,7 @@ const authenticateToken = (req, res, next) => {
     });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
+  return jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
       return res.status(403).json({
         success: false,
@@ -28,7 +28,7 @@ const authenticateToken = (req, res, next) => {
     }
 
     req.user = user;
-    next();
+    return next();
   });
 };
 
@@ -50,7 +50,7 @@ const requireRole = (...roles) => (req, res, next) => {
     });
   }
 
-  next();
+  return next();
 };
 
 module.exports = {

@@ -42,7 +42,7 @@ const getOnboardingForm = async (req, res) => {
     });
   }
 
-  res.json({
+  return res.json({
     success: true,
     data: {
       employee_info: {

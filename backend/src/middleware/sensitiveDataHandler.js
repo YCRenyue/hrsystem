@@ -53,7 +53,7 @@ function sensitiveDataHandler(options = {}) {
       return originalJson(data);
     };
 
-    next();
+    return next();
   };
 }
 
@@ -90,7 +90,7 @@ function processSensitiveData(data, user, canViewSensitive) {
     // 递归处理对象的所有属性
     const processed = {};
     for (const key in data) {
-      if (data.hasOwnProperty(key)) {
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
         processed[key] = processSensitiveData(data[key], user, canViewSensitive);
       }
     }

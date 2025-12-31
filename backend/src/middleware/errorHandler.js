@@ -92,7 +92,7 @@ const errorHandler = (err, req, res, _next) => {
   }
 
   // Default error response
-  res.status(err.statusCode || 500).json({
+  return res.status(err.statusCode || 500).json({
     success: false,
     error: 'Internal Server Error',
     message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'

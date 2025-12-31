@@ -41,14 +41,14 @@ const createLeave = async (req, res) => {
       attachment_url
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'Leave application created successfully',
       data: leave
     });
   } catch (error) {
     console.error('Error creating leave:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to create leave application'
     });
@@ -246,14 +246,14 @@ const updateLeave = async (req, res) => {
 
     await leave.update(updateData);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Leave application updated successfully',
       data: leave
     });
   } catch (error) {
     console.error('Error updating leave:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to update leave application'
     });
@@ -277,13 +277,13 @@ const deleteLeave = async (req, res) => {
 
     await leave.destroy();
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Leave application deleted successfully'
     });
   } catch (error) {
     console.error('Error deleting leave:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to delete leave application'
     });

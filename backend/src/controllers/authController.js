@@ -74,7 +74,7 @@ const login = async (req, res) => {
 
   const token = generateToken(user.toSafeObject());
 
-  res.json({
+  return res.json({
     success: true,
     data: {
       token,

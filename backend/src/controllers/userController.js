@@ -42,7 +42,7 @@ const getUserProfile = async (req, res) => {
   const userData = user.toSafeObject();
   const employeeData = employee ? employee.toSafeObject(false) : null;
 
-  res.json({
+  return res.json({
     success: true,
     data: {
       user: userData,
@@ -147,7 +147,7 @@ const updateUserProfile = async (req, res) => {
   }
 
   // Always return user data to reflect any user field changes (like username)
-  res.json({
+  return res.json({
     success: true,
     message: 'Profile updated successfully',
     data: user.toSafeObject()
@@ -190,13 +190,13 @@ const changePassword = async (req, res) => {
     user.password_hash = newPasswordHash;
     await user.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Password changed successfully'
     });
   } catch (error) {
     console.error('Error changing password:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to change password'
     });
@@ -226,13 +226,13 @@ const getUserPreferences = async (req, res) => {
       primaryColor: '#1890ff'
     };
 
-    res.json({
+    return res.json({
       success: true,
       data: preferences
     });
   } catch (error) {
     console.error('Error getting user preferences:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to get preferences'
     });
@@ -268,14 +268,14 @@ const updateUserPreferences = async (req, res) => {
     user.preferences = preferences;
     await user.save();
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Preferences updated successfully',
       data: preferences
     });
   } catch (error) {
     console.error('Error updating user preferences:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to update preferences'
     });
@@ -315,7 +315,7 @@ const getProfileEmployee = async (req, res) => {
   // Return employee with full information but masked sensitive data
   const employeeData = employee.toSafeObject(false);
 
-  res.json({
+  return res.json({
     success: true,
     data: employeeData
   });
@@ -449,7 +449,7 @@ const getUserById = async (req, res) => {
     };
   }
 
-  res.json({
+  return res.json({
     success: true,
     data: userData
   });
@@ -507,7 +507,7 @@ const updateUserRole = async (req, res) => {
 
   await user.save();
 
-  res.json({
+  return res.json({
     success: true,
     message: 'User updated successfully',
     data: user.toSafeObject()
@@ -541,7 +541,7 @@ const resetUserPassword = async (req, res) => {
 
   await user.save();
 
-  res.json({
+  return res.json({
     success: true,
     message: `Password reset to default: ${DEFAULT_PASSWORD}`
   });
@@ -572,7 +572,7 @@ const deleteUser = async (req, res) => {
 
   await user.destroy();
 
-  res.json({
+  return res.json({
     success: true,
     message: 'User deleted successfully'
   });

@@ -62,14 +62,14 @@ const createAttendance = async (req, res) => {
       device_info
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'Attendance record created successfully',
       data: attendance
     });
   } catch (error) {
     console.error('Error creating attendance:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to create attendance record'
     });
@@ -259,14 +259,14 @@ const updateAttendance = async (req, res) => {
 
     await attendance.update(updateData);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Attendance record updated successfully',
       data: attendance
     });
   } catch (error) {
     console.error('Error updating attendance:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to update attendance record'
     });
@@ -290,13 +290,13 @@ const deleteAttendance = async (req, res) => {
 
     await attendance.destroy();
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Attendance record deleted successfully'
     });
   } catch (error) {
     console.error('Error deleting attendance:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Failed to delete attendance record'
     });
