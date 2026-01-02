@@ -7,14 +7,6 @@ export enum Gender {
   FEMALE = 'female'
 }
 
-export enum EmploymentStatus {
-  PENDING = 'pending',
-  PROBATION = 'probation',
-  REGULAR = 'regular',
-  RESIGNED = 'resigned',
-  TERMINATED = 'terminated'
-}
-
 export enum EmploymentType {
   FULL_TIME = 'full_time',
   PART_TIME = 'part_time',
@@ -82,7 +74,6 @@ export interface Employee {
   position_id?: string;
   manager_id?: string;
   employment_type?: EmploymentType | string;
-  employment_status?: EmploymentStatus;
   status?: string; // Backend uses 'status' (active/pending/inactive)
   work_location?: string;
   address?: string;
@@ -188,9 +179,6 @@ export interface EmployeeCreateInput {
   remarks?: string;
 }
 
-export interface EmployeeUpdateInput extends Partial<EmployeeCreateInput> {
-  employment_status?: EmploymentStatus;
-}
 
 export interface LoginCredentials {
   username: string;
@@ -209,7 +197,6 @@ export interface EmployeeQueryParams {
   keyword?: string;
   department_id?: string;
   status?: string; // Backend uses 'status' for active/pending/inactive
-  employment_status?: EmploymentStatus;
   employment_type?: EmploymentType;
   hire_date_from?: string;
   hire_date_to?: string;

@@ -127,9 +127,9 @@ class SchedulerService {
       for (const employee of employees) {
         try {
           // Generate form token if not exists
-          let process = employee.onboardingProcess;
-          if (!process) {
-            process = await OnboardingProcess.create({
+          let onboardingProcess = employee.onboardingProcess;
+          if (!onboardingProcess) {
+            onboardingProcess = await OnboardingProcess.create({
               employee_id: employee.employee_id,
               process_status: 'pending',
               form_token: this._generateFormToken()
@@ -137,7 +137,8 @@ class SchedulerService {
           }
 
           // Generate form URL
-          const formUrl = `${process.env.FRONTEND_URL}/onboarding/${process.form_token}`;
+          const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+          const formUrl = `${baseUrl}/onboarding/${onboardingProcess.form_token}`;
 
           // Send notification
           const result = await notificationService.sendOnboardingNotification(
@@ -146,7 +147,7 @@ class SchedulerService {
           );
 
           // Update process status
-          await process.update({
+          await onboardingProcess.update({
             process_status: 'sent',
             sent_time: new Date(),
             notification_method: result.channel

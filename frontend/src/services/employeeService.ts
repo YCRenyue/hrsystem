@@ -114,4 +114,22 @@ export const employeeService = {
     );
     return response.data.data!.url;
   },
+
+  /**
+   * Send onboarding form email to employee
+   */
+  async sendOnboardingEmail(employeeId: string): Promise<{
+    success: boolean;
+    message: string;
+    channel?: string;
+    formUrl?: string;
+  }> {
+    const response = await apiClient.post<ApiResponse<{
+      success: boolean;
+      message: string;
+      channel?: string;
+      formUrl?: string;
+    }>>(`/onboarding/send/${employeeId}`);
+    return response.data.data!;
+  },
 };

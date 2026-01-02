@@ -18,7 +18,7 @@ class NotificationService {
     // Email transporter configuration
     this.emailTransporter = null;
     if (process.env.SMTP_HOST && process.env.SMTP_USER) {
-      this.emailTransporter = nodemailer.createTransporter({
+      this.emailTransporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
         port: parseInt(process.env.SMTP_PORT || '587', 10),
         secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports

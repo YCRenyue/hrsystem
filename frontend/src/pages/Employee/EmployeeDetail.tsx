@@ -173,8 +173,8 @@ const EmployeeDetail: React.FC = () => {
             <Tag color="blue">{employee.employee_number || '-'}</Tag>
           </Descriptions.Item>
           <Descriptions.Item label="在职状态">
-            <Tag color={getEmploymentStatusColor(employee.employment_status)}>
-              {getEmploymentStatusText(employee.employment_status)}
+            <Tag color={getEmploymentStatusColor(employee.status)}>
+              {getEmploymentStatusText(employee.status)}
             </Tag>
           </Descriptions.Item>
           <Descriptions.Item label="姓名">
@@ -245,12 +245,12 @@ const EmployeeDetail: React.FC = () => {
             </Space>
           </Descriptions.Item>
           <Descriptions.Item label="职位">
-            {employee.position_id || '-'}
+            {employee.position || '-'}
           </Descriptions.Item>
           <Descriptions.Item label="入职日期">
             <Space>
               <CalendarOutlined />
-              {formatDate(employee.hire_date)}
+              {formatDate(employee.entry_date)}
             </Space>
           </Descriptions.Item>
           <Descriptions.Item label="试用期结束日期">

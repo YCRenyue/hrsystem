@@ -21,7 +21,6 @@ import dayjs from 'dayjs';
 import {
   Gender,
   EmploymentType,
-  EmploymentStatus,
   EmployeeCreateInput,
 } from '../../types';
 import { employeeService } from '../../services/employeeService';
@@ -51,7 +50,7 @@ const EmployeeForm: React.FC = () => {
 
     // Department manager can only edit limited fields
     if (isDepartmentManager) {
-      const editableFields = ['phone', 'email', 'position_id', 'emergency_contact', 'emergency_phone'];
+      const editableFields = ['phone', 'email', 'position', 'emergency_contact', 'emergency_phone'];
       return editableFields.includes(fieldName);
     }
 
@@ -77,7 +76,7 @@ const EmployeeForm: React.FC = () => {
       // Populate form with employee data
       form.setFieldsValue({
         ...data,
-        hire_date: data.hire_date ? dayjs(data.hire_date) : null,
+        entry_date: data.entry_date ? dayjs(data.entry_date) : null,
         probation_end_date: data.probation_end_date
           ? dayjs(data.probation_end_date)
           : null,
@@ -101,7 +100,7 @@ const EmployeeForm: React.FC = () => {
     try {
       const formData: EmployeeCreateInput = {
         ...values,
-        hire_date: values.hire_date?.format('YYYY-MM-DD'),
+        entry_date: values.entry_date?.format('YYYY-MM-DD'),
         probation_end_date: values.probation_end_date?.format('YYYY-MM-DD'),
         birth_date: values.birth_date?.format('YYYY-MM-DD'),
       };
@@ -111,15 +110,13 @@ const EmployeeForm: React.FC = () => {
         message.success('员工信息更新成功');
       } else {
         await employeeService.createEmployee(formData);
-        message.success('员工创建成功');
+        message.success('员工创建成功！入职登记表邮件将在入职当天早上9点自动发送');
       }
 
       navigate('/employees');
     } catch (error: any) {
-      message.error(
-        error.response?.data?.message ||
-          `${isEditMode ? '更新' : '创建'}员工失败`
-      );
+      const errorMessage = error.response?.data?.message || error.response?.data?.error;
+      message.error(errorMessage || `${isEditMode ? '更新' : '创建'}员工失败`);
     } finally {
       setLoading(false);
     }
@@ -155,7 +152,7 @@ const EmployeeForm: React.FC = () => {
           initialValues={{
             gender: Gender.MALE,
             employment_type: EmploymentType.FULL_TIME,
-            employment_status: EmploymentStatus.PENDING,
+            status: 'pending',
           }}
         >
           <Row gutter={16}>
@@ -242,7 +239,11 @@ const EmployeeForm: React.FC = () => {
               <Form.Item
                 label="邮箱"
                 name="email"
-                rules={[{ type: 'email', message: '邮箱格式不正确' }]}
+                rules={[
+                  { required: true, message: '请输入邮箱地址！' },
+                  { type: 'email', message: '邮箱格式不正确' }
+                ]}
+                tooltip="用于发送入职登记表链接"
               >
                 <Input placeholder="email@example.com" disabled={!canEditField('email')} />
               </Form.Item>
@@ -253,10 +254,10 @@ const EmployeeForm: React.FC = () => {
             <Col xs={24} md={12}>
               <Form.Item
                 label="入职日期"
-                name="hire_date"
+                name="entry_date"
                 rules={[{ required: true, message: '请选择入职日期！' }]}
               >
-                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" disabled={!canEditField('hire_date')} />
+                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" disabled={!canEditField('entry_date')} />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
@@ -285,10 +286,10 @@ const EmployeeForm: React.FC = () => {
             <Col xs={24} md={12}>
               <Form.Item
                 label="职位"
-                name="position_id"
+                name="position"
                 rules={[{ required: true, message: '请输入职位！' }]}
               >
-                <Input placeholder="职位/职称" disabled={!canEditField('position_id')} />
+                <Input placeholder="职位/职称" disabled={!canEditField('position')} />
               </Form.Item>
             </Col>
           </Row>
@@ -309,13 +310,11 @@ const EmployeeForm: React.FC = () => {
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item label="在职状态" name="employment_status">
-                <Select disabled={!canEditField('employment_status')}>
-                  <Option value={EmploymentStatus.PENDING}>待入职</Option>
-                  <Option value={EmploymentStatus.PROBATION}>试用期</Option>
-                  <Option value={EmploymentStatus.REGULAR}>正式</Option>
-                  <Option value={EmploymentStatus.RESIGNED}>已离职</Option>
-                  <Option value={EmploymentStatus.TERMINATED}>已终止</Option>
+              <Form.Item label="在职状态" name="status">
+                <Select disabled={!canEditField('status')}>
+                  <Option value="pending">待入职</Option>
+                  <Option value="active">在职</Option>
+                  <Option value="inactive">离职</Option>
                 </Select>
               </Form.Item>
             </Col>

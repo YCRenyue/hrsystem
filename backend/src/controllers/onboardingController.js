@@ -1,8 +1,11 @@
 /**
  * Onboarding Controller
  */
+const crypto = require('crypto');
 const { OnboardingProcess, Employee } = require('../models');
 const { NotFoundError, ValidationError } = require('../middleware/errorHandler');
+const notificationService = require('../services/NotificationService');
+const logger = require('../utils/logger');
 
 /**
  * Get onboarding form by token
@@ -146,7 +149,139 @@ const submitOnboardingForm = async (req, res) => {
   });
 };
 
+/**
+ * Send onboarding form to employee via email
+ * POST /api/onboarding/send/:employeeId
+ */
+const sendOnboardingForm = async (req, res) => {
+  const { employeeId } = req.params;
+
+  const employee = await Employee.findByPk(employeeId);
+
+  if (!employee) {
+    throw new NotFoundError('Employee', employeeId);
+  }
+
+  if (!employee.email) {
+    throw new ValidationError('Employee does not have an email address');
+  }
+
+  // Check if onboarding process already exists
+  let onboardingProcess = await OnboardingProcess.findOne({
+    where: { employee_id: employeeId }
+  });
+
+  // Create new process if not exists
+  if (!onboardingProcess) {
+    const formToken = crypto.randomBytes(32).toString('hex');
+    onboardingProcess = await OnboardingProcess.create({
+      employee_id: employeeId,
+      status: 'pending',
+      form_token: formToken,
+      token_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+    });
+  }
+
+  // Generate form URL (use global process object for env)
+  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const formUrl = `${baseUrl}/onboarding/${onboardingProcess.form_token}`;
+
+  logger.info(`Sending onboarding form to ${employee.email}`, {
+    employeeId,
+    formUrl
+  });
+
+  // Send notification
+  const result = await notificationService.sendOnboardingNotification(
+    {
+      name: employee.getName(),
+      email: employee.email,
+      dingtalk_user_id: employee.dingtalk_user_id
+    },
+    formUrl
+  );
+
+  // Update process status
+  if (result.success) {
+    await onboardingProcess.update({
+      status: 'sent',
+      push_channel: result.channel,
+      push_time: new Date(),
+      push_status: 'success'
+    });
+  } else {
+    await onboardingProcess.update({
+      push_status: 'failed',
+      push_error: result.error
+    });
+  }
+
+  logger.info(`Onboarding form send result: ${result.success ? 'success' : 'failed'}`, {
+    channel: result.channel,
+    error: result.error
+  });
+
+  res.json({
+    success: result.success,
+    message: result.success
+      ? `Onboarding form sent via ${result.channel}`
+      : `Failed to send: ${result.error}`,
+    data: {
+      success: result.success,
+      message: result.success
+        ? `Onboarding form sent via ${result.channel}`
+        : `Failed to send: ${result.error}`,
+      channel: result.channel,
+      formUrl
+    }
+  });
+};
+
+/**
+ * Test email configuration
+ * POST /api/onboarding/test-email
+ */
+const testEmail = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    throw new ValidationError('Email address is required');
+  }
+
+  logger.info(`Testing email to ${email}`);
+
+  try {
+    const result = await notificationService.sendNotification({
+      employee: { email, name: 'Test User' },
+      title: 'HR System Email Test',
+      content: 'This is a test email from the HR System.\n\nIf you received this email, the email configuration is working correctly.',
+      type: 'text',
+      emailFallback: true
+    });
+
+    logger.info(`Test email result: ${result.success ? 'success' : 'failed'}`, result);
+
+    res.json({
+      success: result.success,
+      message: result.success
+        ? `Test email sent successfully via ${result.channel}`
+        : `Failed to send test email: ${result.error}`,
+      channel: result.channel,
+      error: result.error
+    });
+  } catch (error) {
+    logger.error('Test email error:', error);
+    res.status(500).json({
+      success: false,
+      message: `Email error: ${error.message}`,
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getOnboardingForm,
-  submitOnboardingForm
+  submitOnboardingForm,
+  sendOnboardingForm,
+  testEmail
 };

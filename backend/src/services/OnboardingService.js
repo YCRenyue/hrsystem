@@ -73,7 +73,7 @@ class OnboardingService {
         throw new Error('Employee not found');
       }
 
-      const result = await this.notificationService.sendOnboardingForm(
+      const result = await this.notificationService.sendOnboardingNotification(
         process.employee,
         process.form_link
       );

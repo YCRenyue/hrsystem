@@ -13,7 +13,7 @@ import {
   Upload,
   DatePicker,
   Card,
-  App,
+  App
 } from 'antd';
 import {
   PlusOutlined,
@@ -22,6 +22,8 @@ import {
   DownloadOutlined,
   EditOutlined,
   FilterOutlined,
+  EyeOutlined,
+  SendOutlined
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
@@ -213,6 +215,23 @@ const EmployeeList: React.FC = () => {
     }
   };
 
+  const handleSendOnboardingEmail = async (employee: Employee) => {
+    const hideLoading = message.loading('正在发送入职登记表邮件...', 0);
+    try {
+      const result = await employeeService.sendOnboardingEmail(employee.employee_id);
+      hideLoading();
+      if (result.success) {
+        message.success(`入职登记表邮件已发送至 ${employee.email}`);
+      } else {
+        message.error(result.message || '发送失败');
+      }
+    } catch (error: any) {
+      hideLoading();
+      const errorMsg = error?.response?.data?.message || error?.message || '发送入职登记表邮件失败';
+      message.error(errorMsg);
+    }
+  };
+
   const getStatusText = (status: string): string => {
     const statusMap: Record<string, string> = {
       pending: '待完善',
@@ -299,13 +318,14 @@ const EmployeeList: React.FC = () => {
     {
       title: '操作',
       key: 'actions',
-      width: 180,
+      width: 300,
       fixed: 'right',
       render: (_, record) => (
         <Space size="small">
           {/* View button - always visible */}
           <Button
             type="link"
+            icon={<EyeOutlined />}
             onClick={() => navigate(`/employees/${record.employee_id}`)}
           >
             查看
@@ -319,6 +339,17 @@ const EmployeeList: React.FC = () => {
               onClick={() => navigate(`/employees/${record.employee_id}/edit`)}
             >
               编辑
+            </Button>
+          )}
+
+          {/* Send onboarding email - only show for pending status with email */}
+          {record.status === 'pending' && record.email && canUpdateEmployee() && (
+            <Button
+              type="link"
+              icon={<SendOutlined />}
+              onClick={() => handleSendOnboardingEmail(record)}
+            >
+              邮件提醒
             </Button>
           )}
         </Space>

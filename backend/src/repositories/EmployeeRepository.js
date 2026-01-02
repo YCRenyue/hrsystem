@@ -209,9 +209,9 @@ class EmployeeRepository extends BaseRepository {
     const scopeFilter = user.getDataScopeFilter('employee');
 
     const total = await this.count(scopeFilter);
-    const active = await this.count({ ...scopeFilter, employment_status: 'regular' });
-    const pending = await this.count({ ...scopeFilter, employment_status: 'pending' });
-    const probation = await this.count({ ...scopeFilter, employment_status: 'probation' });
+    const active = await this.count({ ...scopeFilter, status: 'regular' });
+    const pending = await this.count({ ...scopeFilter, status: 'pending' });
+    const probation = await this.count({ ...scopeFilter, status: 'probation' });
     const incompleteData = await this.count({ ...scopeFilter, data_complete: false });
 
     return {
