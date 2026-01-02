@@ -127,8 +127,11 @@ class SchedulerService {
       for (const employee of employees) {
         try {
           // Generate form token if not exists
+          // eslint-disable-next-line prefer-destructuring
           let onboardingProcess = employee.onboardingProcess;
           if (!onboardingProcess) {
+            /* eslint-disable no-await-in-loop */
+            // 串行处理：依赖外部通知服务，避免并发风险
             onboardingProcess = await OnboardingProcess.create({
               employee_id: employee.employee_id,
               process_status: 'pending',
