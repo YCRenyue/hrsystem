@@ -5,7 +5,6 @@ import apiClient from './api';
 import {
   Employee,
   EmployeeCreateInput,
-  EmployeeUpdateInput,
   EmployeeQueryParams,
   PaginatedResponse,
   ApiResponse,
@@ -45,7 +44,7 @@ export const employeeService = {
    */
   async updateEmployee(
     employeeId: string,
-    data: EmployeeUpdateInput
+    data: EmployeeCreateInput
   ): Promise<Employee> {
     const response = await apiClient.put<ApiResponse<Employee>>(
       `/employees/${employeeId}`,

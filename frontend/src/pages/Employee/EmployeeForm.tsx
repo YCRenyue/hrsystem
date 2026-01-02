@@ -289,7 +289,7 @@ const EmployeeForm: React.FC = () => {
                 name="position"
                 rules={[{ required: true, message: '请输入职位！' }]}
               >
-                <Input placeholder="职位/职称" disabled={!canEditField('position')} />
+                <Input placeholder="员工" disabled={!canEditField('position')} />
               </Form.Item>
             </Col>
           </Row>

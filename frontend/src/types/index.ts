@@ -45,15 +45,6 @@ export interface Department {
   updated_at: string;
 }
 
-export interface Position {
-  position_id: string;
-  title: string;
-  department_id: string;
-  description?: string;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface Employee {
   employee_id: string;
   employee_number: string;
@@ -71,7 +62,6 @@ export interface Employee {
   department_id?: string;
   department?: Department;
   position?: string; // Backend uses string, not Position object
-  position_id?: string;
   manager_id?: string;
   employment_type?: EmploymentType | string;
   status?: string; // Backend uses 'status' (active/pending/inactive)
@@ -169,7 +159,7 @@ export interface EmployeeCreateInput {
   hire_date: string;
   probation_end_date?: string;
   department_id: string;
-  position_id: string;
+  position: string;
   manager_id?: string;
   employment_type: EmploymentType;
   work_location?: string;
@@ -177,6 +167,7 @@ export interface EmployeeCreateInput {
   emergency_contact?: string;
   emergency_phone?: string;
   remarks?: string;
+  status?: string;
 }
 
 
