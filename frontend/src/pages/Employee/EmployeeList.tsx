@@ -220,10 +220,20 @@ const EmployeeList: React.FC = () => {
     try {
       const result = await employeeService.sendOnboardingEmail(employee.employee_id);
       hideLoading();
+
+      // Copy form URL to clipboard regardless of send success
+      if (result.formUrl) {
+        try {
+          await navigator.clipboard.writeText(result.formUrl);
+        } catch (clipboardError) {
+          console.error('无法复制到粘贴板:', clipboardError);
+        }
+      }
+
       if (result.success) {
-        message.success(`入职登记表邮件已发送至 ${employee.email}`);
+        message.success(`入职登记表邮件已发送至 ${employee.email}，表单链接已复制到剪贴板`);
       } else {
-        message.error(result.message || '发送失败');
+        message.warning(`${result.message || '发送失败'}，表单链接已复制到剪贴板`);
       }
     } catch (error: any) {
       hideLoading();
