@@ -302,21 +302,21 @@ jobs:
                 -p ${{ env.BACKEND_PORT }}:3001 \
                 -e NODE_ENV=production \
                 -e PORT=3001 \
-                -e FRONTEND_URL=${{ vars.FRONTEND_URL }} \
-                -e DB_HOST=${{ vars.DB_HOST }} \
-                -e DB_PORT=${{ vars.DB_PORT }} \
-                -e DB_NAME=${{ vars.DB_NAME }} \
-                -e DB_USER=${{ vars.DB_USER }} \
-                -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-                -e DB_TIMEZONE=${{ vars.DB_TIMEZONE }} \
-                -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
-                -e ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }} \
-                -e SMTP_HOST=${{vars.SMTP_HOST}} \
-                -e SMTP_PORT=${{vars.SMTP_PORT}} \
-                -e SMTP_SECURE=${{vars.SMTP_SECURE}} \
-                -e SMTP_USER=${{vars.SMTP_USER}} \
-                -e SMTP_FROM=${{vars.SMTP_FROM}} \
-                -e SMTP_PASS=${{secrets.SMTP_PASS}} \
+                -e FRONTEND_URL="${{ vars.FRONTEND_URL }}" \
+                -e DB_HOST="${{ vars.DB_HOST }}" \
+                -e DB_PORT="${{ vars.DB_PORT }}" \
+                -e DB_NAME="${{ vars.DB_NAME }}" \
+                -e DB_USER="${{ vars.DB_USER }}" \
+                -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+                -e DB_TIMEZONE="${{ vars.DB_TIMEZONE }}" \
+                -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+                -e ENCRYPTION_KEY="${{ secrets.ENCRYPTION_KEY }}" \
+                -e SMTP_HOST="${{ vars.SMTP_HOST }}" \
+                -e SMTP_PORT="${{ vars.SMTP_PORT }}" \
+                -e SMTP_SECURE="${{ vars.SMTP_SECURE }}" \
+                -e SMTP_USER="${{ vars.SMTP_USER }}" \
+                -e SMTP_FROM="${{ vars.SMTP_FROM }}" \
+                -e SMTP_PASS="${{ secrets.SMTP_PASS }}" \
                 ${BACKEND_IMAGE}
 
               echo "⏳ 等待后端服务启动..."
