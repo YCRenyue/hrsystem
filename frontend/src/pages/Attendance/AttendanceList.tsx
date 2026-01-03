@@ -12,10 +12,10 @@ import {
   Tag,
   DatePicker,
   Select,
-  message,
   Row,
   Col,
-  Statistic
+  Statistic,
+  App
 } from 'antd';
 import {
   ReloadOutlined,
@@ -67,6 +67,7 @@ interface AttendanceListState {
 
 const AttendanceList: React.FC = () => {
   const { hasPermission, dataScope } = usePermission();
+  const { message } = App.useApp();
   const [state, setState] = useState<AttendanceListState>({
     data: [],
     loading: false,

@@ -11,10 +11,10 @@ import {
   Card,
   Row,
   Col,
-  message,
   Upload,
   Result,
   Spin,
+  App,
 } from 'antd';
 import {
   CheckCircleOutlined,
@@ -51,6 +51,7 @@ const OnboardingForm: React.FC = () => {
   const [form] = Form.useForm();
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);

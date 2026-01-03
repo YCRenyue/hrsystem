@@ -15,7 +15,7 @@ import {
   Statistic,
   Modal,
   Input,
-  message
+  App
 } from 'antd';
 import {
   ReloadOutlined,
@@ -72,6 +72,7 @@ const getStatusText = (status: string): string => {
 };
 
 const LeaveList: React.FC = () => {
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [dataSource, setDataSource] = useState<Leave[]>([]);
   const [stats, setStats] = useState<LeaveStats | null>(null);

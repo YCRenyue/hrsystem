@@ -11,9 +11,9 @@ import {
   Card,
   Row,
   Col,
-  message,
   Space,
   Alert,
+  App,
 } from 'antd';
 import { SaveOutlined, ArrowLeftOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -38,6 +38,7 @@ const EmployeeForm: React.FC = () => {
   const { role, isAdmin, isDepartmentManager } = usePermission();
   const [loading, setLoading] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const { message, notification } = App.useApp();
 
   const isEditMode = !!id && id !== 'new';
 
@@ -107,16 +108,33 @@ const EmployeeForm: React.FC = () => {
 
       if (isEditMode && id) {
         await employeeService.updateEmployee(id, formData);
-        message.success('员工信息更新成功');
+        notification.success({
+          message: '操作成功',
+          description: '员工信息更新成功',
+          placement: 'topRight',
+          duration: 1,
+          onClose: () => navigate('/employees'),
+        });
       } else {
         await employeeService.createEmployee(formData);
-        message.success('员工创建成功！入职登记表邮件将在入职当天早上9点自动发送');
+        notification.success({
+          message: '创建成功',
+          description: '员工创建成功！入职登记表邮件将在入职当天早上9点自动发送',
+          placement: 'topRight',
+          duration: 1,
+          onClose: () => navigate('/employees'),
+        });
       }
-
-      navigate('/employees');
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.response?.data?.error;
-      message.error(errorMessage || `${isEditMode ? '更新' : '创建'}员工失败`);
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.message || errorData?.error || errorData?.msg;
+      const finalMessage = errorMessage || `${isEditMode ? '更新' : '创建'}员工失败`;
+      notification.error({
+        message: '操作失败',
+        description: finalMessage,
+        placement: 'topRight',
+        duration: 1,
+      });
     } finally {
       setLoading(false);
     }

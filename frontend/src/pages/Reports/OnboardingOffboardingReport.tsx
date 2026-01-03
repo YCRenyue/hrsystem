@@ -16,8 +16,8 @@ import {
   Col,
   Statistic,
   Space,
-  message,
-  Radio
+  Radio,
+  App
 } from 'antd';
 import { SearchOutlined, DownloadOutlined, UserAddOutlined, UserDeleteOutlined } from '@ant-design/icons';
 import { Line, Column } from '@ant-design/plots';
@@ -64,6 +64,7 @@ interface OnboardingOffboardingReportData {
 const OnboardingOffboardingReport: React.FC = () => {
   const [form] = Form.useForm();
   const { shouldShowDepartmentFilter } = usePermission();
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [reportType, setReportType] = useState<'onboarding' | 'offboarding' | 'both'>('both');
   const [reportData, setReportData] = useState<OnboardingOffboardingReportData | null>(null);

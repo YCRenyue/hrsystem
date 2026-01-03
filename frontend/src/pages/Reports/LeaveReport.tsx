@@ -16,7 +16,7 @@ import {
   Col,
   Statistic,
   Space,
-  message
+  App
 } from 'antd';
 import { SearchOutlined, DownloadOutlined } from '@ant-design/icons';
 import { Column } from '@ant-design/plots';
@@ -52,6 +52,7 @@ interface LeaveReportData {
 const LeaveReport: React.FC = () => {
   const [form] = Form.useForm();
   const { shouldShowDepartmentFilter } = usePermission();
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState<LeaveReportData | null>(null);
   const [departments, setDepartments] = useState<any[]>([]);

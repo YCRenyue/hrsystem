@@ -9,13 +9,13 @@ import {
   Button,
   Form,
   Input,
-  message,
   Spin,
   Avatar,
   Row,
   Col,
   Modal,
   Space,
+  App,
 } from 'antd';
 import {
   EditOutlined,
@@ -54,6 +54,7 @@ const UserProfile = () => {
   const [usernameModalVisible, setUsernameModalVisible] = useState(false);
   const [passwordForm] = Form.useForm();
   const [usernameForm] = Form.useForm();
+  const { message } = App.useApp();
 
   useEffect(() => {
     fetchProfileData();

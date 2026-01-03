@@ -16,8 +16,8 @@ import {
   Col,
   Statistic,
   Space,
-  message,
-  Tag
+  Tag,
+  App
 } from 'antd';
 import { SearchOutlined, DownloadOutlined, WarningOutlined } from '@ant-design/icons';
 import { Column, Pie } from '@ant-design/plots';
@@ -63,6 +63,7 @@ interface AttendanceReportData {
 const AttendanceReport: React.FC = () => {
   const [form] = Form.useForm();
   const { shouldShowDepartmentFilter } = usePermission();
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState<AttendanceReportData | null>(null);
   const [departments, setDepartments] = useState<any[]>([]);

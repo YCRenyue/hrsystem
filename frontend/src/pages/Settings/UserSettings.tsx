@@ -11,12 +11,12 @@ import {
   Button,
   Select,
   ColorPicker,
-  message,
   Descriptions,
   Space,
   Divider,
   Row,
-  Col
+  Col,
+  App
 } from 'antd';
 import {
   UserOutlined,
@@ -42,6 +42,7 @@ const UserSettings: React.FC = () => {
 
   const [passwordForm] = Form.useForm();
   const [preferencesForm] = Form.useForm();
+  const { message } = App.useApp();
 
   /**
    * Load user profile and preferences
