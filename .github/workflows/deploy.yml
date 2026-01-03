@@ -311,6 +311,12 @@ jobs:
                 -e DB_TIMEZONE=${{ vars.DB_TIMEZONE }} \
                 -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
                 -e ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }} \
+                -e SMTP_HOST=${{vars.SMTP_HOST}} \
+                -e SMTP_PORT=${{vars.SMTP_PORT}} \
+                -e SMTP_SECURE=${{vars.SMTP_SECURE}} \
+                -e SMTP_USER=${{vars.SMTP_USER}} \
+                -e SMTP_FROM=${{vars.SMTP_FROM}} \
+                -e SMTP_PASS=${{secrets.SMTP_PASS}} \
                 ${BACKEND_IMAGE}
 
               echo "⏳ 等待后端服务启动..."
