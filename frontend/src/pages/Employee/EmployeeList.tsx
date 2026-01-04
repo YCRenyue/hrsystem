@@ -9,7 +9,6 @@ import {
   Select,
   Space,
   Tag,
-  Modal,
   Upload,
   DatePicker,
   Card,
@@ -41,7 +40,7 @@ const { RangePicker } = DatePicker;
 
 const EmployeeList: React.FC = () => {
   const navigate = useNavigate();
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const {
     canCreateEmployee,
     canUpdateEmployee,
@@ -158,7 +157,7 @@ const EmployeeList: React.FC = () => {
 
       if (errorCount > 0) {
         // Show detailed error information
-        Modal.warning({
+        modal.warning({
           title: '导入完成',
           width: 600,
           content: (

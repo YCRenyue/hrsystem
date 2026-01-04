@@ -9,7 +9,6 @@ import {
   Space,
   Card,
   Upload,
-  Modal,
   App,
   Tag,
 } from 'antd';
@@ -41,7 +40,7 @@ interface CanteenMeal {
 
 const CanteenMealList: React.FC = () => {
   const navigate = useNavigate();
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
 
   const [data, setData] = useState<CanteenMeal[]>([]);
   const [loading, setLoading] = useState(false);
@@ -106,7 +105,7 @@ const CanteenMealList: React.FC = () => {
       if (response.data.success) {
         const { success_count, error_count, errors } = response.data.data;
         if (error_count > 0) {
-          Modal.warning({
+          modal.warning({
             title: '导入完成',
             width: 600,
             content: (

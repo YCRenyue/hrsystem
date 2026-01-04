@@ -9,7 +9,6 @@ import {
   Space,
   Card,
   Upload,
-  Modal,
   App,
   Tag,
   DatePicker,
@@ -44,7 +43,7 @@ interface SocialSecurity {
 
 const SocialSecurityList: React.FC = () => {
   const navigate = useNavigate();
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
 
   const [data, setData] = useState<SocialSecurity[]>([]);
   const [loading, setLoading] = useState(false);
@@ -117,7 +116,7 @@ const SocialSecurityList: React.FC = () => {
         const { success_count, error_count, errors } = response.data.data;
 
         if (error_count > 0) {
-          Modal.warning({
+          modal.warning({
             title: '导入完成',
             width: 600,
             content: (
