@@ -21,8 +21,8 @@ import {
 } from 'antd';
 import { SearchOutlined, DownloadOutlined, WarningOutlined } from '@ant-design/icons';
 import { Column, Pie } from '@ant-design/plots';
-import axios from 'axios';
 import dayjs from 'dayjs';
+import apiClient from '../../services/api';
 import { usePermission } from '../../hooks/usePermission';
 
 const { RangePicker } = DatePicker;
@@ -91,7 +91,7 @@ const AttendanceReport: React.FC = () => {
 
   const fetchDepartments = async () => {
     try {
-      const response = await axios.get('/api/departments');
+      const response = await apiClient.get('/departments');
       setDepartments(response.data.data || []);
     } catch (error) {
       console.error('Failed to fetch departments:', error);
@@ -116,7 +116,7 @@ const AttendanceReport: React.FC = () => {
       if (filters.department_id) params.department_id = filters.department_id;
       if (filters.status) params.status = filters.status;
 
-      const response = await axios.get('/api/reports/attendance', { params });
+      const response = await apiClient.get('/reports/attendance', { params });
 
       if (response.data.success) {
         setReportData(response.data.data);

@@ -21,7 +21,7 @@ const getUserProfile = async (req, res) => {
   if (!user) {
     return res.status(404).json({
       success: false,
-      message: 'User not found'
+      message: '用户不存在'
     });
   }
 
@@ -68,7 +68,7 @@ const updateUserProfile = async (req, res) => {
   if (hasRestrictedField) {
     return res.status(403).json({
       success: false,
-      message: 'Cannot update restricted fields'
+      message: '无法修改受限字段'
     });
   }
 
@@ -76,7 +76,7 @@ const updateUserProfile = async (req, res) => {
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return res.status(400).json({
       success: false,
-      message: 'Invalid email format'
+      message: '邮箱格式不正确'
     });
   }
 
@@ -85,13 +85,13 @@ const updateUserProfile = async (req, res) => {
     if (username.length < 3 || username.length > 50) {
       return res.status(400).json({
         success: false,
-        message: 'Username must be between 3 and 50 characters'
+        message: '用户名长度必须在3到50个字符之间'
       });
     }
     if (!/^[a-zA-Z0-9_]+$/.test(username)) {
       return res.status(400).json({
         success: false,
-        message: 'Username can only contain letters, numbers, and underscores'
+        message: '用户名只能包含字母、数字和下划线'
       });
     }
     // Check if username is already taken
@@ -99,7 +99,7 @@ const updateUserProfile = async (req, res) => {
     if (existingUser && existingUser.user_id !== req.user.user_id) {
       return res.status(400).json({
         success: false,
-        message: 'Username is already taken'
+        message: '用户名已被使用'
       });
     }
   }
@@ -108,7 +108,7 @@ const updateUserProfile = async (req, res) => {
   if (display_name !== undefined && display_name.length > 100) {
     return res.status(400).json({
       success: false,
-      message: 'Display name must be 100 characters or less'
+      message: '显示名称不能超过100个字符'
     });
   }
 
@@ -130,7 +130,7 @@ const updateUserProfile = async (req, res) => {
   if (!user) {
     return res.status(404).json({
       success: false,
-      message: 'User not found'
+      message: '用户不存在'
     });
   }
 
@@ -149,7 +149,7 @@ const updateUserProfile = async (req, res) => {
   // Always return user data to reflect any user field changes (like username)
   return res.json({
     success: true,
-    message: 'Profile updated successfully',
+    message: '个人资料更新成功',
     data: user.toSafeObject()
   });
 };
@@ -164,7 +164,7 @@ const changePassword = async (req, res) => {
     if (!currentPassword || !newPassword) {
       return res.status(400).json({
         success: false,
-        message: 'Current password and new password are required'
+        message: '请输入当前密码和新密码'
       });
     }
 
@@ -172,7 +172,7 @@ const changePassword = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: '用户不存在'
       });
     }
 
@@ -181,7 +181,7 @@ const changePassword = async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: 'Current password is incorrect'
+        message: '当前密码不正确'
       });
     }
 
@@ -192,13 +192,13 @@ const changePassword = async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'Password changed successfully'
+      message: '密码修改成功'
     });
   } catch (error) {
     console.error('Error changing password:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to change password'
+      message: '密码修改失败'
     });
   }
 };
@@ -215,7 +215,7 @@ const getUserPreferences = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: '用户不存在'
       });
     }
 
@@ -234,7 +234,7 @@ const getUserPreferences = async (req, res) => {
     console.error('Error getting user preferences:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to get preferences'
+      message: '获取用户偏好设置失败'
     });
   }
 };
@@ -252,7 +252,7 @@ const updateUserPreferences = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: '用户不存在'
       });
     }
 
@@ -270,14 +270,14 @@ const updateUserPreferences = async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'Preferences updated successfully',
+      message: '偏好设置更新成功',
       data: preferences
     });
   } catch (error) {
     console.error('Error updating user preferences:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to update preferences'
+      message: '更新用户偏好设置失败'
     });
   }
 };
@@ -291,7 +291,7 @@ const getProfileEmployee = async (req, res) => {
   if (!user || !user.employee_id) {
     return res.status(404).json({
       success: false,
-      message: 'Employee information not found'
+      message: '员工信息不存在'
     });
   }
 
@@ -308,7 +308,7 @@ const getProfileEmployee = async (req, res) => {
   if (!employee) {
     return res.status(404).json({
       success: false,
-      message: 'Employee not found'
+      message: '员工不存在'
     });
   }
 
@@ -435,7 +435,7 @@ const getUserById = async (req, res) => {
   if (!user) {
     return res.status(404).json({
       success: false,
-      message: 'User not found'
+      message: '用户不存在'
     });
   }
 
@@ -469,7 +469,7 @@ const updateUserRole = async (req, res) => {
   if (!user) {
     return res.status(404).json({
       success: false,
-      message: 'User not found'
+      message: '用户不存在'
     });
   }
 
@@ -477,7 +477,7 @@ const updateUserRole = async (req, res) => {
   if (user.user_id === req.user.user_id && role && role !== user.role) {
     return res.status(403).json({
       success: false,
-      message: 'Cannot modify your own role'
+      message: '不能修改自己的角色'
     });
   }
 
@@ -486,7 +486,7 @@ const updateUserRole = async (req, res) => {
   if (role && !validRoles.includes(role)) {
     return res.status(400).json({
       success: false,
-      message: 'Invalid role'
+      message: '无效的角色'
     });
   }
 
@@ -495,7 +495,7 @@ const updateUserRole = async (req, res) => {
   if (data_scope && !validScopes.includes(data_scope)) {
     return res.status(400).json({
       success: false,
-      message: 'Invalid data scope'
+      message: '无效的数据范围'
     });
   }
 
@@ -509,7 +509,7 @@ const updateUserRole = async (req, res) => {
 
   return res.json({
     success: true,
-    message: 'User updated successfully',
+    message: '用户更新成功',
     data: user.toSafeObject()
   });
 };
@@ -525,7 +525,7 @@ const resetUserPassword = async (req, res) => {
   if (!user) {
     return res.status(404).json({
       success: false,
-      message: 'User not found'
+      message: '用户不存在'
     });
   }
 
@@ -543,7 +543,7 @@ const resetUserPassword = async (req, res) => {
 
   return res.json({
     success: true,
-    message: `Password reset to default: ${DEFAULT_PASSWORD}`
+    message: `密码已重置为：${DEFAULT_PASSWORD}`
   });
 };
 
@@ -558,7 +558,7 @@ const deleteUser = async (req, res) => {
   if (!user) {
     return res.status(404).json({
       success: false,
-      message: 'User not found'
+      message: '用户不存在'
     });
   }
 
@@ -566,7 +566,7 @@ const deleteUser = async (req, res) => {
   if (user.user_id === req.user.user_id) {
     return res.status(403).json({
       success: false,
-      message: 'Cannot delete your own account'
+      message: '不能删除自己的账户'
     });
   }
 
@@ -574,7 +574,7 @@ const deleteUser = async (req, res) => {
 
   return res.json({
     success: true,
-    message: 'User deleted successfully'
+    message: '用户删除成功'
   });
 };
 

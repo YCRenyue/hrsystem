@@ -5,7 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { Line } from '@ant-design/plots';
 import { Card, Spin, Empty, App } from 'antd';
-import axios from 'axios';
+import apiClient from '../../services/api';
 
 interface TrendData {
   month: string;
@@ -21,13 +21,7 @@ const HiringTrendChart: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('auth_token');
-        const response = await axios.get(
-          `${process.env.REACT_APP_API_URL}/api/dashboard/charts/hiring-trend`,
-          {
-            headers: { Authorization: `Bearer ${token}` }
-          }
-        );
+        const response = await apiClient.get('/dashboard/charts/hiring-trend');
 
         if (response.data.success) {
           setData(response.data.data);

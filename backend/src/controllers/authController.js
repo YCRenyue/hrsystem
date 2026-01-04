@@ -107,7 +107,7 @@ const logout = async (req, res) => {
   // In a real app, you might invalidate the token or clear session
   res.json({
     success: true,
-    message: 'Logged out successfully'
+    message: '退出登录成功'
   });
 };
 
@@ -121,7 +121,7 @@ const getDingTalkLoginUrl = async (req, res) => {
   const redirectUri = `${process.env.FRONTEND_URL}/auth/dingtalk/callback`;
 
   if (!clientId) {
-    throw new ValidationError('DingTalk OAuth is not configured');
+    throw new ValidationError('钉钉OAuth未配置');
   }
 
   const loginUrl = generateDingTalkLoginUrl({
@@ -145,7 +145,7 @@ const handleDingTalkCallback = async (req, res) => {
   const { code, state: _state } = req.body;
 
   if (!code) {
-    throw new ValidationError('Authorization code is required');
+    throw new ValidationError('授权码为必填项');
   }
 
   // Exchange code for access token
@@ -170,7 +170,7 @@ const handleDingTalkCallback = async (req, res) => {
   }
 
   if (!employee) {
-    throw new UnauthorizedError('User not found in system');
+    throw new UnauthorizedError('系统中未找到该用户');
   }
 
   // Find associated user account
@@ -179,11 +179,11 @@ const handleDingTalkCallback = async (req, res) => {
   });
 
   if (!user) {
-    throw new UnauthorizedError('User account not found');
+    throw new UnauthorizedError('用户账户不存在');
   }
 
   if (!user.is_active) {
-    throw new UnauthorizedError('Account is inactive');
+    throw new UnauthorizedError('账户已被禁用');
   }
 
   // Record successful login

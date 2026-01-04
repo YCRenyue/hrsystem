@@ -20,20 +20,20 @@ class ValidationError extends ApplicationError {
 
 class NotFoundError extends ApplicationError {
   constructor(resource, id) {
-    super(`${resource} with id ${id} not found`, 404);
+    super(`${resource}(ID: ${id})未找到`, 404);
     this.resource = resource;
     this.id = id;
   }
 }
 
 class UnauthorizedError extends ApplicationError {
-  constructor(message = 'Unauthorized') {
+  constructor(message = '未授权访问') {
     super(message, 401);
   }
 }
 
 class ForbiddenError extends ApplicationError {
-  constructor(message = 'Forbidden') {
+  constructor(message = '禁止访问') {
     super(message, 403);
   }
 }
@@ -61,7 +61,7 @@ const errorHandler = (err, req, res, _next) => {
   if (err instanceof ValidationError) {
     return res.status(err.statusCode).json({
       success: false,
-      error: 'Validation Error',
+      error: '数据验证失败',
       message: err.message,
       details: err.details
     });
@@ -70,7 +70,7 @@ const errorHandler = (err, req, res, _next) => {
   if (err instanceof NotFoundError) {
     return res.status(err.statusCode).json({
       success: false,
-      error: 'Not Found',
+      error: '资源未找到',
       message: err.message
     });
   }
@@ -78,7 +78,7 @@ const errorHandler = (err, req, res, _next) => {
   if (err instanceof UnauthorizedError) {
     return res.status(err.statusCode).json({
       success: false,
-      error: 'Unauthorized',
+      error: '未授权访问',
       message: err.message
     });
   }
@@ -86,7 +86,7 @@ const errorHandler = (err, req, res, _next) => {
   if (err instanceof ForbiddenError) {
     return res.status(err.statusCode).json({
       success: false,
-      error: 'Forbidden',
+      error: '禁止访问',
       message: err.message
     });
   }
@@ -94,8 +94,8 @@ const errorHandler = (err, req, res, _next) => {
   // Default error response
   return res.status(err.statusCode || 500).json({
     success: false,
-    error: 'Internal Server Error',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+    error: '服务器内部错误',
+    message: process.env.NODE_ENV === 'development' ? err.message : '服务器发生错误，请稍后重试'
   });
 };
 

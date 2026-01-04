@@ -127,7 +127,7 @@ const getDashboardStats = async (req, res) => {
     console.error('Error fetching dashboard stats:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch dashboard statistics'
+      message: '获取仪表板统计数据失败'
     });
   }
 };
@@ -167,7 +167,7 @@ const getDepartmentDistribution = async (req, res) => {
     console.error('Error fetching department distribution:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch department distribution'
+      message: '获取部门分布数据失败'
     });
   }
 };
@@ -217,7 +217,7 @@ const getHiringTrend = async (req, res) => {
     console.error('Error fetching hiring trend:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch hiring trend'
+      message: '获取招聘趋势数据失败'
     });
   }
 };
@@ -276,7 +276,7 @@ const getAttendanceAnalysis = async (req, res) => {
     console.error('Error fetching attendance analysis:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch attendance analysis'
+      message: '获取考勤分析数据失败'
     });
   }
 };
@@ -321,7 +321,7 @@ const getLeaveAnalysis = async (req, res) => {
     console.error('Error fetching leave analysis:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch leave analysis'
+      message: '获取请假分析数据失败'
     });
   }
 };

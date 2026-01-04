@@ -26,7 +26,7 @@ const createLeave = async (req, res) => {
     if (!employee_id || !leave_type || !start_date || !end_date || !days) {
       return res.status(400).json({
         success: false,
-        message: 'Employee ID, leave type, dates, and days are required'
+        message: '员工ID、请假类型、日期和天数为必填项'
       });
     }
 
@@ -43,14 +43,14 @@ const createLeave = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Leave application created successfully',
+      message: '请假申请创建成功',
       data: leave
     });
   } catch (error) {
     console.error('Error creating leave:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to create leave application'
+      message: '创建请假申请失败'
     });
   }
 };
@@ -155,7 +155,7 @@ const getLeaveList = async (req, res) => {
     console.error('Error getting leaves:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get leave applications'
+      message: '获取请假记录失败'
     });
   }
 };
@@ -218,7 +218,7 @@ const getLeaveStats = async (req, res) => {
     console.error('Error getting leave stats:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get leave statistics'
+      message: '获取请假统计失败'
     });
   }
 };
@@ -235,7 +235,7 @@ const updateLeave = async (req, res) => {
     if (!leave) {
       return res.status(404).json({
         success: false,
-        message: 'Leave application not found'
+        message: '请假记录不存在'
       });
     }
 
@@ -248,14 +248,14 @@ const updateLeave = async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'Leave application updated successfully',
+      message: '请假申请更新成功',
       data: leave
     });
   } catch (error) {
     console.error('Error updating leave:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to update leave application'
+      message: '更新请假申请失败'
     });
   }
 };
@@ -271,7 +271,7 @@ const deleteLeave = async (req, res) => {
     if (!leave) {
       return res.status(404).json({
         success: false,
-        message: 'Leave application not found'
+        message: '请假记录不存在'
       });
     }
 
@@ -279,13 +279,13 @@ const deleteLeave = async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'Leave application deleted successfully'
+      message: '请假申请删除成功'
     });
   } catch (error) {
     console.error('Error deleting leave:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to delete leave application'
+      message: '删除请假申请失败'
     });
   }
 };

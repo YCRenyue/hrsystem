@@ -30,7 +30,7 @@ const Login: React.FC = () => {
   const handleDingTalkLogin = async () => {
     try {
       setLoading(true);
-      const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+      const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
       const response = await fetch(`${apiBaseUrl}/auth/dingtalk/login-url`);
       const data = await response.json();
       if (data.success && data.data.loginUrl) {

@@ -187,7 +187,7 @@ jobs:
         if: ${{ needs.prepare.outputs.should_deploy_frontend == 'true' }}
         env:
           IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
-          REACT_APP_API_URL: ${{ secrets.BACKEND_API_URL }}
+          REACT_APP_API_URL: ${{ vars.BACKEND_API_URL }}
         run: |
           cd frontend
 

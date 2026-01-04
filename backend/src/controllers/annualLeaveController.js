@@ -232,7 +232,7 @@ const deleteAnnualLeave = async (req, res) => {
 
   res.json({
     success: true,
-    message: 'Annual leave record deleted successfully'
+    message: '年假记录删除成功'
   });
 };
 

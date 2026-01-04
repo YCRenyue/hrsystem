@@ -15,7 +15,7 @@ const authenticateToken = (req, res, next) => {
   if (!token) {
     return res.status(401).json({
       success: false,
-      error: 'Access token required'
+      error: '请先登录'
     });
   }
 
@@ -23,7 +23,7 @@ const authenticateToken = (req, res, next) => {
     if (err) {
       return res.status(403).json({
         success: false,
-        error: 'Invalid or expired token'
+        error: '登录已过期，请重新登录'
       });
     }
 
@@ -39,14 +39,14 @@ const requireRole = (...roles) => (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
       success: false,
-      error: 'Authentication required'
+      error: '请先登录'
     });
   }
 
   if (!roles.includes(req.user.role)) {
     return res.status(403).json({
       success: false,
-      error: 'Insufficient permissions'
+      error: '权限不足'
     });
   }
 

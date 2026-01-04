@@ -297,7 +297,7 @@ const deleteCanteenMeal = async (req, res) => {
 
   res.json({
     success: true,
-    message: 'Canteen meal record deleted successfully'
+    message: '就餐记录删除成功'
   });
 };
 

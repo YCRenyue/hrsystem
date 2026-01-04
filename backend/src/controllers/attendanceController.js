@@ -31,7 +31,7 @@ const createAttendance = async (req, res) => {
     if (!employee_id || !date) {
       return res.status(400).json({
         success: false,
-        message: 'Employee ID and date are required'
+        message: '员工ID和日期为必填项'
       });
     }
 
@@ -43,7 +43,7 @@ const createAttendance = async (req, res) => {
     if (existing) {
       return res.status(400).json({
         success: false,
-        message: 'Attendance record already exists for this date'
+        message: '该日期的考勤记录已存在'
       });
     }
 
@@ -64,14 +64,14 @@ const createAttendance = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: 'Attendance record created successfully',
+      message: '考勤记录创建成功',
       data: attendance
     });
   } catch (error) {
     console.error('Error creating attendance:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to create attendance record'
+      message: '创建考勤记录失败'
     });
   }
 };
@@ -177,7 +177,7 @@ const getAttendanceList = async (req, res) => {
     console.error('Error getting attendances:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get attendance records'
+      message: '获取考勤记录失败'
     });
   }
 };
@@ -236,7 +236,7 @@ const getAttendanceStats = async (req, res) => {
     console.error('Error getting attendance stats:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get attendance statistics'
+      message: '获取考勤统计失败'
     });
   }
 };
@@ -253,7 +253,7 @@ const updateAttendance = async (req, res) => {
     if (!attendance) {
       return res.status(404).json({
         success: false,
-        message: 'Attendance record not found'
+        message: '考勤记录不存在'
       });
     }
 
@@ -261,14 +261,14 @@ const updateAttendance = async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'Attendance record updated successfully',
+      message: '考勤记录更新成功',
       data: attendance
     });
   } catch (error) {
     console.error('Error updating attendance:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to update attendance record'
+      message: '更新考勤记录失败'
     });
   }
 };
@@ -284,7 +284,7 @@ const deleteAttendance = async (req, res) => {
     if (!attendance) {
       return res.status(404).json({
         success: false,
-        message: 'Attendance record not found'
+        message: '考勤记录不存在'
       });
     }
 
@@ -292,13 +292,13 @@ const deleteAttendance = async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'Attendance record deleted successfully'
+      message: '考勤记录删除成功'
     });
   } catch (error) {
     console.error('Error deleting attendance:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to delete attendance record'
+      message: '删除考勤记录失败'
     });
   }
 };

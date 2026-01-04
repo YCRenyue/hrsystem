@@ -50,6 +50,7 @@
     ]
   },
   "devDependencies": {
-    "@craco/craco": "^7.1.0"
+    "@craco/craco": "^7.1.0",
+    "baseline-browser-mapping": "^2.9.11"
   }
 }

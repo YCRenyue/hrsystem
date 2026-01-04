@@ -316,7 +316,7 @@ const deleteBusinessTrip = async (req, res) => {
 
   res.json({
     success: true,
-    message: 'Business trip record deleted successfully'
+    message: '出差记录删除成功'
   });
 };
 

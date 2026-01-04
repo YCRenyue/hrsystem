@@ -62,7 +62,7 @@ const createDepartment = async (req, res) => {
   } = req.body;
 
   if (!name || !code) {
-    throw new ValidationError('Department name and code are required');
+    throw new ValidationError('部门名称和编码为必填项');
   }
 
   // Check if department code already exists
@@ -71,7 +71,7 @@ const createDepartment = async (req, res) => {
   });
 
   if (existing) {
-    throw new ValidationError('Department code already exists');
+    throw new ValidationError('部门编码已存在');
   }
 
   const department = await Department.create({
@@ -110,7 +110,7 @@ const updateDepartment = async (req, res) => {
     });
 
     if (existing) {
-      throw new ValidationError('Department code already exists');
+      throw new ValidationError('部门编码已存在');
     }
   }
 
@@ -138,7 +138,7 @@ const deleteDepartment = async (req, res) => {
 
   res.json({
     success: true,
-    message: 'Department deleted successfully'
+    message: '部门删除成功'
   });
 };
 

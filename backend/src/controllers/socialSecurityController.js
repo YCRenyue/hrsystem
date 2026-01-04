@@ -174,7 +174,7 @@ const deleteSocialSecurity = async (req, res) => {
 
   res.json({
     success: true,
-    message: 'Social security record deleted successfully'
+    message: '社保记录删除成功'
   });
 };
 

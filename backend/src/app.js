@@ -84,7 +84,7 @@ app.use(errorHandler);
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  res.status(404).json({ error: 'Route Not Found. 请求的接口不存在' });
 });
 
 app.listen(PORT, () => {

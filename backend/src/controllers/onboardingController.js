@@ -25,14 +25,14 @@ const getOnboardingForm = async (req, res) => {
   });
 
   if (!process) {
-    throw new NotFoundError('Onboarding process', token);
+    throw new NotFoundError('入职流程', token);
   }
 
   // Check if already completed
   if (process.status === 'completed') {
     return res.json({
       success: false,
-      message: 'This onboarding form has already been completed'
+      message: '该入职表单已完成提交'
     });
   }
 
@@ -41,7 +41,7 @@ const getOnboardingForm = async (req, res) => {
     await process.markAsExpired();
     return res.json({
       success: false,
-      message: 'This onboarding form has expired'
+      message: '该入职表单已过期'
     });
   }
 
@@ -56,31 +56,31 @@ const getOnboardingForm = async (req, res) => {
       },
       form_fields: [
         {
-          field: 'phone', label: 'Phone Number', type: 'text', required: true
+          field: 'phone', label: '手机号码', type: 'text', required: true
         },
         {
-          field: 'email', label: 'Email', type: 'email', required: true
+          field: 'email', label: '邮箱', type: 'email', required: true
         },
         {
-          field: 'gender', label: 'Gender', type: 'select', options: ['male', 'female'], required: true
+          field: 'gender', label: '性别', type: 'select', options: ['male', 'female'], required: true
         },
         {
-          field: 'birth_date', label: 'Birth Date', type: 'date', required: true
+          field: 'birth_date', label: '出生日期', type: 'date', required: true
         },
         {
-          field: 'id_card', label: 'ID Card Number', type: 'text', required: true
+          field: 'id_card', label: '身份证号', type: 'text', required: true
         },
         {
-          field: 'bank_card', label: 'Bank Card Number', type: 'text', required: false
+          field: 'bank_card', label: '银行卡号', type: 'text', required: false
         },
         {
-          field: 'address', label: 'Home Address', type: 'textarea', required: false
+          field: 'address', label: '家庭地址', type: 'textarea', required: false
         },
         {
-          field: 'emergency_contact', label: 'Emergency Contact', type: 'text', required: true
+          field: 'emergency_contact', label: '紧急联系人', type: 'text', required: true
         },
         {
-          field: 'emergency_phone', label: 'Emergency Phone', type: 'text', required: true
+          field: 'emergency_phone', label: '紧急联系电话', type: 'text', required: true
         }
       ]
     }
@@ -105,22 +105,22 @@ const submitOnboardingForm = async (req, res) => {
   });
 
   if (!process) {
-    throw new NotFoundError('Onboarding process', token);
+    throw new NotFoundError('入职流程', token);
   }
 
   if (process.status === 'completed') {
-    throw new ValidationError('This onboarding form has already been completed');
+    throw new ValidationError('该入职表单已完成提交');
   }
 
   // Check if token is expired
   if (process.isTokenExpired()) {
     await process.markAsExpired();
-    throw new ValidationError('This onboarding form has expired');
+    throw new ValidationError('该入职表单已过期');
   }
 
   // Validate required fields
   if (!formData.phone || !formData.email || !formData.id_card) {
-    throw new ValidationError('Phone, email, and ID card are required fields');
+    throw new ValidationError('电话、邮箱和身份证号为必填项');
   }
 
   // Update employee information using encryption methods
@@ -145,7 +145,7 @@ const submitOnboardingForm = async (req, res) => {
 
   res.json({
     success: true,
-    message: 'Onboarding information submitted successfully'
+    message: '入职信息提交成功'
   });
 };
 
@@ -163,7 +163,7 @@ const sendOnboardingForm = async (req, res) => {
   }
 
   if (!employee.email) {
-    throw new ValidationError('Employee does not have an email address');
+    throw new ValidationError('员工没有设置邮箱地址');
   }
 
   // Check if onboarding process already exists
@@ -224,13 +224,13 @@ const sendOnboardingForm = async (req, res) => {
   res.json({
     success: result.success,
     message: result.success
-      ? `Onboarding form sent via ${result.channel}`
-      : `Failed to send: ${result.error}`,
+      ? `入职表单已通过${result.channel}发送`
+      : `发送失败：${result.error}`,
     data: {
       success: result.success,
       message: result.success
-        ? `Onboarding form sent via ${result.channel}`
-        : `Failed to send: ${result.error}`,
+        ? `入职表单已通过${result.channel}发送`
+        : `发送失败：${result.error}`,
       channel: result.channel,
       formUrl
     }
@@ -245,7 +245,7 @@ const testEmail = async (req, res) => {
   const { email } = req.body;
 
   if (!email) {
-    throw new ValidationError('Email address is required');
+    throw new ValidationError('邮箱地址为必填项');
   }
 
   logger.info(`Testing email to ${email}`);
@@ -264,8 +264,8 @@ const testEmail = async (req, res) => {
     res.json({
       success: result.success,
       message: result.success
-        ? `Test email sent successfully via ${result.channel}`
-        : `Failed to send test email: ${result.error}`,
+        ? `测试邮件已通过${result.channel}发送成功`
+        : `发送测试邮件失败：${result.error}`,
       channel: result.channel,
       error: result.error
     });
@@ -273,7 +273,7 @@ const testEmail = async (req, res) => {
     logger.error('Test email error:', error);
     res.status(500).json({
       success: false,
-      message: `Email error: ${error.message}`,
+      message: `邮件发送错误：${error.message}`,
       error: error.message
     });
   }

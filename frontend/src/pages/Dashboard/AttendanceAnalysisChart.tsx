@@ -5,7 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { Column } from '@ant-design/plots';
 import { Card, Spin, Empty, App } from 'antd';
-import axios from 'axios';
+import apiClient from '../../services/api';
 
 interface StatusData {
   status: string;
@@ -25,12 +25,8 @@ const AttendanceAnalysisChart: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('auth_token');
-        const response = await axios.get<{ success: boolean; data: AttendanceData }>(
-          `${process.env.REACT_APP_API_URL}/api/dashboard/charts/attendance-analysis`,
-          {
-            headers: { Authorization: `Bearer ${token}` }
-          }
+        const response = await apiClient.get<{ success: boolean; data: AttendanceData }>(
+          '/dashboard/charts/attendance-analysis'
         );
 
         if (response.data.success && response.data.data.statusDistribution) {
@@ -38,8 +34,11 @@ const AttendanceAnalysisChart: React.FC = () => {
           const statusMap: Record<string, string> = {
             normal: '正常',
             late: '迟到',
-            early: '早退',
+            early_leave: '早退',
             absent: '缺勤',
+            leave: '请假',
+            holiday: '节假日',
+            weekend: '周末',
           };
 
           const formattedData = response.data.data.statusDistribution.map(item => ({

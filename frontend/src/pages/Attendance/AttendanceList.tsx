@@ -31,6 +31,7 @@ import type { FilterValue, SorterResult } from 'antd/es/table/interface';
 import dayjs, { Dayjs } from 'dayjs';
 import { usePermission } from '../../hooks/usePermission';
 import { attendanceService, AttendanceStats } from '../../services/attendanceService';
+import apiClient from '../../services/api';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
@@ -116,14 +117,9 @@ const AttendanceList: React.FC = () => {
 
   const fetchDepartments = async () => {
     try {
-      const response = await fetch('/api/departments', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
-      });
-      const result = await response.json();
-      if (result.success) {
-        setDepartments(result.data);
+      const response = await apiClient.get('/departments');
+      if (response.data.success) {
+        setDepartments(response.data.data);
       }
     } catch (error) {
       console.error('Failed to fetch departments:', error);
@@ -266,26 +262,20 @@ const AttendanceList: React.FC = () => {
         params.append('department_id', state.filters.department_id);
       }
 
-      const response = await fetch(`/api/attendance/export?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-        },
+      const response = await apiClient.get(`/attendances/export?${params.toString()}`, {
+        responseType: 'blob',
       });
 
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `考勤记录_${dayjs().format('YYYY-MM-DD')}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        message.success('导出成功');
-      } else {
-        message.error('导出失败');
-      }
+      const blob = new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `考勤记录_${dayjs().format('YYYY-MM-DD')}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      message.success('导出成功');
     } catch (error) {
       console.error('Failed to export:', error);
       message.error('导出失败');

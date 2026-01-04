@@ -165,7 +165,7 @@ const createUserForEmployee = async (employee, employeeName, transaction) => {
   });
 
   if (existingUser) {
-    throw new ValidationError(`Username ${employee.employee_number} already exists`);
+    throw new ValidationError(`用户名 ${employee.employee_number} 已存在`);
   }
 
   // Hash the default password
@@ -198,7 +198,7 @@ const createEmployee = async (req, res) => {
 
   // Validate required fields
   if (!employeeData.employee_number || !employeeData.name) {
-    throw new ValidationError('Employee number and name are required');
+    throw new ValidationError('员工编号和姓名为必填项');
   }
 
   // Check if employee number already exists
@@ -207,7 +207,7 @@ const createEmployee = async (req, res) => {
   });
 
   if (existing) {
-    throw new ValidationError('Employee number already exists');
+    throw new ValidationError('员工编号已存在');
   }
 
   // Use transaction to ensure both employee and user are created together
@@ -248,7 +248,7 @@ const createEmployee = async (req, res) => {
     res.status(201).json({
       success: true,
       data: employee.toSafeObject(true),
-      message: 'Employee created successfully. User account created with default password: 123456'
+      message: '员工创建成功，用户账户已创建，初始密码：123456'
     });
   } catch (error) {
     await transaction.rollback();
@@ -328,7 +328,7 @@ const deleteEmployee = async (req, res) => {
 
   res.json({
     success: true,
-    message: 'Employee deleted successfully'
+    message: '员工删除成功'
   });
 };
 
@@ -339,7 +339,7 @@ const importFromExcel = async (req, res) => {
   const ExcelJS = require('exceljs');
 
   if (!req.file) {
-    throw new ValidationError('No file uploaded');
+    throw new ValidationError('请选择要上传的文件');
   }
 
   const workbook = new ExcelJS.Workbook();
@@ -347,7 +347,7 @@ const importFromExcel = async (req, res) => {
 
   const worksheet = workbook.getWorksheet(1);
   if (!worksheet) {
-    throw new ValidationError('Excel file is empty');
+    throw new ValidationError('Excel文件内容为空');
   }
 
   const results = {
@@ -470,7 +470,7 @@ const importFromExcel = async (req, res) => {
       if (!employeeData.employee_number || !employeeData.name) {
         results.errors.push({
           row: rowNum,
-          message: 'Employee number and name are required'
+          message: '员工编号和姓名为必填项'
         });
         results.error_count++;
         continue;
@@ -484,7 +484,7 @@ const importFromExcel = async (req, res) => {
       if (existing) {
         results.errors.push({
           row: rowNum,
-          message: `Employee ${employeeData.employee_number} already exists`
+          message: `员工 ${employeeData.employee_number} 已存在`
         });
         results.error_count++;
         continue;
@@ -494,7 +494,7 @@ const importFromExcel = async (req, res) => {
       if (!employeeData.department_id) {
         results.errors.push({
           row: rowNum,
-          message: `Department "${departmentName}" not found`
+          message: `部门"${departmentName}"不存在`
         });
         results.error_count++;
         continue;
