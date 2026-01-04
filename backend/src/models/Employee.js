@@ -246,8 +246,8 @@ class Employee extends Model {
       emergency_phone: this.emergency_phone,
       address: this.address,
       data_complete: this.isDataComplete(),
-      created_at: this.created_at,
-      updated_at: this.updated_at
+      created_at: this.created_at ? new Date(this.created_at).toISOString().replace('T', ' ').split('.')[0] : null,
+      updated_at: this.updated_at ? new Date(this.updated_at).toISOString().replace('T', ' ').split('.')[0] : null
     };
 
     // Include department if loaded (convert to plain object)
@@ -426,16 +426,6 @@ Employee.init(
       comment: '数据是否完整'
     },
     // Audit fields
-    created_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-      comment: '创建时间'
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-      comment: '更新时间'
-    },
     created_by: {
       type: DataTypes.STRING(50),
       allowNull: true,

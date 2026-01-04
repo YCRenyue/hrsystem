@@ -80,7 +80,9 @@ const EmployeeDetail: React.FC = () => {
 
   const getEmploymentStatusText = (status?: string): string => {
     const statusMap: Record<string, string> = {
-      pending: '待入职',
+      pending: '待完善',
+      active: '在职',
+      inactive: '离职',
       probation: '试用期',
       regular: '正式',
       resigned: '已离职',
@@ -92,6 +94,8 @@ const EmployeeDetail: React.FC = () => {
   const getEmploymentStatusColor = (status?: string): string => {
     const colorMap: Record<string, string> = {
       pending: 'orange',
+      active: 'green',
+      inactive: 'red',
       probation: 'blue',
       regular: 'green',
       resigned: 'red',
@@ -167,7 +171,7 @@ const EmployeeDetail: React.FC = () => {
           title="基本信息"
           bordered
           column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}
-          labelStyle={{ fontWeight: 500, width: '150px' }}
+          styles={{ label: { fontWeight: 500, width: '150px' } }}
         >
           <Descriptions.Item label="员工编号">
             <Tag color="blue">{employee.employee_number || '-'}</Tag>
@@ -201,7 +205,7 @@ const EmployeeDetail: React.FC = () => {
           title="联系方式"
           bordered
           column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}
-          labelStyle={{ fontWeight: 500, width: '150px' }}
+          styles={{ label: { fontWeight: 500, width: '150px' } }}
         >
           <Descriptions.Item label="手机号">
             <Space>
@@ -236,7 +240,7 @@ const EmployeeDetail: React.FC = () => {
           title="就职信息"
           bordered
           column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}
-          labelStyle={{ fontWeight: 500, width: '150px' }}
+          styles={{ label: { fontWeight: 500, width: '150px' } }}
         >
           <Descriptions.Item label="部门">
             <Space>
@@ -277,7 +281,7 @@ const EmployeeDetail: React.FC = () => {
           title="紧急联系人"
           bordered
           column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}
-          labelStyle={{ fontWeight: 500, width: '150px' }}
+          styles={{ label: { fontWeight: 500, width: '150px' } }}
         >
           <Descriptions.Item label="紧急联系人">
             <Space>
@@ -300,7 +304,7 @@ const EmployeeDetail: React.FC = () => {
           title="其他信息"
           bordered
           column={1}
-          labelStyle={{ fontWeight: 500, width: '150px' }}
+          styles={{ label: { fontWeight: 500, width: '150px' } }}
         >
           <Descriptions.Item label="钉钉用户ID">
             {employee.dingtalk_user_id || '-'}

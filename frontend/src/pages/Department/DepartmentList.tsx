@@ -16,13 +16,14 @@ import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { Department } from '../../types';
 import { departmentService } from '../../services/departmentService';
+import dayjs from 'dayjs';
 
 interface DepartmentWithCount extends Department {
   employee_count?: number;
 }
 
 const DepartmentList: React.FC = () => {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const [form] = Form.useForm();
   const [departments, setDepartments] = useState<DepartmentWithCount[]>([]);
   const [loading, setLoading] = useState(false);
@@ -62,7 +63,7 @@ const DepartmentList: React.FC = () => {
   };
 
   const handleDelete = (departmentId: string) => {
-    Modal.confirm({
+    modal.confirm({
       title: '确定要删除此部门吗？',
       content: '此操作无法撤销。',
       okText: '确定',
@@ -102,6 +103,10 @@ const DepartmentList: React.FC = () => {
     }
   };
 
+  const formatDate = (date: string | undefined): string => {
+    return date ? dayjs(date).format('YYYY-MM-DD') : '-';
+  };
+
   const columns: ColumnsType<DepartmentWithCount> = [
     {
       title: '部门名称',
@@ -133,7 +138,7 @@ const DepartmentList: React.FC = () => {
       dataIndex: 'created_at',
       key: 'created_at',
       width: 180,
-      render: (date: string) => new Date(date).toLocaleString('zh-CN'),
+      render: (_, record) => formatDate(record.created_at),
     },
     {
       title: '操作',

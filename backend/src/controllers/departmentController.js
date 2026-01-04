@@ -1,32 +1,38 @@
 /**
  * Department Controller
  */
-const { Department } = require('../models');
+const { Department, Employee, sequelize } = require('../models');
 const { NotFoundError, ValidationError } = require('../middleware/errorHandler');
 
 /**
  * Get all departments with employee count
  */
 const getDepartments = async (req, res) => {
-  const { Employee: _Employee } = require('../models');
-  const { sequelize } = require('../config/database');
-
   const departments = await Department.findAll({
     attributes: {
       include: [
         [
-          sequelize.literal(`(
-            SELECT COUNT(*)
-            FROM employees AS e
-            WHERE e.department_id = Department.department_id
-            AND e.status = 'active'
-          )`),
+          sequelize.fn('COUNT', sequelize.col('Employees.employee_id')),
           'employee_count'
         ]
       ]
     },
-    order: [['name', 'ASC']],
-    raw: true
+    include: [
+      {
+        model: Employee,
+        as: 'employees',
+        attributes: [],
+        where: { status: 'active' },
+        required: false
+      }
+    ],
+    group: [
+      'Department.department_id',
+      'Department.name',
+      'Department.created_at',
+      'Department.updated_at'
+    ],
+    order: [['name', 'ASC']]
   });
 
   res.json({
@@ -41,7 +47,7 @@ const getDepartments = async (req, res) => {
 const getDepartmentById = async (req, res) => {
   const { id } = req.params;
 
-  const department = await Department.findByPk(id, { raw: true });
+  const department = await Department.findByPk(id);
 
   if (!department) {
     throw new NotFoundError('Department', id);
@@ -49,7 +55,7 @@ const getDepartmentById = async (req, res) => {
 
   res.json({
     success: true,
-    data: department
+    data: department.toJSON()
   });
 };
 
