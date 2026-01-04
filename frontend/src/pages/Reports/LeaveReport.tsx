@@ -279,15 +279,16 @@ const LeaveReport: React.FC = () => {
                 xField="name"
                 yField="total_days"
                 label={{
-                  position: 'top',
+                  text: (d: { total_days: number }) => `${d.total_days}`,
+                  textBaseline: 'bottom',
                   style: {
                     fill: '#000000',
                     opacity: 0.6,
                   },
                 }}
-                meta={{
-                  name: { alias: '假期类型' },
-                  total_days: { alias: '天数' },
+                axis={{
+                  x: { title: '假期类型' },
+                  y: { title: '天数' },
                 }}
               />
             </Card>
@@ -301,15 +302,16 @@ const LeaveReport: React.FC = () => {
                 xField="department_name"
                 yField="total_days"
                 label={{
-                  position: 'top',
+                  text: (d: { total_days: number }) => `${d.total_days}`,
+                  textBaseline: 'bottom',
                   style: {
                     fill: '#000000',
                     opacity: 0.6,
                   },
                 }}
-                meta={{
-                  department_name: { alias: '部门' },
-                  total_days: { alias: '天数' },
+                axis={{
+                  x: { title: '部门' },
+                  y: { title: '天数' },
                 }}
               />
             </Card>

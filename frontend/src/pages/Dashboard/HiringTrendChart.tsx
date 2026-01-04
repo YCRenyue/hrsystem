@@ -9,7 +9,7 @@ import apiClient from '../../services/api';
 
 interface TrendData {
   month: string;
-  hired: number;
+  count: number;
 }
 
 const HiringTrendChart: React.FC = () => {
@@ -24,7 +24,13 @@ const HiringTrendChart: React.FC = () => {
         const response = await apiClient.get('/dashboard/charts/hiring-trend');
 
         if (response.data.success) {
-          setData(response.data.data);
+          const formattedData = response.data.data.map(
+            (item: { month: string; hired: number }) => ({
+              month: item.month,
+              count: item.hired,
+            })
+          );
+          setData(formattedData);
         }
       } catch (error) {
         console.error('Failed to fetch hiring trend:', error);
@@ -40,15 +46,27 @@ const HiringTrendChart: React.FC = () => {
   const config = {
     data,
     xField: 'month',
-    yField: 'hired',
-    label: {},
+    yField: 'count',
     point: {
-      size: 5,
-      shape: 'diamond',
+      shapeField: 'square',
+      sizeField: 4,
+    },
+    style: {
+      lineWidth: 2,
     },
     smooth: true,
-    lineStyle: {
-      lineWidth: 2,
+    axis: {
+      x: { title: '月份' },
+      y: { title: '入职人数' },
+    },
+    tooltip: {
+      title: (d: TrendData) => d.month,
+      items: [
+        {
+          field: 'count',
+          name: '入职人数',
+        },
+      ],
     },
   };
 

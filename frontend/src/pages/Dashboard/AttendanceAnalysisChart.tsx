@@ -64,24 +64,23 @@ const AttendanceAnalysisChart: React.FC = () => {
     xField: 'status',
     yField: 'count',
     label: {
-      position: 'middle' as const,
+      text: (d: StatusData) => `${d.count}`,
+      textBaseline: 'middle' as const,
       style: {
         fill: '#FFFFFF',
         opacity: 0.6,
       },
     },
-    xAxis: {
-      label: {
-        autoHide: true,
-        autoRotate: false,
+    axis: {
+      x: {
+        title: '考勤状态',
+        label: {
+          autoHide: true,
+          autoRotate: false,
+        },
       },
-    },
-    meta: {
-      status: {
-        alias: '考勤状态',
-      },
-      count: {
-        alias: '人次',
+      y: {
+        title: '人次',
       },
     },
   };

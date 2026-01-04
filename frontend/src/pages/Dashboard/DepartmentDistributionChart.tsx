@@ -43,14 +43,15 @@ const DepartmentDistributionChart: React.FC = () => {
     colorField: 'department',
     radius: 0.8,
     label: {
-      type: 'outer',
-      content: '{name} {percentage}',
-    },
-    interactions: [
-      {
-        type: 'element-active',
+      text: (d: DepartmentData) => {
+        const total = data.reduce((sum, item) => sum + item.count, 0);
+        const percent = total > 0 ? ((d.count / total) * 100).toFixed(1) : '0';
+        return `${d.department} ${percent}%`;
       },
-    ],
+    },
+    interaction: {
+      elementHighlight: true,
+    },
   };
 
   if (loading) {

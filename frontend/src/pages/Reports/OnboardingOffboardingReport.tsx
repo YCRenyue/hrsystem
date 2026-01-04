@@ -285,17 +285,11 @@ const OnboardingOffboardingReport: React.FC = () => {
                 ]}
                 xField="month"
                 yField="count"
-                seriesField="type"
+                colorField="type"
                 smooth={true}
-                label={{
-                  style: {
-                    fill: '#000000',
-                    opacity: 0.6,
-                  },
-                }}
-                meta={{
-                  month: { alias: '月份' },
-                  count: { alias: '人数' },
+                axis={{
+                  x: { title: '月份' },
+                  y: { title: '人数' },
                 }}
               />
             </Card>
@@ -312,15 +306,16 @@ const OnboardingOffboardingReport: React.FC = () => {
                     xField="department_name"
                     yField="count"
                     label={{
-                      position: 'top',
+                      text: (d: { count: number }) => `${d.count}`,
+                      textBaseline: 'bottom',
                       style: {
                         fill: '#3f8600',
                         opacity: 0.8,
                       },
                     }}
-                    meta={{
-                      department_name: { alias: '部门' },
-                      count: { alias: '入职人数' },
+                    axis={{
+                      x: { title: '部门' },
+                      y: { title: '入职人数' },
                     }}
                   />
                 </Card>
@@ -354,15 +349,16 @@ const OnboardingOffboardingReport: React.FC = () => {
                     xField="department_name"
                     yField="count"
                     label={{
-                      position: 'top',
+                      text: (d: { count: number }) => `${d.count}`,
+                      textBaseline: 'bottom',
                       style: {
                         fill: '#cf1322',
                         opacity: 0.8,
                       },
                     }}
-                    meta={{
-                      department_name: { alias: '部门' },
-                      count: { alias: '离职人数' },
+                    axis={{
+                      x: { title: '部门' },
+                      y: { title: '离职人数' },
                     }}
                   />
                 </Card>

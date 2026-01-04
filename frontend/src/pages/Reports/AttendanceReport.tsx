@@ -339,10 +339,11 @@ const AttendanceReport: React.FC = () => {
                     colorField="name"
                     radius={0.8}
                     label={{
-                      type: 'outer',
-                      content: '{name}: {value}',
+                      text: (d: { name: string; count: number }) => `${d.name}: ${d.count}`,
                     }}
-                    interactions={[{ type: 'element-active' }]}
+                    interaction={{
+                      elementHighlight: true,
+                    }}
                   />
                 </Card>
               </Col>
@@ -355,14 +356,13 @@ const AttendanceReport: React.FC = () => {
                       data={reportData.byDepartment}
                       xField="department_name"
                       yField="late"
-                      seriesField="type"
-                      isGroup={true}
                       label={{
-                        position: 'top',
+                        text: (d: { late: number }) => `${d.late}`,
+                        textBaseline: 'bottom',
                       }}
-                      meta={{
-                        department_name: { alias: '部门' },
-                        late: { alias: '迟到次数' },
+                      axis={{
+                        x: { title: '部门' },
+                        y: { title: '迟到次数' },
                       }}
                     />
                   </Card>
