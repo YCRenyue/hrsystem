@@ -56,8 +56,16 @@ const CanteenMealList: React.FC = () => {
     try {
       const response = await api.get('/canteen-meals', { params: queryParams });
       if (response.data.success) {
-        setData(response.data.data.items || []);
-        setTotal(response.data.data.total || 0);
+        // API returns { data: [...], pagination: { total, ... } }
+        const records = response.data.data || [];
+        // Map employee info to flat structure for table display
+        const mappedData = records.map((item: any) => ({
+          ...item,
+          employee_number: item.employee?.employee_number || item.employee_number,
+          employee_name: item.employee?.name || item.employee_name,
+        }));
+        setData(mappedData);
+        setTotal(response.data.pagination?.total || 0);
       }
     } catch (error: any) {
       message.error(error.response?.data?.message || '获取就餐数据失败');
@@ -169,6 +177,11 @@ const CanteenMealList: React.FC = () => {
     return map[type] || type;
   };
 
+  const formatMoney = (amount?: number | string) => {
+    const num = Number(amount)
+    return Number.isFinite(num) ? `¥${num.toFixed(2)}` : '-'
+  }
+
   const columns: ColumnsType<CanteenMeal> = [
     {
       title: '员工编号',
@@ -206,14 +219,14 @@ const CanteenMealList: React.FC = () => {
       dataIndex: 'amount',
       key: 'amount',
       width: 100,
-      render: (amount: number) => `¥${amount.toFixed(2)}`,
+      render: (amount?: number | string) => formatMoney(amount),
     },
     {
       title: '补贴金额',
       dataIndex: 'subsidy_amount',
       key: 'subsidy_amount',
       width: 100,
-      render: (amount: number) => `¥${amount.toFixed(2)}`,
+      render: (amount?: number | string) => formatMoney(amount),
     },
     {
       title: '是否补贴',

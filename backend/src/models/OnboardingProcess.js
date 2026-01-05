@@ -180,7 +180,7 @@ OnboardingProcess.init(
       validate: {
         isIn: {
           args: [['pending', 'sent', 'completed', 'expired']],
-          msg: 'Invalid status'
+          msg: '无效的状态'
         }
       }
     },
@@ -207,7 +207,7 @@ OnboardingProcess.init(
       validate: {
         isIn: {
           args: [['dingtalk', 'sms', 'email', 'manual']],
-          msg: 'Invalid push channel'
+          msg: '无效的推送渠道'
         }
       }
     },
@@ -223,7 +223,7 @@ OnboardingProcess.init(
       validate: {
         isIn: {
           args: [['success', 'failed']],
-          msg: 'Invalid push status'
+          msg: '无效的推送状态'
         }
       }
     },

@@ -15,11 +15,14 @@ import {
   Row,
   Col,
   Statistic,
-  App
+  App,
+  Upload,
 } from 'antd';
 import {
   ReloadOutlined,
   ExportOutlined,
+  DownloadOutlined,
+  UploadOutlined,
   CalendarOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
@@ -68,7 +71,7 @@ interface AttendanceListState {
 
 const AttendanceList: React.FC = () => {
   const { hasPermission, dataScope } = usePermission();
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const [state, setState] = useState<AttendanceListState>({
     data: [],
     loading: false,
@@ -280,6 +283,72 @@ const AttendanceList: React.FC = () => {
       console.error('Failed to export:', error);
       message.error('导出失败');
     }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await apiClient.get('/attendances/template', {
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `考勤导入模板_${dayjs().format('YYYY-MM-DD')}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      message.success('模板下载成功');
+    } catch (error) {
+      console.error('Failed to download template:', error);
+      message.error('模板下载失败');
+    }
+  };
+
+  const handleImport = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const hideLoading = message.loading('正在导入...', 0);
+    try {
+      const response = await apiClient.post('/attendances/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      hideLoading();
+
+      const { success_count, error_count, errors } = response.data.data;
+
+      if (error_count > 0) {
+        modal.warning({
+          title: '导入完成',
+          width: 500,
+          content: (
+            <div>
+              <p>成功导入 {success_count} 条记录，失败 {error_count} 条</p>
+              <div style={{ maxHeight: 300, overflow: 'auto' }}>
+                {errors.map((err: { row: number; message: string }, index: number) => (
+                  <p key={index} style={{ color: 'red', margin: '4px 0' }}>
+                    第 {err.row} 行: {err.message}
+                  </p>
+                ))}
+              </div>
+            </div>
+          ),
+        });
+      } else {
+        message.success(`成功导入 ${success_count} 条记录`);
+      }
+
+      fetchAttendanceData();
+    } catch (error: any) {
+      hideLoading();
+      message.error(error.response?.data?.message || '导入失败');
+    }
+
+    return false;
   };
 
   const columns: ColumnsType<AttendanceRecord> = [
@@ -553,13 +622,32 @@ const AttendanceList: React.FC = () => {
             </Button>
 
             {hasPermission('employees.export') && (
-              <Button
-                type="primary"
-                icon={<ExportOutlined />}
-                onClick={handleExport}
-              >
-                导出
-              </Button>
+              <>
+                <Button
+                  icon={<DownloadOutlined />}
+                  onClick={handleDownloadTemplate}
+                >
+                  下载模板
+                </Button>
+
+                <Upload
+                  accept=".xlsx,.xls"
+                  showUploadList={false}
+                  beforeUpload={handleImport}
+                >
+                  <Button icon={<UploadOutlined />}>
+                    导入
+                  </Button>
+                </Upload>
+
+                <Button
+                  type="primary"
+                  icon={<ExportOutlined />}
+                  onClick={handleExport}
+                >
+                  导出
+                </Button>
+              </>
             )}
           </Space>
 

@@ -111,5 +111,47 @@ export const attendanceService = {
    */
   async delete(id: string): Promise<void> {
     await apiClient.delete(`/attendances/${id}`);
+  },
+
+  /**
+   * Download Excel template
+   */
+  async downloadTemplate(): Promise<Blob> {
+    const response = await apiClient.get('/attendances/template', {
+      responseType: 'blob'
+    });
+    return response.data;
+  },
+
+  /**
+   * Import from Excel
+   */
+  async importFromExcel(file: File): Promise<{
+    success_count: number;
+    error_count: number;
+    errors: Array<{ row: number; message: string }>;
+  }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post('/attendances/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data.data;
+  },
+
+  /**
+   * Export to Excel
+   */
+  async exportToExcel(params?: {
+    start_date?: string;
+    end_date?: string;
+    status?: string;
+    department_id?: string;
+  }): Promise<Blob> {
+    const response = await apiClient.get('/attendances/export', {
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
   }
 };

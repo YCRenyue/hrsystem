@@ -57,8 +57,16 @@ const BusinessTripList: React.FC = () => {
     try {
       const response = await api.get('/business-trips', { params: queryParams });
       if (response.data.success) {
-        setData(response.data.data.items || []);
-        setTotal(response.data.data.total || 0);
+        // API returns { data: [...], pagination: { total, ... } }
+        const records = response.data.data || [];
+        // Map employee info to flat structure for table display
+        const mappedData = records.map((item: any) => ({
+          ...item,
+          employee_number: item.employee?.employee_number || item.employee_number,
+          employee_name: item.employee?.name || item.employee_name,
+        }));
+        setData(mappedData);
+        setTotal(response.data.pagination?.total || 0);
       }
     } catch (error: any) {
       message.error(error.response?.data?.message || '获取出差数据失败');
@@ -183,6 +191,11 @@ const BusinessTripList: React.FC = () => {
     return map[status] || 'default';
   };
 
+  const formatMoney = (amount?: number | string) => {
+    const num = Number(amount)
+    return Number.isFinite(num) ? `¥${num.toFixed(2)}` : '-'
+  }
+
   const columns: ColumnsType<BusinessTrip> = [
     {
       title: '出差单号',
@@ -226,7 +239,7 @@ const BusinessTripList: React.FC = () => {
       dataIndex: 'total_allowance',
       key: 'total_allowance',
       width: 120,
-      render: (amount: number) => `¥${amount.toFixed(2)}`,
+      render: (amount?: number | string) => formatMoney(amount),
     },
     {
       title: '状态',

@@ -281,7 +281,7 @@ Employee.init(
       comment: '工号',
       validate: {
         notEmpty: {
-          msg: 'Employee number cannot be empty'
+          msg: '工号不能为空'
         }
       }
     },
@@ -291,7 +291,7 @@ Employee.init(
       comment: '邮箱',
       validate: {
         isEmail: {
-          msg: 'Invalid email format'
+          msg: '邮箱格式不正确'
         }
       }
     },
@@ -343,7 +343,7 @@ Employee.init(
       validate: {
         isIn: {
           args: [['full_time', 'part_time', 'intern', 'contract']],
-          msg: 'Invalid employment type'
+          msg: '无效的用工类型'
         }
       }
     },
@@ -370,7 +370,7 @@ Employee.init(
       validate: {
         isIn: {
           args: [['pending', 'active', 'inactive']],
-          msg: 'Invalid status'
+          msg: '无效的状态'
         }
       }
     },
@@ -400,7 +400,7 @@ Employee.init(
       validate: {
         isIn: {
           args: [['male', 'female']],
-          msg: 'Invalid gender'
+          msg: '无效的性别'
         }
       }
     },

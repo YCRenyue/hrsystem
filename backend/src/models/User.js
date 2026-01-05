@@ -275,15 +275,15 @@ User.init(
       comment: '用户名',
       validate: {
         notEmpty: {
-          msg: 'Username cannot be empty'
+          msg: '用户名不能为空'
         },
         len: {
           args: [3, 50],
-          msg: 'Username must be between 3 and 50 characters'
+          msg: '用户名长度必须在3到50个字符之间'
         },
         is: {
           args: /^[a-zA-Z0-9_]+$/,
-          msg: 'Username must contain only letters, numbers, and underscores'
+          msg: '用户名只能包含字母、数字和下划线'
         }
       }
     },
@@ -303,7 +303,7 @@ User.init(
       comment: '邮箱',
       validate: {
         isEmail: {
-          msg: 'Invalid email format'
+          msg: '邮箱格式不正确'
         }
       }
     },
@@ -319,7 +319,7 @@ User.init(
       validate: {
         isIn: {
           args: [['admin', 'hr_admin', 'department_manager', 'employee']],
-          msg: 'Invalid role. Must be one of: admin, hr_admin, department_manager, employee'
+          msg: '无效的角色，必须是以下之一：admin, hr_admin, department_manager, employee'
         }
       }
     },
@@ -356,7 +356,7 @@ User.init(
       validate: {
         isIn: {
           args: [['active', 'inactive', 'locked']],
-          msg: 'Invalid status'
+          msg: '无效的状态'
         }
       }
     },

@@ -7,6 +7,34 @@ const {
   Attendance, Employee, Department, sequelize
 } = require('../models');
 const permissionService = require('../services/PermissionService');
+const ExcelService = require('../services/ExcelService');
+const { ValidationError } = require('../middleware/errorHandler');
+
+/**
+ * 考勤状态映射
+ */
+const statusMap = {
+  normal: '正常',
+  late: '迟到',
+  early_leave: '早退',
+  absent: '缺勤',
+  leave: '请假',
+  holiday: '节假日',
+  weekend: '周末'
+};
+
+/**
+ * 状态中文转英文
+ */
+const statusReverseMap = {
+  '正常': 'normal',
+  '迟到': 'late',
+  '早退': 'early_leave',
+  '缺勤': 'absent',
+  '请假': 'leave',
+  '节假日': 'holiday',
+  '周末': 'weekend'
+};
 
 /**
  * Create attendance record
@@ -303,10 +331,212 @@ const deleteAttendance = async (req, res) => {
   }
 };
 
+/**
+ * Download attendance Excel template
+ */
+const downloadTemplate = async (req, res) => {
+  const columns = [
+    { header: '员工编号', key: 'employee_number', width: 15 },
+    { header: '日期', key: 'date', width: 15, note: '格式: YYYY-MM-DD' },
+    { header: '签到时间', key: 'check_in_time', width: 12, note: '格式: HH:MM:SS' },
+    { header: '签退时间', key: 'check_out_time', width: 12, note: '格式: HH:MM:SS' },
+    {
+      header: '状态',
+      key: 'status',
+      width: 10,
+      note: '可选值: 正常, 迟到, 早退, 缺勤, 请假, 节假日, 周末'
+    },
+    { header: '迟到分钟', key: 'late_minutes', width: 12 },
+    { header: '早退分钟', key: 'early_leave_minutes', width: 12 },
+    { header: '工作时长', key: 'work_hours', width: 12, note: '单位: 小时' },
+    { header: '加班时长', key: 'overtime_hours', width: 12, note: '单位: 小时' },
+    { header: '打卡地点', key: 'location', width: 20 },
+    { header: '备注', key: 'notes', width: 30 }
+  ];
+
+  const sampleData = [
+    {
+      employee_number: 'EMP001',
+      date: '2025-01-15',
+      check_in_time: '09:00:00',
+      check_out_time: '18:00:00',
+      status: '正常',
+      late_minutes: 0,
+      early_leave_minutes: 0,
+      work_hours: 8,
+      overtime_hours: 0,
+      location: '公司总部',
+      notes: '示例数据'
+    }
+  ];
+
+  const workbook = ExcelService.createTemplate(columns, sampleData);
+  const filename = `attendance_template_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+  await ExcelService.sendExcelResponse(res, workbook, filename);
+};
+
+/**
+ * Import attendance from Excel
+ */
+const importFromExcel = async (req, res) => {
+  if (!req.file) {
+    throw new ValidationError('No file uploaded');
+  }
+
+  const results = await ExcelService.importFromBuffer(
+    req.file.buffer,
+    async (row, _rowNum) => {
+      const employeeNumber = ExcelService.getCellValue(row.getCell(1));
+      const date = ExcelService.parseExcelDate(row.getCell(2).value);
+      const checkInTime = ExcelService.getCellValue(row.getCell(3));
+      const checkOutTime = ExcelService.getCellValue(row.getCell(4));
+      const statusText = ExcelService.getCellValue(row.getCell(5));
+      const lateMinutes = ExcelService.getCellValue(row.getCell(6)) || 0;
+      const earlyLeaveMinutes = ExcelService.getCellValue(row.getCell(7)) || 0;
+      const workHours = ExcelService.getCellValue(row.getCell(8));
+      const overtimeHours = ExcelService.getCellValue(row.getCell(9)) || 0;
+      const location = ExcelService.getCellValue(row.getCell(10));
+      const notes = ExcelService.getCellValue(row.getCell(11));
+
+      if (!employeeNumber) {
+        throw new Error('员工编号为必填项');
+      }
+
+      if (!date) {
+        throw new Error('日期为必填项');
+      }
+
+      // Find employee
+      const employee = await Employee.findOne({
+        where: { employee_number: employeeNumber }
+      });
+
+      if (!employee) {
+        throw new Error(`员工 ${employeeNumber} 不存在`);
+      }
+
+      // Convert status text to enum value
+      const status = statusReverseMap[statusText] || 'normal';
+
+      // Check for duplicate
+      const existing = await Attendance.findOne({
+        where: {
+          employee_id: employee.employee_id,
+          date
+        }
+      });
+
+      const data = {
+        employee_id: employee.employee_id,
+        date,
+        check_in_time: checkInTime || null,
+        check_out_time: checkOutTime || null,
+        status,
+        late_minutes: parseInt(lateMinutes, 10) || 0,
+        early_leave_minutes: parseInt(earlyLeaveMinutes, 10) || 0,
+        work_hours: workHours ? parseFloat(workHours) : null,
+        overtime_hours: parseFloat(overtimeHours) || 0,
+        location: location || null,
+        notes: notes || null
+      };
+
+      if (existing) {
+        await existing.update(data);
+      } else {
+        await Attendance.create(data);
+      }
+    }
+  );
+
+  res.json({
+    success: true,
+    data: results
+  });
+};
+
+/**
+ * Export attendance to Excel
+ */
+const exportToExcel = async (req, res) => {
+  const { start_date, end_date, status, department_id } = req.query;
+
+  const where = {};
+  if (status) where.status = status;
+  if (start_date && end_date) {
+    where.date = { [Op.between]: [start_date, end_date] };
+  }
+
+  const include = [
+    {
+      model: Employee,
+      as: 'employee',
+      attributes: ['employee_number', 'name_encrypted', 'department_id'],
+      include: [
+        {
+          model: Department,
+          as: 'department',
+          attributes: ['name']
+        }
+      ]
+    }
+  ];
+
+  if (department_id) {
+    include[0].where = { department_id };
+  }
+
+  const records = await Attendance.findAll({
+    where,
+    include,
+    order: [['date', 'DESC']]
+  });
+
+  const data = records.map((record) => ({
+    employee_number: record.employee?.employee_number || '',
+    employee_name: record.employee?.getName() || '',
+    department_name: record.employee?.department?.name || '',
+    date: record.date,
+    check_in_time: record.check_in_time || '',
+    check_out_time: record.check_out_time || '',
+    status: statusMap[record.status] || record.status,
+    late_minutes: record.late_minutes || 0,
+    early_leave_minutes: record.early_leave_minutes || 0,
+    work_hours: record.work_hours || '',
+    overtime_hours: record.overtime_hours || 0,
+    location: record.location || '',
+    notes: record.notes || ''
+  }));
+
+  const columns = [
+    { header: '员工编号', key: 'employee_number', width: 15 },
+    { header: '姓名', key: 'employee_name', width: 12 },
+    { header: '部门', key: 'department_name', width: 15 },
+    { header: '日期', key: 'date', width: 15 },
+    { header: '签到时间', key: 'check_in_time', width: 12 },
+    { header: '签退时间', key: 'check_out_time', width: 12 },
+    { header: '状态', key: 'status', width: 10 },
+    { header: '迟到分钟', key: 'late_minutes', width: 12 },
+    { header: '早退分钟', key: 'early_leave_minutes', width: 12 },
+    { header: '工作时长', key: 'work_hours', width: 12 },
+    { header: '加班时长', key: 'overtime_hours', width: 12 },
+    { header: '打卡地点', key: 'location', width: 20 },
+    { header: '备注', key: 'notes', width: 30 }
+  ];
+
+  const workbook = await ExcelService.exportToExcel(data, columns, '考勤记录');
+  const filename = `attendance_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+  await ExcelService.sendExcelResponse(res, workbook, filename);
+};
+
 module.exports = {
   createAttendance,
   getAttendanceList,
   getAttendanceStats,
   updateAttendance,
-  deleteAttendance
+  deleteAttendance,
+  downloadTemplate,
+  importFromExcel,
+  exportToExcel
 };

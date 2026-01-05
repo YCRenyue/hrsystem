@@ -11,6 +11,53 @@ const {
   NotFoundError
 } = require('../middleware/errorHandler');
 
+// Meal type mapping: Chinese to English
+const MEAL_TYPE_CHINESE_TO_ENGLISH = {
+  '早餐': 'breakfast',
+  '午餐': 'lunch',
+  '晚餐': 'dinner'
+};
+
+// Payment method mapping: Chinese to English
+const PAYMENT_METHOD_CHINESE_TO_ENGLISH = {
+  '现金': 'cash',
+  '饭卡': 'card',
+  '手机支付': 'mobile_pay',
+  '补贴': 'subsidy'
+};
+
+// Valid English values
+const VALID_MEAL_TYPES = ['breakfast', 'lunch', 'dinner'];
+const VALID_PAYMENT_METHODS = ['cash', 'card', 'mobile_pay', 'subsidy'];
+
+/**
+ * Convert meal type to English value
+ * @param {string} mealType - Meal type (Chinese or English)
+ * @returns {string|null} English meal type or null if invalid
+ */
+const normalizeMealType = (mealType) => {
+  if (!mealType) return null;
+  const trimmed = String(mealType).trim();
+  if (VALID_MEAL_TYPES.includes(trimmed)) {
+    return trimmed;
+  }
+  return MEAL_TYPE_CHINESE_TO_ENGLISH[trimmed] || null;
+};
+
+/**
+ * Convert payment method to English value
+ * @param {string} paymentMethod - Payment method (Chinese or English)
+ * @returns {string} English payment method
+ */
+const normalizePaymentMethod = (paymentMethod) => {
+  if (!paymentMethod) return 'subsidy';
+  const trimmed = String(paymentMethod).trim();
+  if (VALID_PAYMENT_METHODS.includes(trimmed)) {
+    return trimmed;
+  }
+  return PAYMENT_METHOD_CHINESE_TO_ENGLISH[trimmed] || 'subsidy';
+};
+
 /**
  * Get canteen meal records with pagination and filtering
  */
@@ -310,11 +357,9 @@ const downloadTemplate = async (req, res) => {
     { header: '就餐日期', key: 'meal_date', width: 15 },
     { header: '餐次', key: 'meal_type', width: 12 },
     { header: '地点', key: 'location', width: 20 },
-    { header: '地点类型', key: 'location_type', width: 12 },
     { header: '餐费金额', key: 'amount', width: 12 },
     { header: '补贴金额', key: 'subsidy_amount', width: 12 },
     { header: '支付方式', key: 'payment_method', width: 12 },
-    { header: '是否补贴', key: 'is_subsidized', width: 12 },
     { header: '备注', key: 'notes', width: 30 }
   ];
 
@@ -322,13 +367,11 @@ const downloadTemplate = async (req, res) => {
     {
       employee_number: 'EMP001',
       meal_date: '2025-01-15',
-      meal_type: 'lunch',
+      meal_type: '午餐',
       location: '食堂一楼',
-      location_type: 'canteen',
       amount: 15.00,
       subsidy_amount: 5.00,
-      payment_method: 'subsidy',
-      is_subsidized: true,
+      payment_method: '饭卡',
       notes: '示例数据'
     }
   ];
@@ -354,22 +397,31 @@ const importFromExcel = async (req, res) => {
     async (row, _rowNum) => {
       const employeeNumber = ExcelService.getCellValue(row.getCell(1));
       const mealDate = ExcelService.parseExcelDate(row.getCell(2).value);
-      const mealType = ExcelService.getCellValue(row.getCell(3));
+      const mealTypeRaw = ExcelService.getCellValue(row.getCell(3));
       const location = ExcelService.getCellValue(row.getCell(4));
-      const locationType = ExcelService.getCellValue(row.getCell(5)) || 'canteen';
-      const amount = ExcelService.getCellValue(row.getCell(6));
-      const subsidyAmount = ExcelService.getCellValue(row.getCell(7)) || 0;
-      const paymentMethod = ExcelService.getCellValue(row.getCell(8)) || 'subsidy';
-      const isSubsidized = ExcelService.getCellValue(row.getCell(9)) || false;
-      const notes = ExcelService.getCellValue(row.getCell(10));
+      const amount = ExcelService.getCellValue(row.getCell(5));
+      const subsidyAmount = ExcelService.getCellValue(row.getCell(6)) || 0;
+      const paymentMethodRaw = ExcelService.getCellValue(row.getCell(7));
+      const notes = ExcelService.getCellValue(row.getCell(8));
 
       if (!employeeNumber) {
         throw new Error('Employee number is required');
       }
 
-      if (!mealType) {
+      if (!mealTypeRaw) {
         throw new Error('Meal type is required');
       }
+
+      // Normalize meal type (supports Chinese)
+      const mealType = normalizeMealType(mealTypeRaw);
+      if (!mealType) {
+        throw new Error(
+          `Invalid meal type "${mealTypeRaw}". Accepted values: breakfast/lunch/dinner or 早餐/午餐/晚餐`
+        );
+      }
+
+      // Normalize payment method (supports Chinese)
+      const paymentMethod = normalizePaymentMethod(paymentMethodRaw);
 
       if (amount === undefined || amount === null || amount === '') {
         throw new Error('Meal amount is required');
@@ -382,14 +434,6 @@ const importFromExcel = async (req, res) => {
 
       if (!employee) {
         throw new Error(`Employee ${employeeNumber} not found`);
-      }
-
-      // Validate meal type
-      const validMealTypes = ['breakfast', 'lunch', 'dinner'];
-      if (!validMealTypes.includes(mealType)) {
-        throw new Error(
-          `Invalid meal type "${mealType}". Must be one of: ${validMealTypes.join(', ')}`
-        );
       }
 
       // Check for duplicate
@@ -406,11 +450,11 @@ const importFromExcel = async (req, res) => {
         meal_date: mealDate,
         meal_type: mealType,
         location,
-        location_type: locationType,
+        location_type: 'canteen',
         amount: parseFloat(amount),
         subsidy_amount: parseFloat(subsidyAmount),
         payment_method: paymentMethod,
-        is_subsidized: Boolean(isSubsidized),
+        is_subsidized: false,
         notes
       };
 
@@ -485,11 +529,9 @@ const exportToExcel = async (req, res) => {
     meal_date: record.meal_date,
     meal_type: record.meal_type,
     location: record.location,
-    location_type: record.location_type,
     amount: record.amount,
     subsidy_amount: record.subsidy_amount,
     payment_method: record.payment_method,
-    is_subsidized: record.is_subsidized,
     notes: record.notes
   }));
 
@@ -499,11 +541,9 @@ const exportToExcel = async (req, res) => {
     { header: '就餐日期', key: 'meal_date', width: 15 },
     { header: '餐次', key: 'meal_type', width: 12 },
     { header: '地点', key: 'location', width: 20 },
-    { header: '地点类型', key: 'location_type', width: 12 },
     { header: '餐费金额', key: 'amount', width: 12 },
     { header: '补贴金额', key: 'subsidy_amount', width: 12 },
     { header: '支付方式', key: 'payment_method', width: 12 },
-    { header: '是否补贴', key: 'is_subsidized', width: 12 },
     { header: '备注', key: 'notes', width: 30 }
   ];
 

@@ -60,8 +60,16 @@ const AnnualLeaveList: React.FC = () => {
     try {
       const response = await api.get('/annual-leave', { params: queryParams });
       if (response.data.success) {
-        setData(response.data.data.items || []);
-        setTotal(response.data.data.total || 0);
+        // API returns { data: [...], pagination: { total, ... } }
+        const records = response.data.data || [];
+        // Map employee info to flat structure for table display
+        const mappedData = records.map((item: any) => ({
+          ...item,
+          employee_number: item.employee?.employee_number || item.employee_number,
+          employee_name: item.employee?.name || item.employee_name,
+        }));
+        setData(mappedData);
+        setTotal(response.data.pagination?.total || 0);
       }
     } catch (error: any) {
       message.error(error.response?.data?.message || '获取年假数据失败');

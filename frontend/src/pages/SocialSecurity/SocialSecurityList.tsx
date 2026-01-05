@@ -60,8 +60,16 @@ const SocialSecurityList: React.FC = () => {
     try {
       const response = await api.get('/social-security', { params: queryParams });
       if (response.data.success) {
-        setData(response.data.data.items || []);
-        setTotal(response.data.data.total || 0);
+        // API returns { data: [...], pagination: { total, ... } }
+        const records = response.data.data || [];
+        // Map employee info to flat structure for table display
+        const mappedData = records.map((item: any) => ({
+          ...item,
+          employee_number: item.employee?.employee_number || item.employee_number,
+          employee_name: item.employee?.name || item.employee_name,
+        }));
+        setData(mappedData);
+        setTotal(response.data.pagination?.total || 0);
       }
     } catch (error: any) {
       message.error(error.response?.data?.message || '获取社保数据失败');
@@ -189,6 +197,16 @@ const SocialSecurityList: React.FC = () => {
     return map[status] || 'default';
   };
 
+  const formatNumber = (amount?: number | string) => {
+    const num = Number(amount)
+    return Number.isFinite(num) ? `${num.toFixed(2)}` : '-'
+  }
+
+  const formatMoney = (amount?: number | string) => {
+    const num = Number(amount)
+    return Number.isFinite(num) ? `¥${num.toFixed(2)}` : '-'
+  }
+
   const columns: ColumnsType<SocialSecurity> = [
     {
       title: '员工编号',
@@ -213,28 +231,28 @@ const SocialSecurityList: React.FC = () => {
       dataIndex: 'social_security_base',
       key: 'social_security_base',
       width: 120,
-      render: (amount: number) => `¥${amount.toFixed(2)}`,
+      render: (amount?: number | string) => formatNumber(amount),
     },
     {
       title: '公积金基数',
       dataIndex: 'housing_fund_base',
       key: 'housing_fund_base',
       width: 120,
-      render: (amount: number) => `¥${amount.toFixed(2)}`,
+      render: (amount?: number | string) => formatNumber(amount),
     },
     {
       title: '个人合计',
       dataIndex: 'total_personal',
       key: 'total_personal',
       width: 120,
-      render: (amount: number) => `¥${amount.toFixed(2)}`,
+      render: (amount?: number | string) => formatMoney(amount),
     },
     {
       title: '公司合计',
       dataIndex: 'total_company',
       key: 'total_company',
       width: 120,
-      render: (amount: number) => `¥${amount.toFixed(2)}`,
+      render: (amount?: number | string) => formatMoney(amount),
     },
     {
       title: '缴纳状态',

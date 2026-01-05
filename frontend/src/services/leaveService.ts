@@ -147,5 +147,47 @@ export const leaveService = {
    */
   async delete(id: string): Promise<void> {
     await apiClient.delete(`/leaves/${id}`);
+  },
+
+  /**
+   * Download Excel template
+   */
+  async downloadTemplate(): Promise<Blob> {
+    const response = await apiClient.get('/leaves/template', {
+      responseType: 'blob'
+    });
+    return response.data;
+  },
+
+  /**
+   * Import from Excel
+   */
+  async importFromExcel(file: File): Promise<{
+    success_count: number;
+    error_count: number;
+    errors: Array<{ row: number; message: string }>;
+  }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post('/leaves/import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data.data;
+  },
+
+  /**
+   * Export to Excel
+   */
+  async exportToExcel(params?: {
+    start_date?: string;
+    end_date?: string;
+    leave_type?: string;
+    status?: string;
+  }): Promise<Blob> {
+    const response = await apiClient.get('/leaves/export', {
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
   }
 };

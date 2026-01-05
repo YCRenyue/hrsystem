@@ -42,7 +42,7 @@ router.get('/', asyncHandler(businessTripController.getBusinessTrips));
 /**
  * @route   GET /api/business-trip/template
  * @desc    Download Excel template
- * @access  Private (HR, Admin, Department Manager)
+ * @access  Private (HR Admin, Department Manager, Admin)
  */
 router.get(
   '/template',
@@ -53,7 +53,7 @@ router.get(
 /**
  * @route   GET /api/business-trip/export
  * @desc    Export to Excel
- * @access  Private (HR, Admin, Department Manager)
+ * @access  Private (HR Admin, Department Manager, Admin)
  */
 router.get(
   '/export',
@@ -64,7 +64,7 @@ router.get(
 /**
  * @route   POST /api/business-trip/import
  * @desc    Import from Excel
- * @access  Private (HR, Admin)
+ * @access  Private (HR Admin, Admin)
  */
 router.post(
   '/import',
@@ -83,7 +83,7 @@ router.get('/:id', asyncHandler(businessTripController.getBusinessTripById));
 /**
  * @route   POST /api/business-trip
  * @desc    Create business trip record
- * @access  Private (HR, Admin)
+ * @access  Private (HR Admin, Admin)
  */
 router.post(
   '/',
@@ -94,7 +94,7 @@ router.post(
 /**
  * @route   PUT /api/business-trip/:id
  * @desc    Update business trip record
- * @access  Private (HR, Admin)
+ * @access  Private (HR Admin, Admin)
  */
 router.put(
   '/:id',

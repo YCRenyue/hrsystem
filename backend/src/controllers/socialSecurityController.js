@@ -11,6 +11,30 @@ const {
   NotFoundError
 } = require('../middleware/errorHandler');
 
+// Payment status mapping: Chinese to English
+const PAYMENT_STATUS_CHINESE_TO_ENGLISH = {
+  '待缴纳': 'pending',
+  '已缴纳': 'paid',
+  '缴纳失败': 'failed'
+};
+
+// Valid English payment status values
+const VALID_PAYMENT_STATUS = ['pending', 'paid', 'failed'];
+
+/**
+ * Convert payment status to English value
+ * @param {string} status - Payment status (Chinese or English)
+ * @returns {string} English payment status
+ */
+const normalizePaymentStatus = (status) => {
+  if (!status) return 'pending';
+  const trimmed = String(status).trim();
+  if (VALID_PAYMENT_STATUS.includes(trimmed)) {
+    return trimmed;
+  }
+  return PAYMENT_STATUS_CHINESE_TO_ENGLISH[trimmed] || 'pending';
+};
+
 /**
  * Get social security records with pagination and filtering
  */
@@ -218,7 +242,7 @@ const downloadTemplate = async (req, res) => {
       maternity_company: 80,
       housing_fund_personal: 1200,
       housing_fund_company: 1200,
-      payment_status: 'paid',
+      payment_status: '已缴纳',
       payment_date: '2025-01-15',
       notes: '示例数据'
     }
@@ -297,7 +321,9 @@ const importFromExcel = async (req, res) => {
         housing_fund_company: parseFloat(
           ExcelService.getCellValue(row.getCell(14)) || 0
         ),
-        payment_status: ExcelService.getCellValue(row.getCell(15)) || 'pending',
+        payment_status: normalizePaymentStatus(
+          ExcelService.getCellValue(row.getCell(15))
+        ),
         payment_date: ExcelService.parseExcelDate(row.getCell(16).value),
         notes: ExcelService.getCellValue(row.getCell(17))
       };

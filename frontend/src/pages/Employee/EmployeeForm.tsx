@@ -112,7 +112,7 @@ const EmployeeForm: React.FC = () => {
           message: '操作成功',
           description: '员工信息更新成功',
           placement: 'topRight',
-          duration: 1,
+          duration: 0.5,
           onClose: () => navigate('/employees'),
         });
       } else {
@@ -121,7 +121,7 @@ const EmployeeForm: React.FC = () => {
           message: '创建成功',
           description: '员工创建成功！入职登记表邮件将在入职当天早上9点自动发送',
           placement: 'topRight',
-          duration: 1,
+          duration: 0.5,
           onClose: () => navigate('/employees'),
         });
       }
@@ -133,7 +133,7 @@ const EmployeeForm: React.FC = () => {
         message: '操作失败',
         description: finalMessage,
         placement: 'topRight',
-        duration: 1,
+        duration: 0,
       });
     } finally {
       setLoading(false);

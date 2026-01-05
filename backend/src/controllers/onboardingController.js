@@ -138,6 +138,9 @@ const submitOnboardingForm = async (req, res) => {
   process.employee.emergency_contact = formData.emergency_contact;
   process.employee.emergency_phone = formData.emergency_phone;
 
+  // Update employee status from pending to active
+  process.employee.status = 'active';
+
   await process.employee.save();
 
   // Update onboarding process status

@@ -12,6 +12,40 @@ const {
   NotFoundError
 } = require('../middleware/errorHandler');
 
+// Status mapping: Chinese to English
+const STATUS_CHINESE_TO_ENGLISH = {
+  '草稿': 'draft',
+  '待审批': 'pending',
+  '已批准': 'approved',
+  '已拒绝': 'rejected',
+  '已支付': 'paid'
+};
+
+// Valid English status values
+const VALID_STATUS_VALUES = ['draft', 'pending', 'approved', 'rejected', 'paid'];
+
+/**
+ * Convert status to English value
+ * Accepts both Chinese and English status values
+ * @param {string} status - Status value (Chinese or English)
+ * @returns {string} English status value
+ */
+const normalizeStatus = (status) => {
+  if (!status) return 'draft';
+  const trimmedStatus = String(status).trim();
+  // If already in English and valid, return as is
+  if (VALID_STATUS_VALUES.includes(trimmedStatus)) {
+    return trimmedStatus;
+  }
+  // Try to map from Chinese
+  const englishStatus = STATUS_CHINESE_TO_ENGLISH[trimmedStatus];
+  if (englishStatus) {
+    return englishStatus;
+  }
+  // Default to draft if unrecognized
+  return 'draft';
+};
+
 /**
  * Get business trip records with pagination and filtering
  */
@@ -388,7 +422,8 @@ const importFromExcel = async (req, res) => {
       const accommodationAllowance = ExcelService.getCellValue(row.getCell(9)) || 0;
       const mealAllowance = ExcelService.getCellValue(row.getCell(10)) || 0;
       const otherAllowance = ExcelService.getCellValue(row.getCell(11)) || 0;
-      const status = ExcelService.getCellValue(row.getCell(12)) || 'draft';
+      const statusRaw = ExcelService.getCellValue(row.getCell(12));
+      const status = normalizeStatus(statusRaw);
       const notes = ExcelService.getCellValue(row.getCell(13));
 
       if (!employeeNumber) {

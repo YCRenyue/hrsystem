@@ -799,10 +799,11 @@ if (hasPermission('employees.create')) {
   - 过期提醒
   - 延期功能
 
-- [ ] 实现表单提交数据合并
+- [x] 实现表单提交数据合并 (已完成 - 2025-01-05)
   - 合并预录入数据
   - 更新员工记录
-  - 状态更新为completed
+  - OnboardingProcess状态更新为completed
+  - 员工status从pending更新为active
 
 #### 6.4 多渠道消息推送功能
 

@@ -75,11 +75,11 @@ Department.init(
       comment: '部门名称',
       validate: {
         notEmpty: {
-          msg: 'Department name cannot be empty'
+          msg: '部门名称不能为空'
         },
         len: {
           args: [1, 100],
-          msg: 'Department name must be between 1 and 100 characters'
+          msg: '部门名称长度必须在1到100个字符之间'
         }
       }
     },
@@ -129,7 +129,7 @@ Department.init(
       validate: {
         isIn: {
           args: [['active', 'inactive']],
-          msg: 'Invalid status'
+          msg: '无效的状态'
         }
       }
     },

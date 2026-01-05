@@ -15,19 +15,24 @@ import {
   Statistic,
   Modal,
   Input,
-  App
+  App,
+  Upload
 } from 'antd';
 import {
   ReloadOutlined,
   CheckOutlined,
   CloseOutlined,
   ClockCircleOutlined,
-  FileTextOutlined
+  FileTextOutlined,
+  DownloadOutlined,
+  UploadOutlined,
+  ExportOutlined
 } from '@ant-design/icons';
 import { Pie, Column as ColumnChart } from '@ant-design/charts';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs, { Dayjs } from 'dayjs';
 import { leaveService, Leave, LeaveStats } from '../../services/leaveService';
+import { usePermission } from '../../hooks/usePermission';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
@@ -72,7 +77,8 @@ const getStatusText = (status: string): string => {
 };
 
 const LeaveList: React.FC = () => {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
+  const { hasPermission } = usePermission();
   const [loading, setLoading] = useState(false);
   const [dataSource, setDataSource] = useState<Leave[]>([]);
   const [stats, setStats] = useState<LeaveStats | null>(null);
@@ -218,6 +224,95 @@ const LeaveList: React.FC = () => {
     } catch (error) {
       message.error('操作失败');
       console.error('Error processing leave approval:', error);
+    }
+  };
+
+  /**
+   * Download Excel template
+   */
+  const handleDownloadTemplate = async () => {
+    try {
+      const blob = await leaveService.downloadTemplate();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `请假导入模板_${dayjs().format('YYYY-MM-DD')}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      message.success('模板下载成功');
+    } catch (error) {
+      console.error('Failed to download template:', error);
+      message.error('模板下载失败');
+    }
+  };
+
+  /**
+   * Import from Excel
+   */
+  const handleImport = async (file: File) => {
+    const hideLoading = message.loading('正在导入...', 0);
+    try {
+      const result = await leaveService.importFromExcel(file);
+      hideLoading();
+
+      const { success_count, error_count, errors } = result;
+
+      if (error_count > 0) {
+        modal.warning({
+          title: '导入完成',
+          width: 500,
+          content: (
+            <div>
+              <p>成功导入 {success_count} 条记录，失败 {error_count} 条</p>
+              <div style={{ maxHeight: 300, overflow: 'auto' }}>
+                {errors.map((err, index) => (
+                  <p key={index} style={{ color: 'red', margin: '4px 0' }}>
+                    第 {err.row} 行: {err.message}
+                  </p>
+                ))}
+              </div>
+            </div>
+          ),
+        });
+      } else {
+        message.success(`成功导入 ${success_count} 条记录`);
+      }
+
+      fetchData();
+    } catch (error: any) {
+      hideLoading();
+      message.error(error.response?.data?.message || '导入失败');
+    }
+
+    return false;
+  };
+
+  /**
+   * Export to Excel
+   */
+  const handleExport = async () => {
+    try {
+      const blob = await leaveService.exportToExcel({
+        start_date: dateRange[0].format('YYYY-MM-DD'),
+        end_date: dateRange[1].format('YYYY-MM-DD'),
+        leave_type: typeFilter,
+        status: statusFilter
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `请假记录_${dayjs().format('YYYY-MM-DD')}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      message.success('导出成功');
+    } catch (error) {
+      console.error('Failed to export:', error);
+      message.error('导出失败');
     }
   };
 
@@ -476,6 +571,34 @@ const LeaveList: React.FC = () => {
           <Button icon={<ReloadOutlined />} onClick={fetchData}>
             刷新
           </Button>
+          {hasPermission('employees.export') && (
+            <>
+              <Button
+                icon={<DownloadOutlined />}
+                onClick={handleDownloadTemplate}
+              >
+                下载模板
+              </Button>
+
+              <Upload
+                accept=".xlsx,.xls"
+                showUploadList={false}
+                beforeUpload={handleImport}
+              >
+                <Button icon={<UploadOutlined />}>
+                  导入
+                </Button>
+              </Upload>
+
+              <Button
+                type="primary"
+                icon={<ExportOutlined />}
+                onClick={handleExport}
+              >
+                导出
+              </Button>
+            </>
+          )}
         </Space>
 
         <Table
