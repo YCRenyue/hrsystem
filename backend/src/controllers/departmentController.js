@@ -12,7 +12,7 @@ const getDepartments = async (req, res) => {
     attributes: {
       include: [
         [
-          sequelize.fn('COUNT', sequelize.col('Employees.employee_id')),
+          sequelize.fn('COUNT', sequelize.col('employees.employee_id')),
           'employee_count'
         ]
       ]
@@ -27,10 +27,7 @@ const getDepartments = async (req, res) => {
       }
     ],
     group: [
-      'Department.department_id',
-      'Department.name',
-      'Department.created_at',
-      'Department.updated_at'
+      'Department.department_id'
     ],
     order: [['name', 'ASC']]
   });
