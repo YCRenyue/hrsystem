@@ -161,7 +161,7 @@ const AttendanceList: React.FC = () => {
           attendance_id: row.attendance_id,
           employee_id: row.employee_id,
           employee_number: row.employee?.employee_number || '',
-          employee_name: row.employee?.name_masked || row.employee?.name_encrypted || '',
+          employee_name: row.employee?.name || '',
           department_name: row.employee?.department?.name || '',
           date: row.date,
           check_in_time: row.check_in_time,

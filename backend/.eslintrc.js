@@ -2,21 +2,23 @@ module.exports = {
   env: {
     node: true,
     es2021: true,
-    jest: true,
+    jest: true
   },
   extends: [
-    'airbnb-base',
+    'airbnb-base'
   ],
   parserOptions: {
     ecmaVersion: 'latest',
-    sourceType: 'module',
+    sourceType: 'module'
   },
   rules: {
     // Style rules per CLAUDE.md
-    'max-len': ['warn', { code: 120, ignoreStrings: true, ignoreTemplateLiterals: true, ignoreComments: true }],
-    'quotes': ['error', 'single'],
+    'max-len': ['warn', {
+      code: 120, ignoreStrings: true, ignoreTemplateLiterals: true, ignoreComments: true
+    }],
+    quotes: ['error', 'single'],
     'comma-dangle': ['error', 'never'],
-    'indent': ['error', 2],
+    indent: ['error', 2],
 
     // Function and file size limits - relaxed for complex business logic
     'max-lines': ['warn', { max: 600, skipBlankLines: true, skipComments: true }],
@@ -29,10 +31,10 @@ module.exports = {
     'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     'func-names': 'off', // Allow anonymous functions
     'no-underscore-dangle': 'off', // Allow _ prefix for private methods
-    'camelcase': 'off', // Allow snake_case for DB fields
+    camelcase: 'off', // Allow snake_case for DB fields
     'class-methods-use-this': 'off', // Allow class methods without this
     'global-require': 'off', // Allow require() anywhere
-    'radix': ['error', 'always'], // Enforce radix for parseInt
+    radix: ['error', 'always'], // Enforce radix for parseInt
     'no-plusplus': 'off', // Allow ++ operator
     'no-param-reassign': ['error', { props: false }], // Allow modifying properties of parameters
     'no-return-await': 'off', // Allow await in return

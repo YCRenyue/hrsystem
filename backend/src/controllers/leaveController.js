@@ -30,16 +30,16 @@ const leaveTypeMap = {
  * 请假类型中文转英文
  */
 const leaveTypeReverseMap = {
-  '年假': 'annual',
-  '病假': 'sick',
-  '事假': 'personal',
-  '调休': 'compensatory',
-  '产假': 'maternity',
-  '陪产假': 'paternity',
-  '婚假': 'marriage',
-  '丧假': 'bereavement',
-  '无薪假': 'unpaid',
-  '其他': 'other'
+  年假: 'annual',
+  病假: 'sick',
+  事假: 'personal',
+  调休: 'compensatory',
+  产假: 'maternity',
+  陪产假: 'paternity',
+  婚假: 'marriage',
+  丧假: 'bereavement',
+  无薪假: 'unpaid',
+  其他: 'other'
 };
 
 /**
@@ -56,10 +56,10 @@ const statusMap = {
  * 审批状态中文转英文
  */
 const statusReverseMap = {
-  '待审批': 'pending',
-  '已批准': 'approved',
-  '已拒绝': 'rejected',
-  '已取消': 'cancelled'
+  待审批: 'pending',
+  已批准: 'approved',
+  已拒绝: 'rejected',
+  已取消: 'cancelled'
 };
 
 /**
@@ -186,7 +186,16 @@ const getLeaveList = async (req, res) => {
     const canViewSensitive = permissionService.canViewSensitiveData(req.user);
     const processedRows = rows.map((row) => {
       const data = row.toJSON();
+      if (data.created_at instanceof Date) {
+        data.created_at = row.created_at.toISOString();
+      }
       if (data.employee) {
+        // Decrypt name using Employee model method
+        if (row.employee && typeof row.employee.getName === 'function') {
+          data.employee.name = row.employee.getName();
+        }
+        delete data.employee.name_encrypted;
+
         data.employee = permissionService.processSensitiveFields(
           data.employee,
           canViewSensitive,
@@ -356,8 +365,12 @@ const downloadTemplate = async (req, res) => {
       width: 12,
       note: '可选值: 年假, 病假, 事假, 调休, 产假, 陪产假, 婚假, 丧假, 无薪假, 其他'
     },
-    { header: '开始日期', key: 'start_date', width: 15, note: '格式: YYYY-MM-DD' },
-    { header: '结束日期', key: 'end_date', width: 15, note: '格式: YYYY-MM-DD' },
+    {
+      header: '开始日期', key: 'start_date', width: 15, note: '格式: YYYY-MM-DD'
+    },
+    {
+      header: '结束日期', key: 'end_date', width: 15, note: '格式: YYYY-MM-DD'
+    },
     { header: '请假天数', key: 'days', width: 12 },
     { header: '请假原因', key: 'reason', width: 30 },
     {
@@ -463,7 +476,9 @@ const importFromExcel = async (req, res) => {
  * Export leave to Excel
  */
 const exportToExcel = async (req, res) => {
-  const { start_date, end_date, leave_type, status } = req.query;
+  const {
+    start_date, end_date, leave_type, status
+  } = req.query;
 
   const where = {};
   if (leave_type) where.leave_type = leave_type;

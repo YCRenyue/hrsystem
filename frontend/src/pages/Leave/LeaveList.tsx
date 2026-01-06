@@ -333,10 +333,9 @@ const LeaveList: React.FC = () => {
     },
     {
       title: '员工姓名',
-      dataIndex: ['employee', 'name_masked'],
+      dataIndex: ['employee', 'name'],
       key: 'name',
-      render: (name: string, record: Leave) =>
-        name || record.employee?.name_encrypted || '-'
+      render: (name: string) => name || '-'
     },
     {
       title: '部门',
@@ -525,12 +524,12 @@ const LeaveList: React.FC = () => {
       {/* Charts */}
       <Row gutter={16} style={{ marginBottom: '24px' }}>
         <Col xs={24} lg={12}>
-          <Card title="请假类型分布" bordered={false}>
+          <Card title="请假类型分布" variant="borderless">
             <Pie {...pieConfig} />
           </Card>
         </Col>
         <Col xs={24} lg={12}>
-          <Card title="审批状态统计" bordered={false}>
+          <Card title="审批状态统计" variant="borderless">
             <ColumnChart {...columnConfig} />
           </Card>
         </Col>
@@ -623,7 +622,7 @@ const LeaveList: React.FC = () => {
       >
         {approvalModal.leave && (
           <div>
-            <p><strong>姓名：</strong>{approvalModal.leave.employee?.name_masked || approvalModal.leave.employee?.name_encrypted}</p>
+            <p><strong>姓名：</strong>{approvalModal.leave.employee?.name || '-'}</p>
             <p><strong>类型：</strong>{getLeaveTypeText(approvalModal.leave.leave_type)}</p>
             <p><strong>时间：</strong>{dayjs(approvalModal.leave.start_date).format('YYYY-MM-DD')} 至 {dayjs(approvalModal.leave.end_date).format('YYYY-MM-DD')}</p>
             <p><strong>天数：</strong>{approvalModal.leave.days}天</p>

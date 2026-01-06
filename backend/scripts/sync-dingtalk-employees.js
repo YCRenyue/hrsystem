@@ -207,7 +207,7 @@ async function main() {
 
     // Test DingTalk API
     console.log('Testing DingTalk API connection...');
-    const token = await dingTalkService.getAccessToken();
+    await dingTalkService.getAccessToken();
     console.log('DingTalk API connection successful!\n');
 
     // Get or create default department
@@ -221,7 +221,7 @@ async function main() {
     }
 
     // Print summary
-    console.log('\n' + '='.repeat(60));
+    console.log(`\n${'='.repeat(60)}`);
     console.log('Sync Summary');
     console.log('='.repeat(60));
 
@@ -243,7 +243,7 @@ async function main() {
       });
     }
 
-    console.log('\n' + '='.repeat(60));
+    console.log(`\n${'='.repeat(60)}`);
     console.log('Sync completed!');
     console.log('='.repeat(60));
 

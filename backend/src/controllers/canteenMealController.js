@@ -13,17 +13,17 @@ const {
 
 // Meal type mapping: Chinese to English
 const MEAL_TYPE_CHINESE_TO_ENGLISH = {
-  '早餐': 'breakfast',
-  '午餐': 'lunch',
-  '晚餐': 'dinner'
+  早餐: 'breakfast',
+  午餐: 'lunch',
+  晚餐: 'dinner'
 };
 
 // Payment method mapping: Chinese to English
 const PAYMENT_METHOD_CHINESE_TO_ENGLISH = {
-  '现金': 'cash',
-  '饭卡': 'card',
-  '手机支付': 'mobile_pay',
-  '补贴': 'subsidy'
+  现金: 'cash',
+  饭卡: 'card',
+  手机支付: 'mobile_pay',
+  补贴: 'subsidy'
 };
 
 // Valid English values

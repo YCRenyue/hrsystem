@@ -14,11 +14,11 @@ const {
 
 // Status mapping: Chinese to English
 const STATUS_CHINESE_TO_ENGLISH = {
-  '草稿': 'draft',
-  '待审批': 'pending',
-  '已批准': 'approved',
-  '已拒绝': 'rejected',
-  '已支付': 'paid'
+  草稿: 'draft',
+  待审批: 'pending',
+  已批准: 'approved',
+  已拒绝: 'rejected',
+  已支付: 'paid'
 };
 
 // Valid English status values

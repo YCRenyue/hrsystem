@@ -174,7 +174,7 @@ const UserSettings: React.FC = () => {
               {profile.employee.employee_number}
             </Descriptions.Item>
             <Descriptions.Item label="姓名">
-              {profile.employee.name_masked || profile.employee.name_encrypted || '-'}
+              {profile.employee.name || profile.employee.name_masked || '-'}
             </Descriptions.Item>
             <Descriptions.Item label="部门">
               {profile.employee.department?.name || '-'}

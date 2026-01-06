@@ -13,9 +13,9 @@ const {
 
 // Payment status mapping: Chinese to English
 const PAYMENT_STATUS_CHINESE_TO_ENGLISH = {
-  '待缴纳': 'pending',
-  '已缴纳': 'paid',
-  '缴纳失败': 'failed'
+  待缴纳: 'pending',
+  已缴纳: 'paid',
+  缴纳失败: 'failed'
 };
 
 // Valid English payment status values

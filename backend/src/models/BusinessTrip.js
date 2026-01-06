@@ -139,16 +139,6 @@ BusinessTrip.init(
       type: DataTypes.TEXT,
       allowNull: true,
       comment: 'Additional notes'
-    },
-    created_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW
     }
   },
   {

@@ -27,13 +27,13 @@ const statusMap = {
  * 状态中文转英文
  */
 const statusReverseMap = {
-  '正常': 'normal',
-  '迟到': 'late',
-  '早退': 'early_leave',
-  '缺勤': 'absent',
-  '请假': 'leave',
-  '节假日': 'holiday',
-  '周末': 'weekend'
+  正常: 'normal',
+  迟到: 'late',
+  早退: 'early_leave',
+  缺勤: 'absent',
+  请假: 'leave',
+  节假日: 'holiday',
+  周末: 'weekend'
 };
 
 /**
@@ -183,6 +183,12 @@ const getAttendanceList = async (req, res) => {
     const processedRows = rows.map((row) => {
       const data = row.toJSON();
       if (data.employee) {
+        // Decrypt name using Employee model method
+        if (row.employee && typeof row.employee.getName === 'function') {
+          data.employee.name = row.employee.getName();
+        }
+        delete data.employee.name_encrypted;
+
         data.employee = permissionService.processSensitiveFields(
           data.employee,
           canViewSensitive,
@@ -337,9 +343,15 @@ const deleteAttendance = async (req, res) => {
 const downloadTemplate = async (req, res) => {
   const columns = [
     { header: '员工编号', key: 'employee_number', width: 15 },
-    { header: '日期', key: 'date', width: 15, note: '格式: YYYY-MM-DD' },
-    { header: '签到时间', key: 'check_in_time', width: 12, note: '格式: HH:MM:SS' },
-    { header: '签退时间', key: 'check_out_time', width: 12, note: '格式: HH:MM:SS' },
+    {
+      header: '日期', key: 'date', width: 15, note: '格式: YYYY-MM-DD'
+    },
+    {
+      header: '签到时间', key: 'check_in_time', width: 12, note: '格式: HH:MM:SS'
+    },
+    {
+      header: '签退时间', key: 'check_out_time', width: 12, note: '格式: HH:MM:SS'
+    },
     {
       header: '状态',
       key: 'status',
@@ -348,8 +360,12 @@ const downloadTemplate = async (req, res) => {
     },
     { header: '迟到分钟', key: 'late_minutes', width: 12 },
     { header: '早退分钟', key: 'early_leave_minutes', width: 12 },
-    { header: '工作时长', key: 'work_hours', width: 12, note: '单位: 小时' },
-    { header: '加班时长', key: 'overtime_hours', width: 12, note: '单位: 小时' },
+    {
+      header: '工作时长', key: 'work_hours', width: 12, note: '单位: 小时'
+    },
+    {
+      header: '加班时长', key: 'overtime_hours', width: 12, note: '单位: 小时'
+    },
     { header: '打卡地点', key: 'location', width: 20 },
     { header: '备注', key: 'notes', width: 30 }
   ];
@@ -459,7 +475,9 @@ const importFromExcel = async (req, res) => {
  * Export attendance to Excel
  */
 const exportToExcel = async (req, res) => {
-  const { start_date, end_date, status, department_id } = req.query;
+  const {
+    start_date, end_date, status, department_id
+  } = req.query;
 
   const where = {};
   if (status) where.status = status;

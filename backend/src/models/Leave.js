@@ -71,21 +71,13 @@ const Leave = sequelize.define('Leave', {
   attachment_url: {
     type: DataTypes.STRING(500),
     comment: '附件URL（如病假证明）'
-  },
-  created_at: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW
-  },
-  updated_at: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW
   }
 }, {
   tableName: 'leaves',
   timestamps: true,
   underscored: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
   indexes: [
     {
       fields: ['employee_id']

@@ -23,8 +23,7 @@ export interface Attendance {
   employee?: {
     employee_id: string;
     employee_number: string;
-    name_encrypted?: string;
-    name_masked?: string;
+    name?: string;
     department?: {
       department_id: string;
       name: string;

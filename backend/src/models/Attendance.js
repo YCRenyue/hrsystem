@@ -71,21 +71,13 @@ const Attendance = sequelize.define('Attendance', {
   device_info: {
     type: DataTypes.STRING(200),
     comment: '打卡设备信息'
-  },
-  created_at: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW
-  },
-  updated_at: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW
   }
 }, {
   tableName: 'attendances',
   timestamps: true,
   underscored: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
   indexes: [
     {
       fields: ['employee_id']

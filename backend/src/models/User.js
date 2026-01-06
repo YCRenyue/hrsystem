@@ -415,16 +415,6 @@ User.init(
       allowNull: true,
       comment: '用户偏好设置（主题、字体、颜色等）'
     },
-    created_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-      comment: '创建时间'
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-      comment: '更新时间'
-    },
     created_by: {
       type: DataTypes.STRING(50),
       allowNull: true,

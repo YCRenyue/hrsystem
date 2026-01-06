@@ -242,16 +242,6 @@ OnboardingProcess.init(
       allowNull: true,
       comment: '提交的数据'
     },
-    created_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-      comment: '创建时间'
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-      comment: '更新时间'
-    },
     created_by: {
       type: DataTypes.STRING(50),
       allowNull: true,

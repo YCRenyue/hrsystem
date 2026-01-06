@@ -23,8 +23,8 @@ export interface UserProfile {
     employee_id: string;
     employee_number: string;
     position?: string;
+    name?: string;
     name_masked?: string;
-    name_encrypted?: string;
     phone_masked?: string;
     department?: {
       department_id: string;
