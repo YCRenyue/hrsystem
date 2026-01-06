@@ -17,7 +17,9 @@ const generateToken = (user) => jwt.sign(
     user_id: user.user_id,
     username: user.username,
     role: user.role,
-    employee_id: user.employee_id
+    employee_id: user.employee_id,
+    data_scope: user.data_scope,
+    department_id: user.department_id
   },
   JWT_SECRET,
   { expiresIn: JWT_EXPIRES_IN }

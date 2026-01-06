@@ -351,6 +351,11 @@ const AttendanceList: React.FC = () => {
     return false;
   };
 
+  const formatNumber = (amount?: number | string) => {
+    const num = Number(amount)
+    return Number.isFinite(num) ? `${num.toFixed(1)}` : '-'
+  }
+
   const columns: ColumnsType<AttendanceRecord> = [
     {
       title: '日期',
@@ -396,28 +401,28 @@ const AttendanceList: React.FC = () => {
       dataIndex: 'work_hours',
       key: 'work_hours',
       width: 100,
-      render: (hours: number | null) => hours ? `${hours.toFixed(1)}h` : '-',
+      render: (hours?: number | string) => hours ? `${formatNumber(hours)}h` : '-',
     },
     {
       title: '迟到',
       dataIndex: 'late_minutes',
       key: 'late_minutes',
       width: 80,
-      render: (minutes: number) => minutes > 0 ? `${minutes}分钟` : '-',
+      render: (minutes?: number | string) => minutes ? `${minutes}分钟` : '-',
     },
     {
       title: '早退',
       dataIndex: 'early_leave_minutes',
       key: 'early_leave_minutes',
       width: 80,
-      render: (minutes: number) => minutes > 0 ? `${minutes}分钟` : '-',
+      render: (minutes?: number | string) => minutes ? `${minutes}分钟` : '-',
     },
     {
       title: '加班',
       dataIndex: 'overtime_hours',
       key: 'overtime_hours',
       width: 80,
-      render: (hours: number) => hours > 0 ? `${hours.toFixed(1)}h` : '-',
+      render: (hours?: number | string) => hours ? `${formatNumber(hours)}h` : '-',
     },
     {
       title: '状态',

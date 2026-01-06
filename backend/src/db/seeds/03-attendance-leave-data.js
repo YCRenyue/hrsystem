@@ -31,7 +31,7 @@ module.exports = {
       const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
       const attendanceRecords = [];
-      let attendanceId = 1;
+      const { v4: uuidv4 } = require('uuid');
 
       // Create attendance records for each employee for each working day
       for (let day = 1; day <= Math.min(daysInMonth, today.getDate()); day++) {
@@ -87,7 +87,7 @@ module.exports = {
           }
 
           attendanceRecords.push({
-            attendance_id: attendanceId++,
+            attendance_id: uuidv4(),
             employee_id: employee.employee_id,
             date: date.toISOString().split('T')[0],
             check_in_time: checkInTime,
@@ -125,7 +125,6 @@ module.exports = {
       const approverId = admins.length > 0 ? admins[0].user_id : null;
 
       // Create 1-3 leave records per employee (randomly)
-      let leaveId = 1;
       for (const employee of employees.slice(0, 20)) { // Only first 20 employees
         const numLeaves = Math.floor(Math.random() * 3) + 1;
 
@@ -141,7 +140,7 @@ module.exports = {
           const endDate = new Date(currentYear, currentMonth, startDay + leaveDays - 1);
 
           leaveRecords.push({
-            leave_id: leaveId++,
+            leave_id: uuidv4(),
             employee_id: employee.employee_id,
             leave_type: leaveType,
             start_date: startDate.toISOString().split('T')[0],

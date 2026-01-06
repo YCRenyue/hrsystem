@@ -135,6 +135,11 @@ const AttendanceReport: React.FC = () => {
     return <Tag color={option?.color}>{option?.label || status}</Tag>;
   };
 
+  const formatNumber = (amount?: number | string) => {
+    const num = Number(amount)
+    return Number.isFinite(num) ? `${num.toFixed(1)}` : '-'
+  }
+
   const columns = [
     {
       title: '员工工号',
@@ -170,7 +175,7 @@ const AttendanceReport: React.FC = () => {
       title: '工作时长',
       dataIndex: 'work_hours',
       key: 'work_hours',
-      render: (hours: number) => `${hours.toFixed(1)} 小时`
+      render: (hours?: number | string) => `${formatNumber(hours)} 小时`
     },
     {
       title: '状态',
@@ -186,13 +191,13 @@ const AttendanceReport: React.FC = () => {
       title: '迟到(分钟)',
       dataIndex: 'late_minutes',
       key: 'late_minutes',
-      render: (minutes: number) => minutes || '-'
+      render: (minutes?: number | string) => minutes || '-'
     },
     {
       title: '早退(分钟)',
       dataIndex: 'early_leave_minutes',
       key: 'early_leave_minutes',
-      render: (minutes: number) => minutes || '-'
+      render: (minutes?: number | string) => minutes || '-'
     }
   ];
 

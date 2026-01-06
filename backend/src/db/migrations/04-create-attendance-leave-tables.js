@@ -8,9 +8,9 @@ module.exports = {
     // Create attendances table
     await queryInterface.createTable('attendances', {
       attendance_id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.UUID,
+        defaultValue: Sequelize.UUIDV4,
         primaryKey: true,
-        autoIncrement: true,
         comment: 'Attendance record ID'
       },
       employee_id: {
@@ -101,9 +101,9 @@ module.exports = {
     // Create leaves table
     await queryInterface.createTable('leaves', {
       leave_id: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.UUID,
+        defaultValue: Sequelize.UUIDV4,
         primaryKey: true,
-        autoIncrement: true,
         comment: 'Leave record ID'
       },
       employee_id: {
