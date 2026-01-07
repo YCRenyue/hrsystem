@@ -18,10 +18,21 @@ app.use(helmet({
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   'http://localhost:3000',
-  'http://47.92.215.251:3000'
+  'http://47.92.215.251'
 ];
 app.use(cors({
-  origin: allowedOrigins,
+  origin(origin, callback) {
+    // 允许无 Origin 请求（curl / health check）
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(
+      new Error(`CORS blocked: ${origin}`)
+    );
+  },
   credentials: true
 }));
 
