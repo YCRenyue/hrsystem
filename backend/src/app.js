@@ -15,8 +15,13 @@ app.use(helmet({
   contentSecurityPolicy: false, // Disable CSP for development
   crossOriginEmbedderPolicy: false
 }));
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:3000',
+  'http://47.92.215.251:3000'
+];
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: allowedOrigins,
   credentials: true
 }));
 
