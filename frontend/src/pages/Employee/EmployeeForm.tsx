@@ -14,8 +14,18 @@ import {
   Space,
   Alert,
   App,
+  Upload,
+  Image,
+  Divider,
 } from 'antd';
-import { SaveOutlined, ArrowLeftOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import {
+  SaveOutlined,
+  ArrowLeftOutlined,
+  InfoCircleOutlined,
+  InboxOutlined,
+  DeleteOutlined,
+  LoadingOutlined,
+} from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
@@ -25,11 +35,13 @@ import {
 } from '../../types';
 import { employeeService } from '../../services/employeeService';
 import { departmentService } from '../../services/departmentService';
+import { uploadService, FileType, FileUrls } from '../../services/uploadService';
 import { usePermission } from '../../hooks/usePermission';
 import type { Department } from '../../types';
 
 const { Option } = Select;
 const { TextArea } = Input;
+const { Dragger } = Upload;
 
 const EmployeeForm: React.FC = () => {
   const [form] = Form.useForm();
@@ -39,6 +51,15 @@ const EmployeeForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
   const { message, notification } = App.useApp();
+
+  // 文件上传状态
+  const [fileUrls, setFileUrls] = useState<FileUrls>({
+    id_card_front_url: null,
+    id_card_back_url: null,
+    bank_card_url: null,
+    diploma_url: null,
+  });
+  const [uploadingType, setUploadingType] = useState<FileType | null>(null);
 
   const isEditMode = !!id && id !== 'new';
 
@@ -83,9 +104,111 @@ const EmployeeForm: React.FC = () => {
           : null,
         birth_date: data.birth_date ? dayjs(data.birth_date) : null,
       });
+
+      // 如果有文件，获取签名URL
+      if (
+        data.has_id_card_front ||
+        data.has_id_card_back ||
+        data.has_bank_card_image ||
+        data.has_diploma_image
+      ) {
+        const urls = await uploadService.getEmployeeFileUrls(id);
+        setFileUrls(urls);
+      }
     } catch (error) {
       message.error('加载员工数据失败');
     }
+  };
+
+  const handleFileUpload = async (file: File, fileType: FileType) => {
+    if (!id) {
+      message.warning('请先保存员工基本信息后再上传文件');
+      return;
+    }
+
+    setUploadingType(fileType);
+    try {
+      const result = await uploadService.uploadEmployeeFile(id, file, fileType);
+      if (result.url) {
+        setFileUrls((prev) => ({
+          ...prev,
+          [`${fileType}_url`]: result.url,
+        }));
+        message.success('文件上传成功');
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || '文件上传失败');
+    } finally {
+      setUploadingType(null);
+    }
+  };
+
+  const handleFileDelete = async (fileType: FileType) => {
+    if (!id) return;
+
+    try {
+      await uploadService.deleteEmployeeFile(id, fileType);
+      setFileUrls((prev) => ({
+        ...prev,
+        [`${fileType}_url`]: null,
+      }));
+      message.success('文件删除成功');
+    } catch (error: any) {
+      message.error(error.response?.data?.message || '文件删除失败');
+    }
+  };
+
+  const renderFileUploader = (fileType: FileType, label: string) => {
+    const urlKey = `${fileType}_url` as keyof FileUrls;
+    const uploadedUrl = fileUrls[urlKey];
+    const isUploading = uploadingType === fileType;
+
+    if (uploadedUrl) {
+      return (
+        <div style={{ textAlign: 'center' }}>
+          <Image
+            src={uploadedUrl}
+            alt={label}
+            style={{ maxWidth: '100%', maxHeight: 150, objectFit: 'contain' }}
+          />
+          <div style={{ marginTop: 8 }}>
+            <Button
+              type="link"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleFileDelete(fileType)}
+            >
+              删除
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <Dragger
+        maxCount={1}
+        accept="image/*"
+        showUploadList={false}
+        disabled={isUploading || !isEditMode}
+        beforeUpload={(file) => {
+          handleFileUpload(file, fileType);
+          return false;
+        }}
+      >
+        <p className="ant-upload-drag-icon">
+          {isUploading ? <LoadingOutlined /> : <InboxOutlined />}
+        </p>
+        <p className="ant-upload-text">
+          {isUploading ? '上传中...' : '点击或拖拽上传'}
+        </p>
+        {!isEditMode && (
+          <p className="ant-upload-hint" style={{ color: '#999' }}>
+            请先保存员工信息
+          </p>
+        )}
+      </Dragger>
+    );
   };
 
   useEffect(() => {
@@ -381,6 +504,40 @@ const EmployeeForm: React.FC = () => {
             </Space>
           </Form.Item>
         </Form>
+
+        {/* 证件资料上传区域 - 仅编辑模式显示 */}
+        {isEditMode && (
+          <>
+            <Divider />
+            <h3>证件资料上传</h3>
+            <p style={{ color: '#999', marginBottom: 16 }}>
+              上传员工的身份证、银行卡和毕业证书照片
+            </p>
+
+            <Row gutter={16}>
+              <Col xs={24} sm={12} md={6}>
+                <Card size="small" title="身份证正面">
+                  {renderFileUploader('id_card_front', '身份证正面')}
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Card size="small" title="身份证反面">
+                  {renderFileUploader('id_card_back', '身份证反面')}
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Card size="small" title="银行卡">
+                  {renderFileUploader('bank_card', '银行卡')}
+                </Card>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Card size="small" title="毕业证书">
+                  {renderFileUploader('diploma', '毕业证书')}
+                </Card>
+              </Col>
+            </Row>
+          </>
+        )}
       </Card>
     </div>
   );

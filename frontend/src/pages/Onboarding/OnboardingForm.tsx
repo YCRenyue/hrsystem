@@ -15,16 +15,20 @@ import {
   Result,
   Spin,
   App,
+  Image,
 } from 'antd';
 import {
   CheckCircleOutlined,
   InboxOutlined,
+  DeleteOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { UploadFile } from 'antd/es/upload/interface';
 import dayjs from 'dayjs';
 import { Gender } from '../../types';
 import apiClient from '../../services/api';
+import { uploadService, FileType } from '../../services/uploadService';
 import './OnboardingForm.css';
 
 const { Option } = Select;
@@ -47,6 +51,13 @@ interface OnboardingData {
   }>;
 }
 
+interface UploadedFiles {
+  id_card_front: string | null;
+  id_card_back: string | null;
+  bank_card: string | null;
+  diploma: string | null;
+}
+
 const OnboardingForm: React.FC = () => {
   const [form] = Form.useForm();
   const { token } = useParams<{ token: string }>();
@@ -56,8 +67,15 @@ const OnboardingForm: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
-  const [idCardFront, setIdCardFront] = useState<UploadFile[]>([]);
-  const [idCardBack, setIdCardBack] = useState<UploadFile[]>([]);
+
+  // File upload states
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFiles>({
+    id_card_front: null,
+    id_card_back: null,
+    bank_card: null,
+    diploma: null,
+  });
+  const [uploadingType, setUploadingType] = useState<FileType | null>(null);
 
   useEffect(() => {
     if (token) {
@@ -81,6 +99,33 @@ const OnboardingForm: React.FC = () => {
     }
   };
 
+  const handleFileUpload = async (file: File, fileType: FileType) => {
+    if (!token) return;
+
+    setUploadingType(fileType);
+    try {
+      const result = await uploadService.uploadOnboardingFile(token, file, fileType);
+      if (result.url) {
+        setUploadedFiles((prev) => ({
+          ...prev,
+          [fileType]: result.url,
+        }));
+        message.success('文件上传成功');
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || '文件上传失败');
+    } finally {
+      setUploadingType(null);
+    }
+  };
+
+  const handleFileRemove = (fileType: FileType) => {
+    setUploadedFiles((prev) => ({
+      ...prev,
+      [fileType]: null,
+    }));
+  };
+
   const onFinish = async (values: any) => {
     setSubmitting(true);
     try {
@@ -93,12 +138,57 @@ const OnboardingForm: React.FC = () => {
       message.success('入职信息提交成功！');
       setCompleted(true);
     } catch (error: any) {
-      message.error(
-        error.response?.data?.message || '提交入职信息失败'
-      );
+      message.error(error.response?.data?.message || '提交入职信息失败');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const renderFileUploader = (fileType: FileType, label: string) => {
+    const uploadedUrl = uploadedFiles[fileType];
+    const isUploading = uploadingType === fileType;
+
+    if (uploadedUrl) {
+      return (
+        <div className="uploaded-file-preview">
+          <Image
+            src={uploadedUrl}
+            alt={label}
+            style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain' }}
+          />
+          <Button
+            type="link"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleFileRemove(fileType)}
+            style={{ marginTop: 8 }}
+          >
+            删除
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <Dragger
+        maxCount={1}
+        accept="image/*"
+        showUploadList={false}
+        disabled={isUploading}
+        beforeUpload={(file) => {
+          handleFileUpload(file, fileType);
+          return false;
+        }}
+      >
+        <p className="ant-upload-drag-icon">
+          {isUploading ? <LoadingOutlined /> : <InboxOutlined />}
+        </p>
+        <p className="ant-upload-text">
+          {isUploading ? '上传中...' : '点击或拖拽文件上传'}
+        </p>
+        <p className="ant-upload-hint">支持 JPG、PNG、GIF 格式（最大 10MB）</p>
+      </Dragger>
+    );
   };
 
   if (loading) {
@@ -239,6 +329,10 @@ const OnboardingForm: React.FC = () => {
             <Input placeholder="18位身份证号" />
           </Form.Item>
 
+          <Form.Item label="银行卡号" name="bank_card">
+            <Input placeholder="用于发放工资的银行卡号" />
+          </Form.Item>
+
           <Form.Item label="家庭地址" name="address">
             <TextArea rows={2} placeholder="您的家庭地址" />
           </Form.Item>
@@ -250,9 +344,7 @@ const OnboardingForm: React.FC = () => {
               <Form.Item
                 label="紧急联系人姓名"
                 name="emergency_contact"
-                rules={[
-                  { required: true, message: '请输入紧急联系人姓名！' },
-                ]}
+                rules={[{ required: true, message: '请输入紧急联系人姓名！' }]}
               >
                 <Input placeholder="姓名" />
               </Form.Item>
@@ -281,35 +373,39 @@ const OnboardingForm: React.FC = () => {
 
           <Row gutter={16}>
             <Col xs={24} md={12}>
-              <Form.Item label="身份证正面">
-                <Dragger
-                  fileList={idCardFront}
-                  maxCount={1}
-                  accept="image/*"
-                  beforeUpload={() => false}
-                  onChange={({ fileList }) => setIdCardFront(fileList)}
-                >
-                  <p className="ant-upload-drag-icon">
-                    <InboxOutlined />
-                  </p>
-                  <p className="ant-upload-text">点击或拖拽文件上传</p>
-                </Dragger>
+              <Form.Item label="身份证正面" required>
+                {renderFileUploader('id_card_front', '身份证正面')}
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item label="身份证反面">
-                <Dragger
-                  fileList={idCardBack}
-                  maxCount={1}
-                  accept="image/*"
-                  beforeUpload={() => false}
-                  onChange={({ fileList }) => setIdCardBack(fileList)}
-                >
-                  <p className="ant-upload-drag-icon">
-                    <InboxOutlined />
-                  </p>
-                  <p className="ant-upload-text">点击或拖拽文件上传</p>
-                </Dragger>
+              <Form.Item label="身份证反面" required>
+                {renderFileUploader('id_card_back', '身份证反面')}
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <h3>银行卡上传</h3>
+          <p style={{ color: '#999', marginBottom: 16 }}>
+            请上传银行卡正面清晰照片
+          </p>
+
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <Form.Item label="银行卡照片">
+                {renderFileUploader('bank_card', '银行卡')}
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <h3>毕业证书上传</h3>
+          <p style={{ color: '#999', marginBottom: 16 }}>
+            请上传您最高学历的毕业证书照片
+          </p>
+
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <Form.Item label="毕业证书照片">
+                {renderFileUploader('diploma', '毕业证书')}
               </Form.Item>
             </Col>
           </Row>

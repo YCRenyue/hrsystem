@@ -246,6 +246,11 @@ class Employee extends Model {
       emergency_phone: this.emergency_phone,
       address: this.address,
       data_complete: this.isDataComplete(),
+      // OSS file indicators (URLs generated separately via API)
+      has_id_card_front: !!this.id_card_front_oss_key,
+      has_id_card_back: !!this.id_card_back_oss_key,
+      has_bank_card_image: !!this.bank_card_oss_key,
+      has_diploma_image: !!this.diploma_oss_key,
       created_at: this.created_at ? new Date(this.created_at).toISOString().replace('T', ' ').split('.')[0] : null,
       updated_at: this.updated_at ? new Date(this.updated_at).toISOString().replace('T', ' ').split('.')[0] : null
     };
@@ -381,16 +386,26 @@ Employee.init(
       unique: true,
       comment: '钉钉用户ID'
     },
-    // ID card files
-    id_card_front_s3_path: {
+    // OSS file paths
+    id_card_front_oss_key: {
       type: DataTypes.STRING(500),
       allowNull: true,
-      comment: '身份证正面S3路径'
+      comment: '身份证正面OSS对象键'
     },
-    id_card_back_s3_path: {
+    id_card_back_oss_key: {
       type: DataTypes.STRING(500),
       allowNull: true,
-      comment: '身份证反面S3路径'
+      comment: '身份证反面OSS对象键'
+    },
+    bank_card_oss_key: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+      comment: '银行卡照片OSS对象键'
+    },
+    diploma_oss_key: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+      comment: '毕业证书照片OSS对象键'
     },
     // Other info
     gender: {

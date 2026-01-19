@@ -15,9 +15,9 @@ class OnboardingProcess extends Model {
     const token = crypto.randomBytes(32).toString('hex');
     this.form_token = token;
 
-    // Set token expiration (7 days from now)
+    // Set token expiration (30 days from now)
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    expiresAt.setDate(expiresAt.getDate() + 30);
     this.token_expires_at = expiresAt;
 
     return token;

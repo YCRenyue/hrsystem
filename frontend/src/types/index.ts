@@ -70,8 +70,11 @@ export interface Employee {
   emergency_contact?: string;
   emergency_phone?: string;
   avatar_url?: string;
-  id_card_front_s3_path?: string;
-  id_card_back_s3_path?: string;
+  // OSS 文件标识
+  has_id_card_front?: boolean;
+  has_id_card_back?: boolean;
+  has_bank_card_image?: boolean;
+  has_diploma_image?: boolean;
   dingtalk_user_id?: string;
   data_complete?: boolean;
   remarks?: string;

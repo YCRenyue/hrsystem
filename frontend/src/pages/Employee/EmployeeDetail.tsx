@@ -11,6 +11,10 @@ import {
   Spin,
   App,
   Divider,
+  Row,
+  Col,
+  Image,
+  Empty,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -23,11 +27,14 @@ import {
   EnvironmentOutlined,
   TeamOutlined,
   ContactsOutlined,
+  FileImageOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { Employee } from '../../types';
 import { employeeService } from '../../services/employeeService';
+import { uploadService, FileUrls } from '../../services/uploadService';
 import { usePermission } from '../../hooks/usePermission';
 import './EmployeeDetail.css';
 
@@ -39,6 +46,20 @@ const EmployeeDetail: React.FC = () => {
 
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(false);
+  const [fileUrls, setFileUrls] = useState<FileUrls | null>(null);
+  const [loadingFiles, setLoadingFiles] = useState(false);
+
+  const fetchFileUrls = async (employeeId: string) => {
+    setLoadingFiles(true);
+    try {
+      const urls = await uploadService.getEmployeeFileUrls(employeeId);
+      setFileUrls(urls);
+    } catch (error: any) {
+      console.error('获取文件URL失败:', error);
+    } finally {
+      setLoadingFiles(false);
+    }
+  };
 
   const fetchEmployee = async () => {
     if (!id) return;
@@ -47,6 +68,15 @@ const EmployeeDetail: React.FC = () => {
     try {
       const data = await employeeService.getEmployeeById(id);
       setEmployee(data);
+      // 如果员工有上传的文件，获取签名URL
+      if (
+        data.has_id_card_front ||
+        data.has_id_card_back ||
+        data.has_bank_card_image ||
+        data.has_diploma_image
+      ) {
+        fetchFileUrls(id);
+      }
     } catch (error: any) {
       message.error(error.response?.data?.message || '获取员工信息失败');
       navigate('/employees');
@@ -299,6 +329,55 @@ const EmployeeDetail: React.FC = () => {
 
         <Divider />
 
+        {/* Documents Section */}
+        <div className="section-title">
+          <Space>
+            <FileImageOutlined />
+            <span>证件资料</span>
+          </Space>
+        </div>
+
+        <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+          <Col xs={24} sm={12} md={6}>
+            <Card size="small" title="身份证正面" className="document-card">
+              {renderDocumentImage(
+                fileUrls?.id_card_front_url,
+                '身份证正面',
+                employee.has_id_card_front
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card size="small" title="身份证反面" className="document-card">
+              {renderDocumentImage(
+                fileUrls?.id_card_back_url,
+                '身份证反面',
+                employee.has_id_card_back
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card size="small" title="银行卡" className="document-card">
+              {renderDocumentImage(
+                fileUrls?.bank_card_url,
+                '银行卡',
+                employee.has_bank_card_image
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card size="small" title="毕业证书" className="document-card">
+              {renderDocumentImage(
+                fileUrls?.diploma_url,
+                '毕业证书',
+                employee.has_diploma_image
+              )}
+            </Card>
+          </Col>
+        </Row>
+
+        <Divider />
+
         {/* Additional Information */}
         <Descriptions
           title="其他信息"
@@ -322,6 +401,50 @@ const EmployeeDetail: React.FC = () => {
       </Card>
     </div>
   );
+
+  function renderDocumentImage(
+    url: string | null | undefined,
+    title: string,
+    hasFile: boolean | undefined
+  ) {
+    if (!hasFile) {
+      return (
+        <div className="document-placeholder">
+          <Empty description="未上传" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        </div>
+      );
+    }
+
+    if (loadingFiles) {
+      return (
+        <div className="document-loading">
+          <LoadingOutlined style={{ fontSize: 24 }} />
+          <p>加载中...</p>
+        </div>
+      );
+    }
+
+    if (!url) {
+      return (
+        <div className="document-placeholder">
+          <Empty description="加载失败" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        </div>
+      );
+    }
+
+    return (
+      <Image
+        src={url}
+        alt={title}
+        style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain' }}
+        placeholder={
+          <div className="document-loading">
+            <LoadingOutlined style={{ fontSize: 24 }} />
+          </div>
+        }
+      />
+    );
+  }
 };
 
 export default EmployeeDetail;
