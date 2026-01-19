@@ -17,6 +17,7 @@ import {
   Upload,
   Image,
   Divider,
+  Popconfirm,
 } from 'antd';
 import {
   SaveOutlined,
@@ -172,14 +173,22 @@ const EmployeeForm: React.FC = () => {
             style={{ maxWidth: '100%', maxHeight: 150, objectFit: 'contain' }}
           />
           <div style={{ marginTop: 8 }}>
-            <Button
-              type="link"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => handleFileDelete(fileType)}
+            <Popconfirm
+              title="确认删除"
+              description="确定要删除此文件吗？删除后无法恢复。"
+              onConfirm={() => handleFileDelete(fileType)}
+              okText="确认删除"
+              cancelText="取消"
+              okButtonProps={{ danger: true }}
             >
-              删除
-            </Button>
+              <Button
+                type="link"
+                danger
+                icon={<DeleteOutlined />}
+              >
+                删除
+              </Button>
+            </Popconfirm>
           </div>
         </div>
       );

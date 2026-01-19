@@ -127,6 +127,16 @@ const OnboardingForm: React.FC = () => {
   };
 
   const onFinish = async (values: any) => {
+    // 验证必需的文件是否已上传
+    if (!uploadedFiles.id_card_front) {
+      message.error('请上传身份证正面照片');
+      return;
+    }
+    if (!uploadedFiles.id_card_back) {
+      message.error('请上传身份证反面照片');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const formData = {
