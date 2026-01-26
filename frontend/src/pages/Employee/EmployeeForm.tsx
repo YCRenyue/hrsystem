@@ -514,39 +514,37 @@ const EmployeeForm: React.FC = () => {
           </Form.Item>
         </Form>
 
-        {/* 证件资料上传区域 - 仅编辑模式显示 */}
-        {isEditMode && (
-          <>
-            <Divider />
-            <h3>证件资料上传</h3>
-            <p style={{ color: '#999', marginBottom: 16 }}>
-              上传员工的身份证、银行卡和毕业证书照片
-            </p>
+        {/* 证件资料上传区域 */}
+        <Divider />
+        <h3>证件资料上传</h3>
+        <p style={{ color: '#999', marginBottom: 16 }}>
+          {isEditMode
+            ? '上传员工的身份证、银行卡和毕业证书照片'
+            : '请先保存员工基本信息后再上传证件资料'}
+        </p>
 
-            <Row gutter={16}>
-              <Col xs={24} sm={12} md={6}>
-                <Card size="small" title="身份证正面">
-                  {renderFileUploader('id_card_front', '身份证正面')}
-                </Card>
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Card size="small" title="身份证反面">
-                  {renderFileUploader('id_card_back', '身份证反面')}
-                </Card>
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Card size="small" title="银行卡">
-                  {renderFileUploader('bank_card', '银行卡')}
-                </Card>
-              </Col>
-              <Col xs={24} sm={12} md={6}>
-                <Card size="small" title="毕业证书">
-                  {renderFileUploader('diploma', '毕业证书')}
-                </Card>
-              </Col>
-            </Row>
-          </>
-        )}
+        <Row gutter={16}>
+          <Col xs={24} sm={12} md={6}>
+            <Card size="small" title="身份证正面">
+              {renderFileUploader('id_card_front', '身份证正面')}
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card size="small" title="身份证反面">
+              {renderFileUploader('id_card_back', '身份证反面')}
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card size="small" title="银行卡">
+              {renderFileUploader('bank_card', '银行卡')}
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card size="small" title="毕业证书">
+              {renderFileUploader('diploma', '毕业证书')}
+            </Card>
+          </Col>
+        </Row>
       </Card>
     </div>
   );

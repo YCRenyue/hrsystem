@@ -90,16 +90,16 @@ class OSSService {
       .substring(0, 8);
 
     switch (fileType) {
-      case 'id_card_front':
-        return `idcard/${employeeId}/front_${hash}${ext}`;
-      case 'id_card_back':
-        return `idcard/${employeeId}/back_${hash}${ext}`;
-      case 'bank_card':
-        return `bankcard/${employeeId}_${hash}${ext}`;
-      case 'diploma':
-        return `diploma/${employeeId}_${hash}${ext}`;
-      default:
-        return `misc/${employeeId}/${fileType}_${hash}${ext}`;
+    case 'id_card_front':
+      return `idcard/${employeeId}/front_${hash}${ext}`;
+    case 'id_card_back':
+      return `idcard/${employeeId}/back_${hash}${ext}`;
+    case 'bank_card':
+      return `bankcard/${employeeId}_${hash}${ext}`;
+    case 'diploma':
+      return `diploma/${employeeId}_${hash}${ext}`;
+    default:
+      return `misc/${employeeId}/${fileType}_${hash}${ext}`;
     }
   }
 

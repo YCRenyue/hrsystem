@@ -114,7 +114,7 @@ const uploadOnboardingFile = async (req, res) => {
     throw new ValidationError('Onboarding token has expired');
   }
 
-  const employee = process.employee;
+  const { employee } = process;
   if (!employee) {
     throw new NotFoundError('Employee', 'associated with this process');
   }
