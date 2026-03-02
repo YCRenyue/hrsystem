@@ -253,10 +253,14 @@ class Employee extends Model {
       has_diploma_image: !!this.diploma_oss_key,
       // Document confirmation fields
       policy_ack_status: !!this.policy_ack_status,
-      policy_ack_signed_at: this.policy_ack_signed_at,
+      policy_ack_signed_at: this.policy_ack_signed_at
+        ? new Date(this.policy_ack_signed_at).toISOString().replace('T', ' ').split('.')[0]
+        : null,
       has_policy_ack_file: !!this.policy_ack_file_key,
       training_pledge_status: !!this.training_pledge_status,
-      training_pledge_signed_at: this.training_pledge_signed_at,
+      training_pledge_signed_at: this.training_pledge_signed_at
+        ? new Date(this.training_pledge_signed_at).toISOString().replace('T', ' ').split('.')[0]
+        : null,
       has_training_pledge_file: !!this.training_pledge_file_key,
       created_at: this.created_at ? new Date(this.created_at).toISOString().replace('T', ' ').split('.')[0] : null,
       updated_at: this.updated_at ? new Date(this.updated_at).toISOString().replace('T', ' ').split('.')[0] : null

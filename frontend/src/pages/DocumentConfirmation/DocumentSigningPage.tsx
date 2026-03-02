@@ -97,6 +97,11 @@ const DocumentSigningPage: React.FC = () => {
       return;
     }
 
+    if (signatureName.trim() !== employee.name) {
+      message.warning("Signature must match your name");
+      return;
+    }
+
     setSigning(true);
     try {
       await employeeService.signDocument(employeeId, docType);
@@ -184,6 +189,9 @@ const DocumentSigningPage: React.FC = () => {
             column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}
             styles={{ label: { fontWeight: 500, width: "120px" } }}
           >
+            <Descriptions.Item label="员工编号">
+              {employee.employee_number || "-"}
+            </Descriptions.Item>
             <Descriptions.Item label="姓名">
               {employee.name || "-"}
             </Descriptions.Item>
@@ -295,7 +303,7 @@ const DocumentSigningPage: React.FC = () => {
               icon={<EditOutlined />}
               onClick={handleSign}
               loading={signing}
-              disabled={!agreed || !signatureName.trim()}
+              disabled={!agreed || signatureName.trim() !== employee?.name}
               size="large"
             >
               确认签署
