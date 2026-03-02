@@ -27,6 +27,7 @@ import CanteenMealList from './pages/CanteenMeal/CanteenMealList';
 import UserManagement from './pages/UserManagement/UserManagement';
 import DocumentConfirmationList from './pages/DocumentConfirmation/DocumentConfirmationList';
 import DocumentSigningPage from './pages/DocumentConfirmation/DocumentSigningPage';
+import MyDocumentConfirmations from './pages/DocumentConfirmation/MyDocumentConfirmations';
 import './App.css';
 
 function App() {
@@ -177,6 +178,12 @@ function App() {
                         <DocumentConfirmationList />
                       </RoleGuard>
                     }
+                  />
+
+                  {/* My document confirmations - employee self-service */}
+                  <Route
+                    path="document-confirmations/my"
+                    element={<MyDocumentConfirmations />}
                   />
 
                   {/* Document signing page - accessible to all authenticated users */}

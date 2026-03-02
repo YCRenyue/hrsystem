@@ -38,7 +38,9 @@ const DingTalkCallback: React.FC = () => {
       if (response.data.success) {
         const { token, user } = response.data.data;
         login(user, token);
-        navigate('/dashboard');
+        const isManager = ['admin', 'hr_admin', 'department_manager']
+          .includes(user?.role);
+        navigate(isManager ? '/dashboard' : '/document-confirmations/my');
       } else {
         setError('Login failed');
       }

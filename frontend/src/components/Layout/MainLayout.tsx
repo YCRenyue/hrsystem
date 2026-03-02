@@ -96,8 +96,11 @@ const MainLayout: React.FC = () => {
     },
   ];
 
-  // Sidebar navigation menu
-  const sidebarMenuItems: MenuProps['items'] = [
+  const isManager = ['admin', 'hr_admin', 'department_manager']
+    .includes(user?.role || '');
+
+  // Admin/HR menu items - hidden from regular employees
+  const managerMenuItems: MenuProps['items'] = isManager ? [
     {
       key: '/dashboard',
       icon: <DashboardOutlined />,
@@ -152,11 +155,20 @@ const MainLayout: React.FC = () => {
       label: '食堂餐费',
       onClick: () => navigate('/canteen-meals'),
     },
+  ] : [];
+
+  // Sidebar navigation menu
+  const sidebarMenuItems: MenuProps['items'] = [
+    ...managerMenuItems,
     {
       key: '/document-confirmations',
       icon: <FileProtectOutlined />,
       label: '制度确认',
-      onClick: () => navigate('/document-confirmations'),
+      onClick: () => {
+        navigate(isManager
+          ? '/document-confirmations'
+          : '/document-confirmations/my');
+      },
     },
     // Admin-only menu items
     ...(user?.role === 'admin' ? [

@@ -38,9 +38,10 @@ const getUserProfile = async (req, res) => {
     });
   }
 
-  // Return safe objects with masked sensitive data
+  // Employees can see their own sensitive data
+  const isSelf = employee && user.employee_id === employee.employee_id;
   const userData = user.toSafeObject();
-  const employeeData = employee ? employee.toSafeObject(false) : null;
+  const employeeData = employee ? employee.toSafeObject(isSelf) : null;
 
   return res.json({
     success: true,
@@ -312,8 +313,8 @@ const getProfileEmployee = async (req, res) => {
     });
   }
 
-  // Return employee with full information but masked sensitive data
-  const employeeData = employee.toSafeObject(false);
+  // Employees can see their own full information
+  const employeeData = employee.toSafeObject(true);
 
   return res.json({
     success: true,

@@ -17,9 +17,11 @@ const Login: React.FC = () => {
   const onFinish = async (values: { username: string; password: string }) => {
     setLoading(true);
     try {
-      await login(values.username, values.password);
+      const loggedInUser = await login(values.username, values.password);
       message.success('登录成功！');
-      navigate('/dashboard');
+      const isManager = ['admin', 'hr_admin', 'department_manager']
+        .includes(loggedInUser?.role);
+      navigate(isManager ? '/dashboard' : '/document-confirmations/my');
     } catch (error: any) {
       message.error(error.response?.data?.message || '登录失败，请重试。');
     } finally {
