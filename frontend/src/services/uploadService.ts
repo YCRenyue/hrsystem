@@ -9,6 +9,8 @@ export interface FileUrls {
   id_card_back_url: string | null;
   bank_card_url: string | null;
   diploma_url: string | null;
+  policy_ack_url: string | null;
+  training_pledge_url: string | null;
 }
 
 export interface UploadResult {
@@ -16,7 +18,13 @@ export interface UploadResult {
   url: string | null;
 }
 
-export type FileType = "id_card_front" | "id_card_back" | "bank_card" | "diploma";
+export type FileType =
+  | "id_card_front"
+  | "id_card_back"
+  | "bank_card"
+  | "diploma"
+  | "policy_ack"
+  | "training_pledge";
 
 export const uploadService = {
   /**

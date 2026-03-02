@@ -93,6 +93,16 @@ router.put(
 );
 
 /**
+ * @route   PUT /api/employees/:id/sign-document
+ * @desc    Sign a document confirmation (policy or training)
+ * @access  Private (employee owner, HR, Admin)
+ */
+router.put(
+  '/:id/sign-document',
+  asyncHandler(employeeController.signDocument)
+);
+
+/**
  * @route   DELETE /api/employees/:id
  * @desc    Delete employee
  * @access  Private (Admin only)

@@ -251,6 +251,13 @@ class Employee extends Model {
       has_id_card_back: !!this.id_card_back_oss_key,
       has_bank_card_image: !!this.bank_card_oss_key,
       has_diploma_image: !!this.diploma_oss_key,
+      // Document confirmation fields
+      policy_ack_status: !!this.policy_ack_status,
+      policy_ack_signed_at: this.policy_ack_signed_at,
+      has_policy_ack_file: !!this.policy_ack_file_key,
+      training_pledge_status: !!this.training_pledge_status,
+      training_pledge_signed_at: this.training_pledge_signed_at,
+      has_training_pledge_file: !!this.training_pledge_file_key,
       created_at: this.created_at ? new Date(this.created_at).toISOString().replace('T', ' ').split('.')[0] : null,
       updated_at: this.updated_at ? new Date(this.updated_at).toISOString().replace('T', ' ').split('.')[0] : null
     };
@@ -406,6 +413,39 @@ Employee.init(
       type: DataTypes.STRING(500),
       allowNull: true,
       comment: '毕业证书照片OSS对象键'
+    },
+    // Document confirmation fields
+    policy_ack_status: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: '是否已确认阅读公司制度'
+    },
+    policy_ack_signed_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: '公司制度确认签署时间'
+    },
+    policy_ack_file_key: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+      comment: '公司制度确认表OSS对象键'
+    },
+    training_pledge_status: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: '是否已签署培训承诺函'
+    },
+    training_pledge_signed_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: '培训承诺函签署时间'
+    },
+    training_pledge_file_key: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+      comment: '培训承诺函OSS对象键'
     },
     // Other info
     gender: {

@@ -75,6 +75,13 @@ export interface Employee {
   has_id_card_back?: boolean;
   has_bank_card_image?: boolean;
   has_diploma_image?: boolean;
+  // Document confirmation fields
+  policy_ack_status?: boolean;
+  policy_ack_signed_at?: string;
+  has_policy_ack_file?: boolean;
+  training_pledge_status?: boolean;
+  training_pledge_signed_at?: string;
+  has_training_pledge_file?: boolean;
   dingtalk_user_id?: string;
   data_complete?: boolean;
   remarks?: string;

@@ -17,6 +17,7 @@ import {
   CarOutlined,
   CoffeeOutlined,
   UsergroupAddOutlined,
+  FileProtectOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -150,6 +151,12 @@ const MainLayout: React.FC = () => {
       icon: <CoffeeOutlined />,
       label: '食堂餐费',
       onClick: () => navigate('/canteen-meals'),
+    },
+    {
+      key: '/document-confirmations',
+      icon: <FileProtectOutlined />,
+      label: '制度确认',
+      onClick: () => navigate('/document-confirmations'),
     },
     // Admin-only menu items
     ...(user?.role === 'admin' ? [

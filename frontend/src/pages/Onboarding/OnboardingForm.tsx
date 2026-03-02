@@ -56,6 +56,7 @@ interface UploadedFiles {
   id_card_back: string | null;
   bank_card: string | null;
   diploma: string | null;
+  [key: string]: string | null;
 }
 
 const OnboardingForm: React.FC = () => {

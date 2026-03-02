@@ -25,6 +25,8 @@ import SocialSecurityList from './pages/SocialSecurity/SocialSecurityList';
 import BusinessTripList from './pages/BusinessTrip/BusinessTripList';
 import CanteenMealList from './pages/CanteenMeal/CanteenMealList';
 import UserManagement from './pages/UserManagement/UserManagement';
+import DocumentConfirmationList from './pages/DocumentConfirmation/DocumentConfirmationList';
+import DocumentSigningPage from './pages/DocumentConfirmation/DocumentSigningPage';
 import './App.css';
 
 function App() {
@@ -165,6 +167,22 @@ function App() {
                         <CanteenMealList />
                       </RoleGuard>
                     }
+                  />
+
+                  {/* Document confirmations - HR management view */}
+                  <Route
+                    path="document-confirmations"
+                    element={
+                      <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
+                        <DocumentConfirmationList />
+                      </RoleGuard>
+                    }
+                  />
+
+                  {/* Document signing page - accessible to all authenticated users */}
+                  <Route
+                    path="document-confirmations/:employeeId/:documentType"
+                    element={<DocumentSigningPage />}
                   />
 
                   {/* User management - admin only */}

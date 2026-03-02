@@ -8,14 +8,19 @@ const { NotFoundError, ValidationError } = require('../middleware/errorHandler')
 const logger = require('../utils/logger');
 
 // Valid file types for upload
-const VALID_FILE_TYPES = ['id_card_front', 'id_card_back', 'bank_card', 'diploma'];
+const VALID_FILE_TYPES = [
+  'id_card_front', 'id_card_back', 'bank_card', 'diploma',
+  'policy_ack', 'training_pledge'
+];
 
 // Map file type to database column
 const FILE_TYPE_TO_COLUMN = {
   id_card_front: 'id_card_front_oss_key',
   id_card_back: 'id_card_back_oss_key',
   bank_card: 'bank_card_oss_key',
-  diploma: 'diploma_oss_key'
+  diploma: 'diploma_oss_key',
+  policy_ack: 'policy_ack_file_key',
+  training_pledge: 'training_pledge_file_key'
 };
 
 /**

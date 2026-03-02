@@ -36,6 +36,7 @@ import { Employee } from '../../types';
 import { employeeService } from '../../services/employeeService';
 import { uploadService, FileUrls } from '../../services/uploadService';
 import { usePermission } from '../../hooks/usePermission';
+import DocumentConfirmationStatus from './DocumentConfirmationStatus';
 import './EmployeeDetail.css';
 
 const EmployeeDetail: React.FC = () => {
@@ -375,6 +376,14 @@ const EmployeeDetail: React.FC = () => {
             </Card>
           </Col>
         </Row>
+
+        <Divider />
+
+        {/* Document Confirmations */}
+        <DocumentConfirmationStatus
+          employee={employee}
+          formatDate={formatDate}
+        />
 
         <Divider />
 

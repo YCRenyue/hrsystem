@@ -649,6 +649,58 @@ const exportToExcel = async (req, res) => {
   res.end();
 };
 
+/**
+ * Sign a document confirmation (policy or training)
+ * PUT /api/employees/:id/sign-document
+ */
+const signDocument = async (req, res) => {
+  const { id } = req.params;
+  const { documentType } = req.body;
+
+  const validTypes = ['policy_ack', 'training_pledge'];
+  if (!validTypes.includes(documentType)) {
+    throw new ValidationError(
+      `Invalid document type. Must be one of: ${validTypes.join(', ')}`
+    );
+  }
+
+  const employee = await Employee.findByPk(id);
+  if (!employee) {
+    throw new NotFoundError('Employee', id);
+  }
+
+  // Verify the user owns this employee record or is HR/admin
+  const userRole = req.user?.role;
+  const userEmployeeId = req.user?.employee_id;
+  const isOwner = userEmployeeId === id;
+  const isHrOrAdmin = ['admin', 'hr_admin'].includes(userRole);
+
+  if (!isOwner && !isHrOrAdmin) {
+    throw new ValidationError('You do not have permission to sign this document');
+  }
+
+  const statusField = `${documentType}_status`;
+  const signedAtField = `${documentType}_signed_at`;
+
+  if (employee[statusField]) {
+    throw new ValidationError('This document has already been signed');
+  }
+
+  await employee.update({
+    [statusField]: true,
+    [signedAtField]: new Date()
+  });
+
+  res.json({
+    success: true,
+    message: 'Document signed successfully',
+    data: {
+      documentType,
+      signedAt: employee[signedAtField]
+    }
+  });
+};
+
 module.exports = {
   getEmployees,
   getEmployeeById,
@@ -656,5 +708,6 @@ module.exports = {
   updateEmployee,
   deleteEmployee,
   importFromExcel,
-  exportToExcel
+  exportToExcel,
+  signDocument
 };

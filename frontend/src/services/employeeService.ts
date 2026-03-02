@@ -117,6 +117,19 @@ export const employeeService = {
   /**
    * Send onboarding form email to employee
    */
+  /**
+   * Sign a document confirmation (policy or training)
+   */
+  async signDocument(
+    employeeId: string,
+    documentType: 'policy_ack' | 'training_pledge'
+  ): Promise<{ documentType: string; signedAt: string }> {
+    const response = await apiClient.put<
+      ApiResponse<{ documentType: string; signedAt: string }>
+    >(`/employees/${employeeId}/sign-document`, { documentType });
+    return response.data.data!;
+  },
+
   async sendOnboardingEmail(employeeId: string): Promise<{
     success: boolean;
     message: string;
