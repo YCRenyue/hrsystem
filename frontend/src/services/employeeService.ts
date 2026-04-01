@@ -130,6 +130,19 @@ export const employeeService = {
     return response.data.data!;
   },
 
+  /**
+   * Save or update training pledge details (HR only)
+   */
+  async saveTrainingPledge(
+    employeeId: string,
+    data: { training_cost: number; service_years: number }
+  ): Promise<{ pledge_id: string; employee_id: string; training_cost: number; service_years: number }> {
+    const response = await apiClient.put<
+      ApiResponse<{ pledge_id: string; employee_id: string; training_cost: number; service_years: number }>
+    >(`/employees/${employeeId}/training-pledge`, data);
+    return response.data.data!;
+  },
+
   async sendOnboardingEmail(employeeId: string): Promise<{
     success: boolean;
     message: string;

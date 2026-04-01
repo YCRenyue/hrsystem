@@ -20,6 +20,10 @@
    - 标记已完成的功能点（使用 `[x]` 标记复选框）
    - 添加完成时间和简要说明
    - 如发现新的问题或需求，及时补充到文档中
+   - **必须**运行编译和 lint 检查，确认无报错后再提交：
+     - 前端：`cd frontend && npx tsc --noEmit && npx eslint src/ --max-warnings=0`
+     - 后端：`npm run lint:backend`（确认无 error，warning 可以是已有遗留）
+   - 以上检查全部通过后，执行 `git commit` 提交代码
 
 ## 📁 文件创建和命名规则
 

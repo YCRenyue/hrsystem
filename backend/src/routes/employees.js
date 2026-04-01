@@ -103,6 +103,17 @@ router.put(
 );
 
 /**
+ * @route   PUT /api/employees/:id/training-pledge
+ * @desc    Save or update training pledge details (cost and service years) for an employee
+ * @access  Private (HR, Admin only)
+ */
+router.put(
+  '/:id/training-pledge',
+  requireRole('hr_admin', 'admin'),
+  asyncHandler(employeeController.saveTrainingPledge)
+);
+
+/**
  * @route   DELETE /api/employees/:id
  * @desc    Delete employee
  * @access  Private (Admin only)

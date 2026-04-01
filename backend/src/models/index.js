@@ -9,6 +9,7 @@ const AnnualLeave = require('./AnnualLeave');
 const SocialSecurity = require('./SocialSecurity');
 const BusinessTrip = require('./BusinessTrip');
 const CanteenMeal = require('./CanteenMeal');
+const TrainingPledge = require('./TrainingPledge');
 
 /**
  * Model Associations
@@ -140,6 +141,17 @@ Employee.hasMany(CanteenMeal, {
   as: 'canteenMeals'
 });
 
+// TrainingPledge associations
+TrainingPledge.belongsTo(Employee, {
+  foreignKey: 'employee_id',
+  as: 'employee'
+});
+
+Employee.hasOne(TrainingPledge, {
+  foreignKey: 'employee_id',
+  as: 'trainingPledge'
+});
+
 /**
  * Sync models with database
  * @param {boolean} force - If true, drops existing tables before creating new ones
@@ -171,7 +183,8 @@ const initModels = () => ({
   AnnualLeave,
   SocialSecurity,
   BusinessTrip,
-  CanteenMeal
+  CanteenMeal,
+  TrainingPledge
 });
 
 module.exports = {
@@ -186,6 +199,7 @@ module.exports = {
   SocialSecurity,
   BusinessTrip,
   CanteenMeal,
+  TrainingPledge,
   syncModels,
   initModels
 };

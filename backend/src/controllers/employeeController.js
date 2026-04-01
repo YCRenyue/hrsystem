@@ -2,7 +2,9 @@
  * Employee Controller
  */
 const { Op } = require('sequelize');
-const { Employee, Department, User } = require('../models');
+const {
+  Employee, Department, User, TrainingPledge
+} = require('../models');
 const { NotFoundError, ValidationError } = require('../middleware/errorHandler');
 const { encryptionService } = require('../utils/encryption');
 const { sequelize } = require('../config/database');
@@ -82,6 +84,12 @@ const getEmployees = async (req, res) => {
         model: Department,
         as: 'department',
         attributes: ['department_id', 'name', 'code']
+      },
+      {
+        model: TrainingPledge,
+        as: 'trainingPledge',
+        attributes: ['pledge_id', 'training_cost', 'service_years'],
+        required: false
       }
     ],
     offset: fetchOffset,
@@ -131,6 +139,11 @@ const getEmployeeById = async (req, res) => {
         model: Department,
         as: 'department',
         attributes: ['department_id', 'name', 'code']
+      },
+      {
+        model: TrainingPledge,
+        as: 'trainingPledge',
+        attributes: ['pledge_id', 'training_cost', 'service_years', 'created_at', 'updated_at']
       }
     ]
   });
@@ -701,6 +714,56 @@ const signDocument = async (req, res) => {
   });
 };
 
+/**
+ * Save or update training pledge details for an employee (HR only)
+ * PUT /api/employees/:id/training-pledge
+ */
+const saveTrainingPledge = async (req, res) => {
+  const { id } = req.params;
+  const { training_cost, service_years } = req.body;
+
+  const userRole = req.user?.role;
+  if (!['admin', 'hr_admin'].includes(userRole)) {
+    throw new ValidationError('Only HR administrators can configure training pledge details');
+  }
+
+  if (training_cost === undefined || training_cost === null || Number(training_cost) <= 0) {
+    throw new ValidationError('training_cost must be a positive number');
+  }
+
+  if (!Number.isInteger(Number(service_years)) || Number(service_years) < 1 || Number(service_years) > 10) {
+    throw new ValidationError('service_years must be an integer between 1 and 10');
+  }
+
+  const employee = await Employee.findByPk(id);
+  if (!employee) {
+    throw new NotFoundError('Employee', id);
+  }
+
+  const { v4: uuidv4 } = require('uuid');
+
+  const [pledge, created] = await TrainingPledge.upsert(
+    {
+      pledge_id: uuidv4(),
+      employee_id: id,
+      training_cost: Number(training_cost),
+      service_years: Number(service_years)
+    },
+    { conflictFields: ['employee_id'] }
+  );
+
+  res.json({
+    success: true,
+    message: created ? 'Training pledge created' : 'Training pledge updated',
+    data: {
+      pledge_id: pledge.pledge_id,
+      employee_id: pledge.employee_id,
+      training_cost: pledge.training_cost,
+      service_years: pledge.service_years
+    }
+  });
+};
+
 module.exports = {
   getEmployees,
   getEmployeeById,
@@ -709,5 +772,6 @@ module.exports = {
   deleteEmployee,
   importFromExcel,
   exportToExcel,
-  signDocument
+  signDocument,
+  saveTrainingPledge
 };

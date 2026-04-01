@@ -271,6 +271,13 @@ class Employee extends Model {
       data.department = this.department.get ? this.department.get({ plain: true }) : this.department;
     }
 
+    // Include trainingPledge if loaded
+    if (this.trainingPledge) {
+      data.trainingPledge = this.trainingPledge.get
+        ? this.trainingPledge.get({ plain: true })
+        : this.trainingPledge;
+    }
+
     if (includeSensitive) {
       data.phone = this.getPhone();
       data.id_card = this.getIdCard();

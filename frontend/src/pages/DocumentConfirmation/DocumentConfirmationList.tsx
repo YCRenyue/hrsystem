@@ -15,12 +15,16 @@ import {
   Row,
   Col,
   App,
+  Modal,
+  Form,
+  InputNumber,
 } from "antd";
 import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   EyeOutlined,
   DownloadOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
@@ -46,6 +50,10 @@ const DocumentConfirmationList: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
+  const [pledgeModalVisible, setPledgeModalVisible] = useState(false);
+  const [pledgeModalLoading, setPledgeModalLoading] = useState(false);
+  const [pledgeTargetId, setPledgeTargetId] = useState<string>("");
+  const [pledgeForm] = Form.useForm();
 
   const fetchEmployees = useCallback(async () => {
     setLoading(true);
@@ -105,6 +113,40 @@ const DocumentConfirmationList: React.FC = () => {
       }
     } catch (error: any) {
       message.error("Failed to get file URL");
+    }
+  };
+
+  const handleOpenPledgeModal = async (employeeId: string) => {
+    setPledgeTargetId(employeeId);
+    pledgeForm.resetFields();
+    try {
+      const emp = await employeeService.getEmployeeById(employeeId);
+      const pledge = (emp as any).trainingPledge;
+      if (pledge) {
+        pledgeForm.setFieldsValue({
+          training_cost: Number(pledge.training_cost),
+          service_years: pledge.service_years,
+        });
+      }
+    } catch {
+      // no pre-fill if fetch fails
+    }
+    setPledgeModalVisible(true);
+  };
+
+  const handleSavePledge = async () => {
+    try {
+      const values = await pledgeForm.validateFields();
+      setPledgeModalLoading(true);
+      await employeeService.saveTrainingPledge(pledgeTargetId, values);
+      message.success("培训承诺函信息已保存");
+      setPledgeModalVisible(false);
+      fetchEmployees();
+    } catch (error: any) {
+      if (error?.errorFields) return; // validation error, stay open
+      message.error(error.response?.data?.message || "保存失败");
+    } finally {
+      setPledgeModalLoading(false);
     }
   };
 
@@ -180,8 +222,19 @@ const DocumentConfirmationList: React.FC = () => {
           activeTab === "policy_ack"
             ? record.has_policy_ack_file
             : record.has_training_pledge_file;
+        const hasPledge = !!(record as any).trainingPledge;
         return (
           <Space>
+            {activeTab === "training_pledge" && (
+              <Button
+                type="link"
+                icon={<SettingOutlined />}
+                size="small"
+                onClick={() => handleOpenPledgeModal(record.employee_id)}
+              >
+                {hasPledge ? "修改信息" : "配置承诺函"}
+              </Button>
+            )}
             <Button
               type="link"
               icon={<EyeOutlined />}
@@ -217,7 +270,7 @@ const DocumentConfirmationList: React.FC = () => {
     },
     {
       key: "training_pledge",
-      label: "员工培训承诺函",
+      label: "员工培训服务承诺函",
     },
   ];
 
@@ -292,6 +345,53 @@ const DocumentConfirmationList: React.FC = () => {
           }}
         />
       </Card>
+
+      <Modal
+        title="配置培训服务承诺函信息"
+        open={pledgeModalVisible}
+        onOk={handleSavePledge}
+        onCancel={() => setPledgeModalVisible(false)}
+        confirmLoading={pledgeModalLoading}
+        okText="保存"
+        cancelText="取消"
+        width={480}
+      >
+        <Form form={pledgeForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item
+            name="training_cost"
+            label="培训总费用（元）"
+            rules={[
+              { required: true, message: "请输入培训总费用" },
+              { type: "number", min: 1, message: "费用必须大于0" },
+            ]}
+          >
+            <InputNumber
+              style={{ width: "100%" }}
+              placeholder="请输入实际培训费用，如：5000"
+              min={1}
+              precision={2}
+              addonAfter="元"
+            />
+          </Form.Item>
+          <Form.Item
+            name="service_years"
+            label="服务年限（年）"
+            rules={[
+              { required: true, message: "请输入服务年限" },
+              { type: "number", min: 1, max: 10, message: "服务年限须在1-10年之间" },
+            ]}
+          >
+            <InputNumber
+              style={{ width: "100%" }}
+              placeholder="请输入服务期限，如：3"
+              min={1}
+              max={10}
+              precision={0}
+              addonAfter="年"
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };
