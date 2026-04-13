@@ -21,6 +21,7 @@ import LeaveList from './pages/Leave/LeaveList';
 import UserSettings from './pages/Settings';
 import UserProfile from './pages/Profile/UserProfile';
 import AnnualLeaveList from './pages/AnnualLeave/AnnualLeaveList';
+import AnnualLeaveForm from './pages/AnnualLeave/AnnualLeaveForm';
 import SocialSecurityList from './pages/SocialSecurity/SocialSecurityList';
 import BusinessTripList from './pages/BusinessTrip/BusinessTripList';
 import CanteenMealList from './pages/CanteenMeal/CanteenMealList';
@@ -139,6 +140,24 @@ function App() {
                     element={
                       <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
                         <AnnualLeaveList />
+                      </RoleGuard>
+                    }
+                  />
+
+                  <Route
+                    path="annual-leave/new"
+                    element={
+                      <RoleGuard requiredRoles={['admin', 'hr_admin']}>
+                        <AnnualLeaveForm />
+                      </RoleGuard>
+                    }
+                  />
+
+                  <Route
+                    path="annual-leave/:id/edit"
+                    element={
+                      <RoleGuard requiredRoles={['admin', 'hr_admin']}>
+                        <AnnualLeaveForm />
                       </RoleGuard>
                     }
                   />

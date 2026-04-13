@@ -118,8 +118,8 @@ export const TRAINING_COMMITMENT_TEMPLATE: DocumentTemplate = {
       heading: "一、双方主体信息",
       content:
         "甲方：\n" +
-        "名称：盐城仁越生物科技有限公司\n" +
-        "住所地：江苏建湖县民营科技创业园四号路51号\n\n" +
+        "名称：{party_a_name}\n" +
+        "住所地：{party_a_address}\n\n" +
         "乙方：\n" +
         "姓名：{employee_name}\n" +
         "性别：{employee_gender}\n" +

@@ -19,6 +19,7 @@ import {
   UploadOutlined,
   DownloadOutlined,
   FileTextOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
@@ -178,6 +179,21 @@ const AnnualLeaveList: React.FC = () => {
   };
 
   const columns: ColumnsType<AnnualLeave> = [
+    {
+      title: '操作',
+      key: 'action',
+      width: 80,
+      render: (_: unknown, record: AnnualLeave) => (
+        <Button
+          type="link"
+          icon={<EditOutlined />}
+          size="small"
+          onClick={() => navigate(`/annual-leave/${record.leave_id}/edit`)}
+        >
+          编辑
+        </Button>
+      ),
+    },
     {
       title: '员工编号',
       dataIndex: 'employee_number',

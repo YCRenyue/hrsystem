@@ -251,6 +251,11 @@ class Employee extends Model {
       has_id_card_back: !!this.id_card_back_oss_key,
       has_bank_card_image: !!this.bank_card_oss_key,
       has_diploma_image: !!this.diploma_oss_key,
+      // Contract info
+      contract_expiry_date: this.contract_expiry_date,
+      contract_type: this.contract_type,
+      insurance_company: this.insurance_company,
+      notes: this.notes,
       // Document confirmation fields
       policy_ack_status: !!this.policy_ack_status,
       policy_ack_signed_at: this.policy_ack_signed_at
@@ -457,6 +462,27 @@ Employee.init(
       type: DataTypes.STRING(500),
       allowNull: true,
       comment: '培训承诺函OSS对象键'
+    },
+    // Contract info
+    contract_expiry_date: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+      comment: '合同到期日'
+    },
+    contract_type: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      comment: '合同类型（无固定、劳动合同、劳务合同等）'
+    },
+    insurance_company: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: '保险所在公司'
+    },
+    notes: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: '备注'
     },
     // Other info
     gender: {
