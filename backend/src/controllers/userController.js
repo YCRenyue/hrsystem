@@ -89,10 +89,10 @@ const updateUserProfile = async (req, res) => {
         message: '用户名长度必须在3到50个字符之间'
       });
     }
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
       return res.status(400).json({
         success: false,
-        message: '用户名只能包含字母、数字和下划线'
+        message: '用户名只能包含字母、数字、下划线和连字符'
       });
     }
     // Check if username is already taken

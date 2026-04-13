@@ -5,6 +5,7 @@ const { Op } = require('sequelize');
 const {
   Employee, Department, User, TrainingPledge
 } = require('../models');
+const employeeImportService = require('../services/employeeImportService');
 const { NotFoundError, ValidationError } = require('../middleware/errorHandler');
 const { encryptionService } = require('../utils/encryption');
 const { sequelize } = require('../config/database');
@@ -346,251 +347,63 @@ const deleteEmployee = async (req, res) => {
 };
 
 /**
- * Import employees from Excel
+ * Preview Excel import: parse and validate without writing to DB.
+ * Returns a summary of what would be imported and any errors found.
  */
-const importFromExcel = async (req, res) => {
-  const ExcelJS = require('exceljs');
+const previewImport = async (req, res) => {
+  if (!req.file) throw new ValidationError('请选择要上传的文件');
 
-  if (!req.file) {
-    throw new ValidationError('请选择要上传的文件');
-  }
+  const { parsedRows, parseErrors } = await employeeImportService.parseExcelFile(req.file.buffer);
+  const { validRows, businessErrors } = await employeeImportService.validateRows(parsedRows);
 
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(req.file.buffer);
-
-  const worksheet = workbook.getWorksheet(1);
-  if (!worksheet) {
-    throw new ValidationError('Excel文件内容为空');
-  }
-
-  const results = {
-    success_count: 0,
-    error_count: 0,
-    errors: []
-  };
-
-  /**
-   * Extract text from a cell value, handling formula result objects.
-   * @param {any} value - Raw cell value
-   * @returns {string|null}
-   */
-  const getCellText = (value) => {
-    if (value === null || value === undefined) return null;
-    if (typeof value === 'object' && !(value instanceof Date) && value.result !== undefined) {
-      const r = value.result;
-      return r !== null && r !== undefined ? String(r).trim() || null : null;
-    }
-    const str = String(value).trim();
-    return str === '' ? null : str;
-  };
-
-  /**
-   * Parse a date value from an Excel cell.
-   * Handles: Date objects, Excel serial numbers, YYYY-MM-DD / YYYY/MM/DD strings.
-   * @param {any} value - Cell value
-   * @returns {string|null} YYYY-MM-DD or null
-   */
-  const parseExcelDate = (value) => {
-    if (!value) return null;
-    if (value instanceof Date) {
-      return value.toISOString().split('T')[0];
-    }
-    if (typeof value === 'number') {
-      const date = new Date((value - 25569) * 86400 * 1000);
-      if (!isNaN(date.getTime())) return date.toISOString().split('T')[0];
-    }
-    if (typeof value === 'string') {
-      const trimmed = value.trim();
-      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed) || /^\d{4}\/\d{2}\/\d{2}$/.test(trimmed)) {
-        const d = new Date(trimmed);
-        if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
-      }
-    }
-    return null;
-  };
-
-  /**
-   * Parse birth date stored as a YYYYMMDD integer (e.g. 19711224 => "1971-12-24").
-   * Falls back to parseExcelDate for Date objects.
-   * @param {any} value - Cell value
-   * @returns {string|null} YYYY-MM-DD or null
-   */
-  const parseBirthDate = (value) => {
-    if (!value) return null;
-    if (value instanceof Date) return parseExcelDate(value);
-    const num = typeof value === 'number' ? value : parseInt(String(value).trim(), 10);
-    if (!isNaN(num) && num > 19000101 && num < 21000101) {
-      const s = String(num);
-      if (s.length === 8) return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
-    }
-    return parseExcelDate(value);
-  };
-
-  /**
-   * Parse the contract expiry date column.
-   * Excel serial numbers become actual dates; descriptive strings become contract_type.
-   * @param {any} value - Cell value
-   * @returns {{ contract_expiry_date: string|null, contract_type: string|null }}
-   */
-  const parseContractField = (value) => {
-    if (!value) return { contract_expiry_date: null, contract_type: null };
-    if (value instanceof Date) {
-      return { contract_expiry_date: parseExcelDate(value), contract_type: null };
-    }
-    // Excel serial date: plausible range 2000-01-01 (36526) to 2060-01-01 (73051)
-    if (typeof value === 'number' && value > 36526 && value < 73051) {
-      return { contract_expiry_date: parseExcelDate(value), contract_type: null };
-    }
-    const text = String(value).trim();
-    return { contract_expiry_date: null, contract_type: text || null };
-  };
-
-  /**
-   * Find an existing department by name, or create it if absent.
-   * @param {string} name - Department name
-   * @returns {Promise<string|null>} department_id or null
-   */
-  const findOrCreateDepartment = async (name) => {
-    if (!name) return null;
-    let dept = await Department.findOne({ where: { name } });
-    if (!dept) {
-      const code = name.replace(/\s+/g, '_').substring(0, 20).toUpperCase() || `DEPT_${Date.now()}`;
-      [dept] = await Department.findOrCreate({
-        where: { name },
-        defaults: { name, code, status: 'active' }
-      });
-    }
-    return dept.department_id;
-  };
-
-  const statusMap = {
-    待完善: 'pending',
-    在职: 'active',
-    离职: 'inactive',
-    pending: 'pending',
-    active: 'active',
-    inactive: 'inactive'
-  };
-
-  const genderMap = {
-    男: 'male',
-    女: 'female',
-    male: 'male',
-    female: 'female'
-  };
-
-  // Excel column layout (1-indexed):
-  // 1: 序号(skip)  2: 公司编号  3: 姓名  4: 身份证号码  5: 出生日期(YYYYMMDD int)
-  // 6: 性别(formula)  7: 年龄(skip)  8: 联系电话  9: 入职时间  10: 转正日期
-  // 11: 部门  12: 岗位  13: 工龄(skip)  14: 状态  15: 备注
-  // 16: 合同到期日  17: 身份证复印件(skip)  18: 保险所在公司  19: 银行卡
-  // Row 1: title, Row 2: headers, data starts at Row 3.
-  for (let rowNum = 3; rowNum <= worksheet.rowCount; rowNum++) {
-    const row = worksheet.getRow(rowNum);
-
-    try {
-      const employeeNumber = getCellText(row.getCell(2).value);
-      const name = getCellText(row.getCell(3).value);
-
-      if (!employeeNumber && !name) continue;
-
-      if (!employeeNumber || !name) {
-        results.errors.push({ row: rowNum, message: '员工编号和姓名为必填项' });
-        results.error_count++;
-        continue;
-      }
-
-      const genderRaw = getCellText(row.getCell(6).value);
-      const gender = genderMap[genderRaw] || null;
-
-      // Phone may be stored as a large integer in Excel
-      const phoneRaw = row.getCell(8).value;
-      const phone = phoneRaw !== null && phoneRaw !== undefined
-        ? String(phoneRaw instanceof Date ? '' : phoneRaw).trim() || null
-        : null;
-
-      const departmentName = getCellText(row.getCell(11).value);
-      const department_id = await findOrCreateDepartment(departmentName);
-
-      const statusRaw = getCellText(row.getCell(14).value) || '在职';
-      const status = statusMap[statusRaw] || 'active';
-
-      const { contract_expiry_date, contract_type } = parseContractField(
-        row.getCell(16).value
-      );
-
-      const employeeData = {
-        employee_number: employeeNumber,
-        name,
-        id_card: getCellText(row.getCell(4).value),
-        birth_date: parseBirthDate(row.getCell(5).value),
-        gender,
-        phone,
-        entry_date: parseExcelDate(row.getCell(9).value),
-        probation_end_date: parseExcelDate(row.getCell(10).value),
-        department_id,
-        position: getCellText(row.getCell(12).value),
-        status,
-        notes: getCellText(row.getCell(15).value),
-        contract_expiry_date,
-        contract_type,
-        insurance_company: getCellText(row.getCell(18).value),
-        bank_card: getCellText(row.getCell(19).value)
-      };
-
-      const existing = await Employee.findOne({
-        where: { employee_number: employeeData.employee_number }
-      });
-      if (existing) {
-        results.errors.push({
-          row: rowNum,
-          message: `员工 ${employeeData.employee_number} 已存在`
-        });
-        results.error_count++;
-        continue;
-      }
-
-      const transaction = await sequelize.transaction();
-      try {
-        const employee = Employee.build({
-          employee_number: employeeData.employee_number,
-          department_id: employeeData.department_id,
-          position: employeeData.position,
-          employment_type: 'full_time',
-          entry_date: employeeData.entry_date,
-          probation_end_date: employeeData.probation_end_date,
-          status: employeeData.status,
-          gender: employeeData.gender,
-          contract_expiry_date: employeeData.contract_expiry_date,
-          contract_type: employeeData.contract_type,
-          insurance_company: employeeData.insurance_company,
-          notes: employeeData.notes,
-          created_by: req.user?.user_id
-        });
-
-        if (employeeData.name) employee.setName(employeeData.name);
-        if (employeeData.phone) employee.setPhone(employeeData.phone);
-        if (employeeData.id_card) employee.setIdCard(employeeData.id_card);
-        if (employeeData.bank_card) employee.setBankCard(employeeData.bank_card);
-        if (employeeData.birth_date) employee.setBirthDate(employeeData.birth_date);
-
-        await employee.save({ transaction });
-        await createUserForEmployee(employee, employeeData.name, transaction);
-        await transaction.commit();
-        results.success_count++;
-      } catch (innerError) {
-        await transaction.rollback();
-        throw innerError;
-      }
-    } catch (error) {
-      results.errors.push({ row: rowNum, message: error.message });
-      results.error_count++;
-    }
-  }
+  const sampleRows = validRows.slice(0, 5).map((r) => ({
+    row: r.row,
+    employee_number: r.employee_number,
+    name: r.name,
+    department_name: r.department_name,
+    position: r.position,
+    entry_date: r.entry_date,
+    status: r.status
+  }));
 
   res.json({
     success: true,
-    data: results
+    data: {
+      total_rows: parsedRows.length + parseErrors.length,
+      valid_count: validRows.length,
+      parse_error_count: parseErrors.length,
+      business_error_count: businessErrors.length,
+      parse_errors: parseErrors,
+      business_errors: businessErrors,
+      sample_rows: sampleRows
+    }
+  });
+};
+
+/**
+ * Confirm Excel import: parse, validate, and write all valid rows to DB.
+ */
+const confirmImport = async (req, res) => {
+  if (!req.file) throw new ValidationError('请选择要上传的文件');
+
+  const { parsedRows, parseErrors } = await employeeImportService.parseExcelFile(req.file.buffer);
+  const { validRows, businessErrors } = await employeeImportService.validateRows(parsedRows);
+
+  const allErrors = [...parseErrors, ...businessErrors];
+  const errorCount = allErrors.length;
+
+  if (validRows.length === 0) {
+    return res.json({
+      success: true,
+      data: { success_count: 0, error_count: errorCount, errors: allErrors }
+    });
+  }
+
+  const successCount = await employeeImportService.insertRows(validRows, req.user?.user_id);
+
+  res.json({
+    success: true,
+    data: { success_count: successCount, error_count: errorCount, errors: allErrors }
   });
 };
 
@@ -798,7 +611,8 @@ module.exports = {
   createEmployee,
   updateEmployee,
   deleteEmployee,
-  importFromExcel,
+  previewImport,
+  confirmImport,
   exportToExcel,
   signDocument,
   saveTrainingPledge

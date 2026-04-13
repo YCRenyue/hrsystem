@@ -8,6 +8,8 @@ import {
   EmployeeQueryParams,
   PaginatedResponse,
   ApiResponse,
+  ImportPreviewData,
+  ImportResultData,
 } from '../types';
 
 export const employeeService = {
@@ -61,20 +63,29 @@ export const employeeService = {
   },
 
   /**
-   * Import employees from Excel file
+   * Preview Excel import: parse and validate without writing to DB
    */
-  async importFromExcel(file: File): Promise<ApiResponse<any>> {
+  async previewImport(file: File): Promise<ApiResponse<ImportPreviewData>> {
     const formData = new FormData();
     formData.append('file', file);
-
-    const response = await apiClient.post<ApiResponse<any>>(
-      '/employees/import',
+    const response = await apiClient.post<ApiResponse<ImportPreviewData>>(
+      '/employees/import/preview',
       formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  /**
+   * Confirm Excel import: write validated rows to DB
+   */
+  async confirmImport(file: File): Promise<ApiResponse<ImportResultData>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post<ApiResponse<ImportResultData>>(
+      '/employees/import/confirm',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
     );
     return response.data;
   },

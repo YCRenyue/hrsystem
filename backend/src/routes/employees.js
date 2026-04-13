@@ -52,15 +52,27 @@ router.get(
 );
 
 /**
- * @route   POST /api/employees/import
- * @desc    Import employees from Excel
+ * @route   POST /api/employees/import/preview
+ * @desc    Preview Excel import: parse and validate without writing to DB
  * @access  Private (HR, Admin)
  */
 router.post(
-  '/import',
+  '/import/preview',
   requireRole('hr_admin', 'admin'),
   upload.single('file'),
-  asyncHandler(employeeController.importFromExcel)
+  asyncHandler(employeeController.previewImport)
+);
+
+/**
+ * @route   POST /api/employees/import/confirm
+ * @desc    Confirm Excel import: write validated rows to DB
+ * @access  Private (HR, Admin)
+ */
+router.post(
+  '/import/confirm',
+  requireRole('hr_admin', 'admin'),
+  upload.single('file'),
+  asyncHandler(employeeController.confirmImport)
 );
 
 /**

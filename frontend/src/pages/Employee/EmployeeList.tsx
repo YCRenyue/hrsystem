@@ -26,8 +26,9 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
-import { Employee, EmployeeQueryParams, Department } from '../../types';
+import { Employee, EmployeeQueryParams, Department, ImportPreviewData } from '../../types';
 import { employeeService } from '../../services/employeeService';
+import ImportPreviewModal from './ImportPreviewModal';
 import { departmentService } from '../../services/departmentService';
 import { usePermission } from '../../hooks/usePermission';
 import { Can } from '../../components/Permission';
@@ -40,7 +41,7 @@ const { RangePicker } = DatePicker;
 
 const EmployeeList: React.FC = () => {
   const navigate = useNavigate();
-  const { message, modal } = App.useApp();
+  const { message } = App.useApp();
   const {
     canCreateEmployee,
     canUpdateEmployee,
@@ -57,6 +58,10 @@ const EmployeeList: React.FC = () => {
     page: 1,
     size: 10,
   });
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<ImportPreviewData | null>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importConfirming, setImportConfirming] = useState(false);
 
   const fetchDepartments = React.useCallback(async () => {
     try {
@@ -145,53 +150,43 @@ const EmployeeList: React.FC = () => {
   };
 
 
-  const handleImport = async (file: File) => {
-    const hideLoading = message.loading('正在导入员工数据，请稍候...', 0);
+  const handleFileSelect = async (file: File) => {
+    const hideLoading = message.loading('正在解析文件，请稍候...', 0);
     try {
-      const result = await employeeService.importFromExcel(file);
+      const result = await employeeService.previewImport(file);
       hideLoading();
-
-      const successCount = result.data?.success_count || 0;
-      const errorCount = result.data?.error_count || 0;
-      const errors = result.data?.errors || [];
-
-      if (errorCount > 0) {
-        // Show detailed error information
-        modal.warning({
-          title: '导入完成',
-          width: 600,
-          content: (
-            <div>·
-              <p>成功导入：{successCount} 条</p>
-              <p>失败：{errorCount} 条</p>
-              {errors.length > 0 && (
-                <div style={{ maxHeight: '300px', overflow: 'auto', marginTop: '10px' }}>
-                  <p><strong>错误详情：</strong></p>
-                  <ul style={{ fontSize: '12px' }}>
-                    {errors.slice(0, 10).map((err: any, index: number) => (
-                      <li key={index}>
-                        第 {err.row} 行: {err.message}
-                      </li>
-                    ))}
-                    {errors.length > 10 && <li>还有 {errors.length - 10} 条错误...</li>}
-                  </ul>
-                </div>
-              )}
-            </div>
-          ),
-        });
-      } else {
-        message.success(`导入完成：成功 ${successCount} 条`);
-      }
-
-      fetchEmployees();
+      setImportFile(file);
+      setImportPreview(result.data!);
+      setImportModalOpen(true);
     } catch (error: any) {
       hideLoading();
-      const errorMsg = error?.response?.data?.message || error?.message || '导入员工数据失败';
+      const errorMsg = error?.response?.data?.message || error?.message || '文件解析失败';
       message.error(errorMsg);
-      console.error('Import error:', error);
     }
-    return false; // Prevent default upload behavior
+    return false;
+  };
+
+  const handleConfirmImport = async () => {
+    if (!importFile) return;
+    setImportConfirming(true);
+    try {
+      const result = await employeeService.confirmImport(importFile);
+      setImportModalOpen(false);
+      setImportFile(null);
+      setImportPreview(null);
+      const { success_count, error_count } = result.data!;
+      if (error_count > 0) {
+        message.warning(`导入完成：成功 ${success_count} 条，跳过 ${error_count} 条`);
+      } else {
+        message.success(`导入完成：成功 ${success_count} 条`);
+      }
+      fetchEmployees();
+    } catch (error: any) {
+      const errorMsg = error?.response?.data?.message || error?.message || '导入失败';
+      message.error(errorMsg);
+    } finally {
+      setImportConfirming(false);
+    }
   };
 
   const handleExport = async () => {
@@ -422,7 +417,7 @@ const EmployeeList: React.FC = () => {
           <Space size="middle">
             {/* Import - only for admin and hr_admin */}
             <Can permission="employees.import">
-              <Upload beforeUpload={handleImport} accept=".xlsx,.xls" showUploadList={false}>
+              <Upload beforeUpload={handleFileSelect} accept=".xlsx,.xls" showUploadList={false}>
                 <Button icon={<UploadOutlined />}>导入 Excel</Button>
               </Upload>
             </Can>
@@ -465,6 +460,13 @@ const EmployeeList: React.FC = () => {
           }}
         />
       </Card>
+      <ImportPreviewModal
+        open={importModalOpen}
+        loading={importConfirming}
+        preview={importPreview}
+        onConfirm={handleConfirmImport}
+        onCancel={() => { setImportModalOpen(false); setImportFile(null); setImportPreview(null); }}
+      />
     </div>
   );
 };

@@ -90,6 +90,38 @@ export interface Employee {
   updated_at?: string;
 }
 
+export interface ImportErrorItem {
+  row: number;
+  type: 'parse_error' | 'business_error';
+  message: string;
+}
+
+export interface ImportSampleRow {
+  row: number;
+  employee_number: string;
+  name: string;
+  department_name: string | null;
+  position: string | null;
+  entry_date: string | null;
+  status: string;
+}
+
+export interface ImportPreviewData {
+  total_rows: number;
+  valid_count: number;
+  parse_error_count: number;
+  business_error_count: number;
+  parse_errors: ImportErrorItem[];
+  business_errors: ImportErrorItem[];
+  sample_rows: ImportSampleRow[];
+}
+
+export interface ImportResultData {
+  success_count: number;
+  error_count: number;
+  errors: ImportErrorItem[];
+}
+
 export interface User {
   user_id: string;
   username: string;
