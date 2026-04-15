@@ -167,7 +167,14 @@ const getEmployeeById = async (req, res) => {
       {
         model: TrainingPledge,
         as: 'trainingPledge',
-        attributes: ['pledge_id', 'training_cost', 'service_years', 'created_at', 'updated_at']
+        attributes: [
+          'pledge_id', 'training_cost', 'service_years',
+          'party_a_name', 'party_a_address',
+          'employee_gender', 'employee_id_card',
+          'employee_household_address', 'employee_current_address',
+          'contract_sign_date', 'contract_start_date', 'contract_end_date',
+          'created_at', 'updated_at'
+        ]
       }
     ]
   });
@@ -532,7 +539,7 @@ const exportToExcel = async (req, res) => {
  */
 const signDocument = async (req, res) => {
   const { id } = req.params;
-  const { documentType } = req.body;
+  const { documentType, partyInfo } = req.body;
 
   const validTypes = ['policy_ack', 'training_pledge'];
   if (!validTypes.includes(documentType)) {
@@ -567,6 +574,24 @@ const signDocument = async (req, res) => {
     [statusField]: true,
     [signedAtField]: new Date()
   });
+
+  // Save party info snapshot to TrainingPledge record when signing training_pledge
+  if (documentType === 'training_pledge' && partyInfo && typeof partyInfo === 'object') {
+    const allowedFields = [
+      'party_a_name', 'party_a_address', 'employee_gender', 'employee_id_card',
+      'employee_household_address', 'employee_current_address',
+      'contract_sign_date', 'contract_start_date', 'contract_end_date'
+    ];
+    const partyInfoUpdate = {};
+    for (const field of allowedFields) {
+      if (typeof partyInfo[field] === 'string') {
+        partyInfoUpdate[field] = partyInfo[field];
+      }
+    }
+    if (Object.keys(partyInfoUpdate).length > 0) {
+      await TrainingPledge.update(partyInfoUpdate, { where: { employee_id: id } });
+    }
+  }
 
   res.json({
     success: true,

@@ -35,6 +35,51 @@ TrainingPledge.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       comment: 'Required service period in years after training completion'
+    },
+    party_a_name: {
+      type: DataTypes.STRING(200),
+      allowNull: true,
+      comment: 'Party A name captured at signing time'
+    },
+    party_a_address: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+      comment: 'Party A address captured at signing time'
+    },
+    employee_gender: {
+      type: DataTypes.STRING(10),
+      allowNull: true,
+      comment: 'Employee gender captured at signing time'
+    },
+    employee_id_card: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      comment: 'Employee ID card number captured at signing time'
+    },
+    employee_household_address: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+      comment: 'Employee household address captured at signing time'
+    },
+    employee_current_address: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+      comment: 'Employee current address captured at signing time'
+    },
+    contract_sign_date: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      comment: 'Contract sign date text captured at signing time'
+    },
+    contract_start_date: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      comment: 'Contract start date text captured at signing time'
+    },
+    contract_end_date: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      comment: 'Contract end date text captured at signing time'
     }
   },
   {

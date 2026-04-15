@@ -21,6 +21,7 @@ import {
   Form,
   Col,
   Row,
+  DatePicker,
 } from "antd";
 import {
   ArrowLeftOutlined,
@@ -62,29 +63,26 @@ interface PartyInfo {
   contract_end_date: string;
 }
 
+function genderToText(gender?: string): string {
+  if (gender === "male") return "男";
+  if (gender === "female") return "女";
+  return gender || "";
+}
+
 function buildDefaultPartyInfo(emp: Employee): PartyInfo {
   return {
     party_a_name: "盐城仁越生物科技有限公司",
     party_a_address: "江苏建湖县民营科技创业园四号路51号",
     employee_name: emp.name || "",
-    employee_gender: (() => {
-      const g = (emp as any).gender;
-      if (g === "male") return "男";
-      if (g === "female") return "女";
-      return g || "";
-    })(),
-    employee_id_card: (emp as any).id_card || "",
-    employee_household_address: (emp as any).household_address || "",
-    employee_current_address: (emp as any).current_address || "",
-    contract_sign_date: (emp as any).entry_date
-      ? dayjs((emp as any).entry_date).format("YYYY年MM月DD日")
+    employee_gender: genderToText(emp.gender as string | undefined),
+    employee_id_card: emp.id_card || "",
+    employee_household_address: "",
+    employee_current_address: "",
+    contract_sign_date: emp.entry_date
+      ? dayjs(emp.entry_date).format("YYYY年MM月DD日")
       : "",
-    contract_start_date: (emp as any).contract_start_date
-      ? dayjs((emp as any).contract_start_date).format("YYYY年MM月DD日")
-      : "",
-    contract_end_date: (emp as any).contract_end_date
-      ? dayjs((emp as any).contract_end_date).format("YYYY年MM月DD日")
-      : "",
+    contract_start_date: "",
+    contract_end_date: "",
   };
 }
 
@@ -211,14 +209,32 @@ const DocumentSigningPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeId]);
 
-  const fetchEmployee = async () => {
+  const fetchEmployee = async (preservePartyInfo = false) => {
     if (!employeeId) return;
     setLoading(true);
     try {
       const data = await employeeService.getEmployeeById(employeeId);
       setEmployee(data);
-      if (docType === "training_pledge") {
-        setPartyInfo(buildDefaultPartyInfo(data));
+      if (docType === "training_pledge" && !preservePartyInfo) {
+        const pledge = (data as any).trainingPledge;
+        // If pledge has saved party info (from a previous signing), load it;
+        // otherwise fall back to building defaults from the employee record.
+        if (pledge?.party_a_name) {
+          setPartyInfo({
+            party_a_name: pledge.party_a_name || "",
+            party_a_address: pledge.party_a_address || "",
+            employee_name: data.name || "",
+            employee_gender: pledge.employee_gender || "",
+            employee_id_card: pledge.employee_id_card || "",
+            employee_household_address: pledge.employee_household_address || "",
+            employee_current_address: pledge.employee_current_address || "",
+            contract_sign_date: pledge.contract_sign_date || "",
+            contract_start_date: pledge.contract_start_date || "",
+            contract_end_date: pledge.contract_end_date || "",
+          });
+        } else {
+          setPartyInfo(buildDefaultPartyInfo(data));
+        }
       }
     } catch (error: any) {
       message.error(error.response?.data?.message || "Failed to load employee");
@@ -270,7 +286,11 @@ const DocumentSigningPage: React.FC = () => {
         }
       }
 
-      await employeeService.signDocument(employeeId, docType);
+      await employeeService.signDocument(
+        employeeId,
+        docType,
+        docType === "training_pledge" && partyInfo ? { ...partyInfo } : undefined
+      );
 
       if (signedFile) {
         try {
@@ -281,7 +301,8 @@ const DocumentSigningPage: React.FC = () => {
       }
 
       message.success("签署成功");
-      await fetchEmployee();
+      // Preserve partyInfo so the signed view shows the exact values used during signing
+      await fetchEmployee(true);
     } catch (error: any) {
       message.error(error.response?.data?.message || "签署失败");
     } finally {
@@ -594,37 +615,58 @@ const DocumentSigningPage: React.FC = () => {
               </Col>
               <Col xs={24} sm={8}>
                 <Form.Item label="劳动合同签订日期">
-                  <Input
-                    value={partyInfo.contract_sign_date}
-                    onChange={(e) =>
-                      setPartyInfo({ ...partyInfo, contract_sign_date: e.target.value })
+                  <DatePicker
+                    style={{ width: "100%" }}
+                    format="YYYY年MM月DD日"
+                    value={
+                      partyInfo.contract_sign_date
+                        ? dayjs(partyInfo.contract_sign_date, "YYYY年MM月DD日")
+                        : null
                     }
-                    placeholder="例：2026年01月01日"
+                    onChange={(date) =>
+                      setPartyInfo({
+                        ...partyInfo,
+                        contract_sign_date: date ? date.format("YYYY年MM月DD日") : "",
+                      })
+                    }
                   />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={8}>
                 <Form.Item label="合同开始日期">
-                  <Input
-                    value={partyInfo.contract_start_date}
-                    onChange={(e) =>
+                  <DatePicker
+                    style={{ width: "100%" }}
+                    format="YYYY年MM月DD日"
+                    value={
+                      partyInfo.contract_start_date
+                        ? dayjs(partyInfo.contract_start_date, "YYYY年MM月DD日")
+                        : null
+                    }
+                    onChange={(date) =>
                       setPartyInfo({
                         ...partyInfo,
-                        contract_start_date: e.target.value,
+                        contract_start_date: date ? date.format("YYYY年MM月DD日") : "",
                       })
                     }
-                    placeholder="例：2026年01月01日"
                   />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={8}>
                 <Form.Item label="合同结束日期">
-                  <Input
-                    value={partyInfo.contract_end_date}
-                    onChange={(e) =>
-                      setPartyInfo({ ...partyInfo, contract_end_date: e.target.value })
+                  <DatePicker
+                    style={{ width: "100%" }}
+                    format="YYYY年MM月DD日"
+                    value={
+                      partyInfo.contract_end_date
+                        ? dayjs(partyInfo.contract_end_date, "YYYY年MM月DD日")
+                        : null
                     }
-                    placeholder="例：2029年01月01日"
+                    onChange={(date) =>
+                      setPartyInfo({
+                        ...partyInfo,
+                        contract_end_date: date ? date.format("YYYY年MM月DD日") : "",
+                      })
+                    }
                   />
                 </Form.Item>
               </Col>

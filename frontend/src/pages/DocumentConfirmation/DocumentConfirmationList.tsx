@@ -26,7 +26,7 @@ import {
   DownloadOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import dayjs from "dayjs";
 import type { ColumnsType } from "antd/es/table";
 import { Employee, EmployeeQueryParams } from "../../types";
@@ -43,9 +43,12 @@ const PAGE_SIZE = 10;
 
 const DocumentConfirmationList: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { message } = App.useApp();
 
-  const [activeTab, setActiveTab] = useState<DocumentType>("policy_ack");
+  const [activeTab, setActiveTab] = useState<DocumentType>(
+    (searchParams.get("tab") as DocumentType) || "policy_ack"
+  );
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -332,6 +335,7 @@ const DocumentConfirmationList: React.FC = () => {
           activeKey={activeTab}
           onChange={(key) => {
             setActiveTab(key as DocumentType);
+            setSearchParams({ tab: key });
             setPage(1);
             setStatusFilter(undefined);
           }}

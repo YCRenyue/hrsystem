@@ -133,11 +133,12 @@ export const employeeService = {
    */
   async signDocument(
     employeeId: string,
-    documentType: 'policy_ack' | 'training_pledge'
+    documentType: 'policy_ack' | 'training_pledge',
+    partyInfo?: Record<string, string>
   ): Promise<{ documentType: string; signedAt: string }> {
     const response = await apiClient.put<
       ApiResponse<{ documentType: string; signedAt: string }>
-    >(`/employees/${employeeId}/sign-document`, { documentType });
+    >(`/employees/${employeeId}/sign-document`, { documentType, partyInfo });
     return response.data.data!;
   },
 
