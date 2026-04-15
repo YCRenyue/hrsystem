@@ -15,6 +15,17 @@ const { sequelize } = require('../config/database');
  */
 const DEFAULT_PASSWORD = '123456';
 
+const parseBooleanQuery = (value) => {
+  if (value === undefined) return undefined;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+
+  const normalized = String(value).trim().toLowerCase();
+  if (['true', '1', 'yes'].includes(normalized)) return true;
+  if (['false', '0', 'no'].includes(normalized)) return false;
+  return undefined;
+};
+
 /**
  * Get paginated list of employees
  */
@@ -26,6 +37,8 @@ const getEmployees = async (req, res) => {
     department_id,
     status,
     employment_type,
+    policy_ack_status,
+    training_pledge_status,
     sort_by = 'employee_number',
     sort_order = 'ASC'
   } = req.query;
@@ -54,6 +67,16 @@ const getEmployees = async (req, res) => {
 
   if (employment_type) {
     where.employment_type = employment_type;
+  }
+
+  const parsedPolicyAckStatus = parseBooleanQuery(policy_ack_status);
+  if (parsedPolicyAckStatus !== undefined) {
+    where.policy_ack_status = parsedPolicyAckStatus;
+  }
+
+  const parsedTrainingPledgeStatus = parseBooleanQuery(training_pledge_status);
+  if (parsedTrainingPledgeStatus !== undefined) {
+    where.training_pledge_status = parsedTrainingPledgeStatus;
   }
 
   // Build order clause

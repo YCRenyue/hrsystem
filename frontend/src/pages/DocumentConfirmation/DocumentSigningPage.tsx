@@ -145,6 +145,10 @@ function SectionBlock({ section }: { section: DocumentSection }) {
   );
 }
 
+function renderDisplayValue(value?: string) {
+  return value?.trim() || "___________";
+}
+
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
@@ -371,6 +375,48 @@ const DocumentSigningPage: React.FC = () => {
             </>
           )}
 
+          {docType === "training_pledge" && partyInfo && (
+            <>
+              <Descriptions
+                bordered
+                column={{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }}
+                styles={{ label: { fontWeight: 500, width: "140px" } }}
+              >
+                <Descriptions.Item label="甲方名称">
+                  {renderDisplayValue(partyInfo.party_a_name)}
+                </Descriptions.Item>
+                <Descriptions.Item label="甲方住所地">
+                  {renderDisplayValue(partyInfo.party_a_address)}
+                </Descriptions.Item>
+                <Descriptions.Item label="乙方姓名">
+                  {renderDisplayValue(partyInfo.employee_name)}
+                </Descriptions.Item>
+                <Descriptions.Item label="性别">
+                  {renderDisplayValue(partyInfo.employee_gender)}
+                </Descriptions.Item>
+                <Descriptions.Item label="身份证号">
+                  {renderDisplayValue(partyInfo.employee_id_card)}
+                </Descriptions.Item>
+                <Descriptions.Item label="户籍地址">
+                  {renderDisplayValue(partyInfo.employee_household_address)}
+                </Descriptions.Item>
+                <Descriptions.Item label="现住址">
+                  {renderDisplayValue(partyInfo.employee_current_address)}
+                </Descriptions.Item>
+                <Descriptions.Item label="劳动合同签订日期">
+                  {renderDisplayValue(partyInfo.contract_sign_date)}
+                </Descriptions.Item>
+                <Descriptions.Item label="合同开始日期">
+                  {renderDisplayValue(partyInfo.contract_start_date)}
+                </Descriptions.Item>
+                <Descriptions.Item label="合同结束日期">
+                  {renderDisplayValue(partyInfo.contract_end_date)}
+                </Descriptions.Item>
+              </Descriptions>
+              <Divider />
+            </>
+          )}
+
           <Typography>
             {currentPage === 0 && (
               <Paragraph>{renderedTemplate.preamble}</Paragraph>
@@ -415,7 +461,7 @@ const DocumentSigningPage: React.FC = () => {
                 styles={{ label: { fontWeight: 500 } }}
               >
                 <Descriptions.Item label="签署人">
-                  {signatureName || "___________"}
+                  {renderDisplayValue(signatureName)}
                 </Descriptions.Item>
                 <Descriptions.Item label="日期">
                   {dayjs().format("YYYY-MM-DD")}

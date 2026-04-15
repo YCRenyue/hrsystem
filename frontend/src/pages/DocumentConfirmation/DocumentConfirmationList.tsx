@@ -37,6 +37,7 @@ import {
 } from "../../services/uploadService";
 
 type DocumentType = "policy_ack" | "training_pledge";
+type StatusFilter = "signed" | "pending" | undefined;
 
 const PAGE_SIZE = 10;
 
@@ -48,12 +49,23 @@ const DocumentConfirmationList: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
+  const [stats, setStats] = useState({ total: 0, signed: 0, pending: 0 });
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<string | undefined>();
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>();
   const [pledgeModalVisible, setPledgeModalVisible] = useState(false);
   const [pledgeModalLoading, setPledgeModalLoading] = useState(false);
   const [pledgeTargetId, setPledgeTargetId] = useState<string>("");
   const [pledgeForm] = Form.useForm();
+
+  const getDocumentStatusParams = useCallback(
+    (filter?: Exclude<StatusFilter, undefined>): Pick<EmployeeQueryParams, "policy_ack_status" | "training_pledge_status"> => {
+      const statusValue = filter === "signed";
+      return activeTab === "policy_ack"
+        ? { policy_ack_status: statusValue }
+        : { training_pledge_status: statusValue };
+    },
+    [activeTab]
+  );
 
   const fetchEmployees = useCallback(async () => {
     setLoading(true);
@@ -61,6 +73,7 @@ const DocumentConfirmationList: React.FC = () => {
       const params: EmployeeQueryParams = {
         page,
         size: PAGE_SIZE,
+        ...(statusFilter ? getDocumentStatusParams(statusFilter) : {}),
       };
       const result = await employeeService.getEmployees(params);
       setEmployees(result.items);
@@ -72,36 +85,49 @@ const DocumentConfirmationList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, message]);
+  }, [getDocumentStatusParams, page, statusFilter, message]);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const [allResult, signedResult, pendingResult] = await Promise.all([
+        employeeService.getEmployees({ page: 1, size: 1 }),
+        employeeService.getEmployees({
+          page: 1,
+          size: 1,
+          ...getDocumentStatusParams("signed"),
+        }),
+        employeeService.getEmployees({
+          page: 1,
+          size: 1,
+          ...getDocumentStatusParams("pending"),
+        }),
+      ]);
+
+      setStats({
+        total: allResult.total,
+        signed: signedResult.total,
+        pending: pendingResult.total,
+      });
+    } catch (error: any) {
+      message.error(
+        error.response?.data?.message || "Failed to load document statistics"
+      );
+    }
+  }, [getDocumentStatusParams, message]);
 
   useEffect(() => {
     fetchEmployees();
   }, [fetchEmployees]);
 
-  const getFilteredEmployees = () => {
-    if (!statusFilter) return employees;
-    const statusField =
-      activeTab === "policy_ack"
-        ? "policy_ack_status"
-        : "training_pledge_status";
-    const isSigned = statusFilter === "signed";
-    return employees.filter((emp) => !!emp[statusField] === isSigned);
-  };
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
-  const filteredEmployees = getFilteredEmployees();
-
-  const signedCount = employees.filter((emp) =>
-    activeTab === "policy_ack"
-      ? emp.policy_ack_status
-      : emp.training_pledge_status
-  ).length;
-
-  const pendingCount = employees.length - signedCount;
+  const pendingCount = stats.pending;
 
   const handleDownload = async (employeeId: string) => {
     try {
-      const urls: FileUrls =
-        await uploadService.getEmployeeFileUrls(employeeId);
+      const urls: FileUrls = await uploadService.getEmployeeFileUrls(employeeId);
       const url =
         activeTab === "policy_ack"
           ? urls.policy_ack_url
@@ -111,7 +137,7 @@ const DocumentConfirmationList: React.FC = () => {
       } else {
         message.warning("No signed document file found");
       }
-    } catch (error: any) {
+    } catch {
       message.error("Failed to get file URL");
     }
   };
@@ -141,9 +167,9 @@ const DocumentConfirmationList: React.FC = () => {
       await employeeService.saveTrainingPledge(pledgeTargetId, values);
       message.success("培训承诺函信息已保存");
       setPledgeModalVisible(false);
-      fetchEmployees();
+      await Promise.all([fetchEmployees(), fetchStats()]);
     } catch (error: any) {
-      if (error?.errorFields) return; // validation error, stay open
+      if (error?.errorFields) return;
       message.error(error.response?.data?.message || "保存失败");
     } finally {
       setPledgeModalLoading(false);
@@ -204,15 +230,13 @@ const DocumentConfirmationList: React.FC = () => {
           activeTab === "policy_ack"
             ? record.policy_ack_signed_at
             : record.training_pledge_signed_at;
-        return signedAt
-          ? dayjs(signedAt).format("YYYY-MM-DD HH:mm")
-          : "-";
+        return signedAt ? dayjs(signedAt).format("YYYY-MM-DD HH:mm") : "-";
       },
     },
     {
       title: "操作",
       key: "actions",
-      width: 160,
+      width: 220,
       render: (_: unknown, record: Employee) => {
         const isSigned =
           activeTab === "policy_ack"
@@ -223,6 +247,7 @@ const DocumentConfirmationList: React.FC = () => {
             ? record.has_policy_ack_file
             : record.has_training_pledge_file;
         const hasPledge = !!(record as any).trainingPledge;
+
         return (
           <Space>
             {activeTab === "training_pledge" && (
@@ -240,9 +265,7 @@ const DocumentConfirmationList: React.FC = () => {
               icon={<EyeOutlined />}
               size="small"
               onClick={() =>
-                navigate(
-                  `/document-confirmations/${record.employee_id}/${activeTab}`
-                )
+                navigate(`/document-confirmations/${record.employee_id}/${activeTab}`)
               }
             >
               {isSigned ? "查看" : "签署"}
@@ -266,7 +289,7 @@ const DocumentConfirmationList: React.FC = () => {
   const tabItems = [
     {
       key: "policy_ack",
-      label: "公司制度阅读确认表",
+      label: "公司制度阅读确认",
     },
     {
       key: "training_pledge",
@@ -279,14 +302,14 @@ const DocumentConfirmationList: React.FC = () => {
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={8}>
           <Card>
-            <Statistic title="总员工数" value={employees.length} />
+            <Statistic title="总员工数" value={stats.total} />
           </Card>
         </Col>
         <Col span={8}>
           <Card>
             <Statistic
               title="已签署"
-              value={signedCount}
+              value={stats.signed}
               valueStyle={{ color: "#3f8600" }}
               prefix={<CheckCircleOutlined />}
             />
@@ -309,6 +332,7 @@ const DocumentConfirmationList: React.FC = () => {
           activeKey={activeTab}
           onChange={(key) => {
             setActiveTab(key as DocumentType);
+            setPage(1);
             setStatusFilter(undefined);
           }}
           items={tabItems}
@@ -321,7 +345,10 @@ const DocumentConfirmationList: React.FC = () => {
               allowClear
               style={{ width: 150 }}
               value={statusFilter}
-              onChange={setStatusFilter}
+              onChange={(value) => {
+                setPage(1);
+                setStatusFilter(value);
+              }}
               options={[
                 { label: "已签署", value: "signed" },
                 { label: "待签署", value: "pending" },
@@ -332,7 +359,7 @@ const DocumentConfirmationList: React.FC = () => {
 
         <Table
           columns={columns}
-          dataSource={filteredEmployees}
+          dataSource={employees}
           rowKey="employee_id"
           loading={loading}
           pagination={{
@@ -341,7 +368,7 @@ const DocumentConfirmationList: React.FC = () => {
             total,
             onChange: setPage,
             showSizeChanger: false,
-            showTotal: (t) => `共 ${t} 条`,
+            showTotal: (count) => `共 ${count} 条`,
           }}
         />
       </Card>
@@ -362,12 +389,12 @@ const DocumentConfirmationList: React.FC = () => {
             label="培训总费用（元）"
             rules={[
               { required: true, message: "请输入培训总费用" },
-              { type: "number", min: 1, message: "费用必须大于0" },
+              { type: "number", min: 1, message: "费用必须大于 0" },
             ]}
           >
             <InputNumber
               style={{ width: "100%" }}
-              placeholder="请输入实际培训费用，如：5000"
+              placeholder="请输入实际培训费用，如 5000"
               min={1}
               precision={2}
               addonAfter="元"
@@ -378,12 +405,12 @@ const DocumentConfirmationList: React.FC = () => {
             label="服务年限（年）"
             rules={[
               { required: true, message: "请输入服务年限" },
-              { type: "number", min: 1, max: 10, message: "服务年限须在1-10年之间" },
+              { type: "number", min: 1, max: 10, message: "服务年限需在 1-10 年之间" },
             ]}
           >
             <InputNumber
               style={{ width: "100%" }}
-              placeholder="请输入服务期限，如：3"
+              placeholder="请输入服务年限，如 3"
               min={1}
               max={10}
               precision={0}

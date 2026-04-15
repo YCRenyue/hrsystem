@@ -231,6 +231,8 @@ export interface EmployeeQueryParams {
   department_id?: string;
   status?: string; // Backend uses 'status' for active/pending/inactive
   employment_type?: EmploymentType;
+  policy_ack_status?: boolean;
+  training_pledge_status?: boolean;
   hire_date_from?: string;
   hire_date_to?: string;
   entry_date_start?: string; // For date range filtering

@@ -1,5 +1,17 @@
 const { DataTypes, Model } = require('sequelize');
 const { sequelize } = require('../config/database');
+
+const normalizeBooleanValue = (value) => {
+  if (value === true || value === false) return value;
+  if (value === 1 || value === '1') return true;
+  if (value === 0 || value === '0' || value === null || value === undefined) return false;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['true', 'yes'].includes(normalized)) return true;
+    if (['false', 'no', ''].includes(normalized)) return false;
+  }
+  return Boolean(value);
+};
 const { encryptionService } = require('../utils/encryption');
 
 /**
@@ -257,12 +269,12 @@ class Employee extends Model {
       insurance_company: this.insurance_company,
       notes: this.notes,
       // Document confirmation fields
-      policy_ack_status: !!this.policy_ack_status,
+      policy_ack_status: normalizeBooleanValue(this.policy_ack_status),
       policy_ack_signed_at: this.policy_ack_signed_at
         ? new Date(this.policy_ack_signed_at).toISOString().replace('T', ' ').split('.')[0]
         : null,
       has_policy_ack_file: !!this.policy_ack_file_key,
-      training_pledge_status: !!this.training_pledge_status,
+      training_pledge_status: normalizeBooleanValue(this.training_pledge_status),
       training_pledge_signed_at: this.training_pledge_signed_at
         ? new Date(this.training_pledge_signed_at).toISOString().replace('T', ' ').split('.')[0]
         : null,
