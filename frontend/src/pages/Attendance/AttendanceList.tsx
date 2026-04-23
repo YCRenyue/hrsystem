@@ -26,8 +26,11 @@ import {
   CalendarOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
-  CloseCircleOutlined
+  CloseCircleOutlined,
+  ImportOutlined,
+  BarChartOutlined
 } from '@ant-design/icons';
+import { Link } from 'react-router-dom';
 import { Pie, Column as ColumnChart } from '@ant-design/charts';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import type { FilterValue, SorterResult } from 'antd/es/table/interface';
@@ -48,6 +51,10 @@ interface AttendanceRecord {
   date: string;
   check_in_time: string | null;
   check_out_time: string | null;
+  morning_check_in: string | null;
+  morning_check_out: string | null;
+  afternoon_check_in: string | null;
+  afternoon_check_out: string | null;
   status: 'normal' | 'late' | 'early_leave' | 'absent' | 'leave' | 'holiday' | 'weekend';
   late_minutes: number;
   early_leave_minutes: number;
@@ -166,6 +173,10 @@ const AttendanceList: React.FC = () => {
           date: row.date,
           check_in_time: row.check_in_time,
           check_out_time: row.check_out_time,
+          morning_check_in: row.morning_check_in ?? null,
+          morning_check_out: row.morning_check_out ?? null,
+          afternoon_check_in: row.afternoon_check_in ?? null,
+          afternoon_check_out: row.afternoon_check_out ?? null,
           status: row.status,
           late_minutes: row.late_minutes,
           early_leave_minutes: row.early_leave_minutes,
@@ -307,6 +318,67 @@ const AttendanceList: React.FC = () => {
     }
   };
 
+  const handleImportCard = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const hideLoading = message.loading('正在解析考勤卡表...', 0);
+    try {
+      const response = await apiClient.post('/attendances/import-card', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      hideLoading();
+      const result = response.data.data;
+
+      modal.success({
+        title: '考勤卡表导入完成',
+        width: 600,
+        content: (
+          <div>
+            <p>
+              处理工作表 <b>{result.sheets_processed}</b> 个，员工 <b>{result.employees_total}</b> 人，匹配成功 <b>{result.matched}</b> 人
+            </p>
+            <p>
+              写入打卡记录：新增 <b>{result.daily_created}</b> / 更新 <b>{result.daily_updated}</b>
+            </p>
+            <p>
+              汇总记录：新增 <b>{result.summaries_created}</b> / 更新 <b>{result.summaries_updated}</b>
+            </p>
+            {result.periods?.length > 0 && (
+              <p>统计周期：{result.periods.join(', ')}</p>
+            )}
+            {result.unmatched?.length > 0 && (
+              <div style={{ maxHeight: 200, overflow: 'auto', marginTop: 8 }}>
+                <b style={{ color: '#faad14' }}>未匹配员工（姓名在花名册中不存在）：</b>
+                {result.unmatched.map((u: { sheet: string; name: string; external_id?: string }, i: number) => (
+                  <p key={i} style={{ margin: '4px 0' }}>
+                    [{u.sheet}] {u.name}（考勤表工号: {u.external_id || '-'}）
+                  </p>
+                ))}
+              </div>
+            )}
+            {result.ambiguous?.length > 0 && (
+              <div style={{ maxHeight: 200, overflow: 'auto', marginTop: 8 }}>
+                <b style={{ color: '#f5222d' }}>重名员工（需人工核对）：</b>
+                {result.ambiguous.map((a: { sheet: string; name: string }, i: number) => (
+                  <p key={i} style={{ margin: '4px 0' }}>[{a.sheet}] {a.name}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        ),
+      });
+
+      fetchAttendanceData();
+    } catch (error: unknown) {
+      hideLoading();
+      const msg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || '导入失败';
+      message.error(msg);
+    }
+    return false;
+  };
+
   const handleImport = async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -383,17 +455,31 @@ const AttendanceList: React.FC = () => {
       width: 120,
     },
     {
-      title: '签到时间',
-      dataIndex: 'check_in_time',
-      key: 'check_in_time',
-      width: 100,
+      title: '上午上班',
+      dataIndex: 'morning_check_in',
+      key: 'morning_check_in',
+      width: 90,
       render: (time: string | null) => time || '-',
     },
     {
-      title: '签退时间',
-      dataIndex: 'check_out_time',
-      key: 'check_out_time',
-      width: 100,
+      title: '上午下班',
+      dataIndex: 'morning_check_out',
+      key: 'morning_check_out',
+      width: 90,
+      render: (time: string | null) => time || '-',
+    },
+    {
+      title: '下午上班',
+      dataIndex: 'afternoon_check_in',
+      key: 'afternoon_check_in',
+      width: 90,
+      render: (time: string | null) => time || '-',
+    },
+    {
+      title: '下午下班',
+      dataIndex: 'afternoon_check_out',
+      key: 'afternoon_check_out',
+      width: 90,
       render: (time: string | null) => time || '-',
     },
     {
@@ -641,9 +727,25 @@ const AttendanceList: React.FC = () => {
                   beforeUpload={handleImport}
                 >
                   <Button icon={<UploadOutlined />}>
-                    导入
+                    导入(模板)
                   </Button>
                 </Upload>
+
+                <Upload
+                  accept=".xlsx,.xls"
+                  showUploadList={false}
+                  beforeUpload={handleImportCard}
+                >
+                  <Button icon={<ImportOutlined />} type="dashed">
+                    导入考勤卡表
+                  </Button>
+                </Upload>
+
+                <Link to="/attendance/report">
+                  <Button icon={<BarChartOutlined />}>
+                    考勤报表
+                  </Button>
+                </Link>
 
                 <Button
                   type="primary"
@@ -664,7 +766,7 @@ const AttendanceList: React.FC = () => {
             loading={state.loading}
             pagination={state.pagination}
             onChange={handleTableChange}
-            scroll={{ x: 1400 }}
+            scroll={{ x: 1700 }}
             size="middle"
           />
         </Space>

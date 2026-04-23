@@ -5,6 +5,7 @@ const User = require('./User');
 const OnboardingProcess = require('./OnboardingProcess');
 const Leave = require('./Leave');
 const Attendance = require('./Attendance');
+const AttendanceSummary = require('./AttendanceSummary');
 const AnnualLeave = require('./AnnualLeave');
 const SocialSecurity = require('./SocialSecurity');
 const BusinessTrip = require('./BusinessTrip');
@@ -90,6 +91,17 @@ Attendance.belongsTo(Employee, {
 Employee.hasMany(Attendance, {
   foreignKey: 'employee_id',
   as: 'attendances'
+});
+
+// AttendanceSummary associations
+AttendanceSummary.belongsTo(Employee, {
+  foreignKey: 'employee_id',
+  as: 'employee'
+});
+
+Employee.hasMany(AttendanceSummary, {
+  foreignKey: 'employee_id',
+  as: 'attendanceSummaries'
 });
 
 // AnnualLeave associations
@@ -180,6 +192,7 @@ const initModels = () => ({
   OnboardingProcess,
   Leave,
   Attendance,
+  AttendanceSummary,
   AnnualLeave,
   SocialSecurity,
   BusinessTrip,
@@ -195,6 +208,7 @@ module.exports = {
   OnboardingProcess,
   Leave,
   Attendance,
+  AttendanceSummary,
   AnnualLeave,
   SocialSecurity,
   BusinessTrip,

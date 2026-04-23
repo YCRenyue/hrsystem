@@ -17,6 +17,7 @@ import EmployeeDetail from './pages/Employee/EmployeeDetail';
 import OnboardingForm from './pages/Onboarding/OnboardingForm';
 import DepartmentList from './pages/Department/DepartmentList';
 import AttendanceList from './pages/Attendance/AttendanceList';
+import AttendanceReport from './pages/Attendance/AttendanceReport';
 import LeaveList from './pages/Leave/LeaveList';
 import UserSettings from './pages/Settings';
 import UserProfile from './pages/Profile/UserProfile';
@@ -114,6 +115,16 @@ function App() {
                     element={
                       <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
                         <AttendanceList />
+                      </RoleGuard>
+                    }
+                  />
+
+                  {/* Attendance report - accessible to admin, hr_admin, and department_manager */}
+                  <Route
+                    path="attendance/report"
+                    element={
+                      <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
+                        <AttendanceReport />
                       </RoleGuard>
                     }
                   />
