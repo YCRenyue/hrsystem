@@ -35,6 +35,11 @@ CanteenMeal.init(
       allowNull: false,
       comment: 'Meal type'
     },
+    meal_time: {
+      type: DataTypes.TIME,
+      allowNull: true,
+      comment: 'Punch time at the canteen'
+    },
     location: {
       type: DataTypes.STRING(200),
       allowNull: true,
@@ -80,6 +85,11 @@ CanteenMeal.init(
       type: DataTypes.TEXT,
       allowNull: true,
       comment: 'Additional notes'
+    },
+    source: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      comment: 'Data source: manual | card_import'
     }
   },
   {

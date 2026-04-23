@@ -152,7 +152,7 @@ const MainLayout: React.FC = () => {
     {
       key: '/canteen-meals',
       icon: <CoffeeOutlined />,
-      label: '食堂餐费',
+      label: '食堂报表',
       onClick: () => navigate('/canteen-meals'),
     },
   ] : [];
@@ -223,7 +223,7 @@ const MainLayout: React.FC = () => {
             {location.pathname === '/annual-leave' && '年假管理'}
             {location.pathname === '/social-security' && '社保管理'}
             {location.pathname === '/business-trips' && '出差管理'}
-            {location.pathname === '/canteen-meals' && '食堂餐费'}
+            {location.pathname === '/canteen-meals' && '食堂报表'}
             {location.pathname === '/users' && '用户管理'}
             {location.pathname === '/profile' && '个人资料'}
             {location.pathname === '/settings' && '用户设置'}

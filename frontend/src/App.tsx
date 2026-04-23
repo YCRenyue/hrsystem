@@ -24,7 +24,7 @@ import AnnualLeaveList from './pages/AnnualLeave/AnnualLeaveList';
 import AnnualLeaveForm from './pages/AnnualLeave/AnnualLeaveForm';
 import SocialSecurityList from './pages/SocialSecurity/SocialSecurityList';
 import BusinessTripList from './pages/BusinessTrip/BusinessTripList';
-import CanteenMealList from './pages/CanteenMeal/CanteenMealList';
+import CanteenReport from './pages/CanteenMeal/CanteenReport';
 import UserManagement from './pages/UserManagement/UserManagement';
 import DocumentConfirmationList from './pages/DocumentConfirmation/DocumentConfirmationList';
 import DocumentSigningPage from './pages/DocumentConfirmation/DocumentSigningPage';
@@ -184,7 +184,7 @@ function App() {
                     path="canteen-meals"
                     element={
                       <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
-                        <CanteenMealList />
+                        <CanteenReport />
                       </RoleGuard>
                     }
                   />

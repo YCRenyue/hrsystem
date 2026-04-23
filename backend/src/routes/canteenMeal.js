@@ -13,15 +13,16 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
+    fileSize: 20 * 1024 * 1024 // 20MB limit (card files can be large)
   },
   fileFilter: (req, file, cb) => {
     const allowedMimes = [
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel'
+      'application/vnd.ms-excel',
+      'application/octet-stream'
     ];
-
-    if (allowedMimes.includes(file.mimetype)) {
+    const validExt = /\.(xlsx|xls)$/i.test(file.originalname);
+    if (allowedMimes.includes(file.mimetype) || validExt) {
       cb(null, true);
     } else {
       cb(new Error('Only Excel files are allowed'));
@@ -71,6 +72,39 @@ router.post(
   requireRole('admin', 'hr_admin'),
   upload.single('file'),
   asyncHandler(canteenMealController.importFromExcel)
+);
+
+/**
+ * @route   POST /api/canteen-meal/import-card
+ * @desc    Import 食堂刷卡表 (multi-sheet, name-based matching)
+ * @access  Private (HR, Admin)
+ */
+router.post(
+  '/import-card',
+  requireRole('admin', 'hr_admin'),
+  upload.single('file'),
+  asyncHandler(canteenMealController.importCardExcel)
+);
+
+/**
+ * @route   GET /api/canteen-meal/report
+ * @desc    Canteen report: daily/weekly meal counts + per-employee
+ * @access  Private (HR, Admin, Department Manager)
+ */
+router.get(
+  '/report',
+  requireRole('admin', 'hr_admin', 'department_manager'),
+  asyncHandler(canteenMealController.getCanteenReport)
+);
+
+/**
+ * @route   GET /api/canteen-meal/employee/:employee_id/detail
+ * @desc    Per-employee daily meal detail
+ * @access  Private
+ */
+router.get(
+  '/employee/:employee_id/detail',
+  asyncHandler(canteenMealController.getEmployeeMealDetail)
 );
 
 /**
