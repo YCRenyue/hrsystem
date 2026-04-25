@@ -137,9 +137,30 @@ BusinessTrip.belongsTo(User, {
   as: 'approver'
 });
 
+BusinessTrip.belongsTo(User, {
+  foreignKey: 'submitted_by',
+  as: 'submitter'
+});
+
+BusinessTrip.belongsTo(User, {
+  foreignKey: 'cancelled_by',
+  as: 'canceller'
+});
+
 Employee.hasMany(BusinessTrip, {
   foreignKey: 'employee_id',
   as: 'businessTrips'
+});
+
+// Attendance ↔ BusinessTrip 反向关联（出差期间锁定考勤）
+Attendance.belongsTo(BusinessTrip, {
+  foreignKey: 'business_trip_id',
+  as: 'businessTrip'
+});
+
+BusinessTrip.hasMany(Attendance, {
+  foreignKey: 'business_trip_id',
+  as: 'attendances'
 });
 
 // CanteenMeal associations

@@ -65,9 +65,32 @@ const Attendance = sequelize.define('Attendance', {
     comment: '数据来源：manual / card_import'
   },
   status: {
-    type: DataTypes.ENUM('normal', 'late', 'early_leave', 'absent', 'leave', 'holiday', 'weekend'),
+    type: DataTypes.ENUM(
+      'normal',
+      'late',
+      'early_leave',
+      'absent',
+      'leave',
+      'holiday',
+      'weekend',
+      'business_trip'
+    ),
     defaultValue: 'normal',
-    comment: '考勤状态：normal-正常, late-迟到, early_leave-早退, absent-缺勤, leave-请假, holiday-节假日, weekend-周末'
+    comment: '考勤状态：normal-正常, late-迟到, early_leave-早退, absent-缺勤, leave-请假, holiday-节假日, weekend-周末, business_trip-出差'
+  },
+  business_trip_id: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    comment: '关联的出差申请ID',
+    references: {
+      model: 'business_trip_applications',
+      key: 'trip_id'
+    }
+  },
+  previous_status: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: '被出差覆盖前的原状态（撤销时回溯使用）'
   },
   late_minutes: {
     type: DataTypes.INTEGER,

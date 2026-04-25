@@ -78,4 +78,27 @@ router.delete(
   asyncHandler(uploadController.deleteEmployeeFile)
 );
 
+/**
+ * @route   POST /api/upload/business-trip/:tripId/file
+ * @desc    Upload an attachment for a business trip (itinerary, invoice, watermark photo)
+ * @access  Private
+ */
+router.post(
+  '/business-trip/:tripId/file',
+  authenticateToken,
+  upload.single('file'),
+  asyncHandler(uploadController.uploadBusinessTripAttachment)
+);
+
+/**
+ * @route   GET /api/upload/signed-url?key=...
+ * @desc    Generate signed URL for an arbitrary OSS object key (used by attachment preview)
+ * @access  Private
+ */
+router.get(
+  '/signed-url',
+  authenticateToken,
+  asyncHandler(uploadController.getSignedUrlForKey)
+);
+
 module.exports = router;

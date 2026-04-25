@@ -24,6 +24,8 @@ import AnnualLeaveList from './pages/AnnualLeave/AnnualLeaveList';
 import AnnualLeaveForm from './pages/AnnualLeave/AnnualLeaveForm';
 import SocialSecurityList from './pages/SocialSecurity/SocialSecurityList';
 import BusinessTripList from './pages/BusinessTrip/BusinessTripList';
+import BusinessTripForm from './pages/BusinessTrip/BusinessTripForm';
+import BusinessTripDetail from './pages/BusinessTrip/BusinessTripDetail';
 import CanteenReport from './pages/CanteenMeal/CanteenReport';
 import UserManagement from './pages/UserManagement/UserManagement';
 import DocumentConfirmationList from './pages/DocumentConfirmation/DocumentConfirmationList';
@@ -171,14 +173,11 @@ function App() {
                     }
                   />
 
-                  <Route
-                    path="business-trips"
-                    element={
-                      <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
-                        <BusinessTripList />
-                      </RoleGuard>
-                    }
-                  />
+                  {/* 出差管理：所有已认证用户均可看到（员工只能看本人申请） */}
+                  <Route path="business-trips" element={<BusinessTripList />} />
+                  <Route path="business-trips/new" element={<BusinessTripForm />} />
+                  <Route path="business-trips/:id" element={<BusinessTripDetail />} />
+                  <Route path="business-trips/:id/edit" element={<BusinessTripForm />} />
 
                   <Route
                     path="canteen-meals"

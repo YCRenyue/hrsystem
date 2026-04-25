@@ -144,12 +144,6 @@ const MainLayout: React.FC = () => {
       onClick: () => navigate('/social-security'),
     },
     {
-      key: '/business-trips',
-      icon: <CarOutlined />,
-      label: '出差管理',
-      onClick: () => navigate('/business-trips'),
-    },
-    {
       key: '/canteen-meals',
       icon: <CoffeeOutlined />,
       label: '食堂报表',
@@ -160,6 +154,12 @@ const MainLayout: React.FC = () => {
   // Sidebar navigation menu
   const sidebarMenuItems: MenuProps['items'] = [
     ...managerMenuItems,
+    {
+      key: '/business-trips',
+      icon: <CarOutlined />,
+      label: '出差管理',
+      onClick: () => navigate('/business-trips'),
+    },
     {
       key: '/document-confirmations',
       icon: <FileProtectOutlined />,
@@ -223,6 +223,10 @@ const MainLayout: React.FC = () => {
             {location.pathname === '/annual-leave' && '年假管理'}
             {location.pathname === '/social-security' && '社保管理'}
             {location.pathname === '/business-trips' && '出差管理'}
+            {location.pathname === '/business-trips/new' && '新建出差申请'}
+            {location.pathname.match(/^\/business-trips\/[^/]+\/edit$/) && '编辑出差申请'}
+            {location.pathname.match(/^\/business-trips\/[^/]+$/)
+              && location.pathname !== '/business-trips/new' && '出差申请详情'}
             {location.pathname === '/canteen-meals' && '食堂报表'}
             {location.pathname === '/users' && '用户管理'}
             {location.pathname === '/profile' && '个人资料'}
