@@ -43,7 +43,7 @@ env:
   ACR_REPOSITORY_FRONTEND: hrsystem-frontend
   ACR_REPOSITORY_DB: hrsystem-mysql
   BACKEND_PORT: 3001
-  FRONTEND_PORT: 80
+  FRONTEND_PORT: 8080
   DEPLOY_PLATFORM: linux/arm64
   # Database container configuration
   DB_CONTAINER_NAME: hrsystem-db
@@ -453,7 +453,7 @@ jobs:
                 --name hrsystem-backend \
                 --restart unless-stopped \
                 --network ${{ env.DOCKER_NETWORK }} \
-                -p ${{ env.BACKEND_PORT }}:3001 \
+                -p 127.0.0.1:${{ env.BACKEND_PORT }}:3001 \
                 -e NODE_ENV=production \
                 -e PORT=3001 \
                 -e FRONTEND_URL="${{ vars.FRONTEND_URL }}" \
@@ -501,11 +501,18 @@ jobs:
                 docker rm \$CONTAINER_ON_PORT 2>/dev/null || true
               fi
 
+              if ss -ltnp "sport = :${{ env.FRONTEND_PORT }}" 2>/dev/null | grep -q LISTEN; then
+                echo "Host port ${{ env.FRONTEND_PORT }} is still occupied after Docker cleanup:"
+                ss -ltnp "sport = :${{ env.FRONTEND_PORT }}" || true
+                echo "Stop or reconfigure the process using this port, or change FRONTEND_PORT."
+                exit 1
+              fi
+
               docker run -d \
                 --name hrsystem-frontend \
                 --restart unless-stopped \
                 --network ${{ env.DOCKER_NETWORK }} \
-                -p ${{ env.FRONTEND_PORT }}:80 \
+                -p 127.0.0.1:${{ env.FRONTEND_PORT }}:80 \
                 ${FRONTEND_IMAGE}
 
               echo "⏳ 等待前端服务启动..."
