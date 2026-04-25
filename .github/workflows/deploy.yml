@@ -41,13 +41,15 @@ env:
   ACR_NAMESPACE: ycrenyue
   ACR_REPOSITORY_BACKEND: hrsystem-backend
   ACR_REPOSITORY_FRONTEND: hrsystem-frontend
+  ACR_REPOSITORY_DB: hrsystem-mysql
   BACKEND_PORT: 3001
   FRONTEND_PORT: 80
   DEPLOY_PLATFORM: linux/arm64
   # Database container configuration
   DB_CONTAINER_NAME: hrsystem-db
   DB_VOLUME_NAME: hrsystem-db-data
-  DB_IMAGE: mysql:8.0
+  DB_IMAGE_SOURCE: mysql:8.0
+  DB_IMAGE_TAG: 8.0
   DOCKER_NETWORK: hrsystem-network
 
 jobs:
@@ -155,6 +157,21 @@ jobs:
             --username "${{ secrets.ACR_USERNAME }}" \
             --password-stdin \
             "${{ env.ACR_REGISTRY }}"
+
+      - name: Sync MySQL image to ACR
+        env:
+          DB_SOURCE_IMAGE: ${{ env.DB_IMAGE_SOURCE }}
+          DB_TARGET_IMAGE: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_DB }}:${{ env.DB_IMAGE_TAG }}
+        run: |
+          if docker buildx imagetools inspect "${DB_TARGET_IMAGE}" >/dev/null 2>&1; then
+            echo "✅ Database image already exists: ${DB_TARGET_IMAGE}"
+          else
+            docker pull --platform ${{ env.DEPLOY_PLATFORM }} ${DB_SOURCE_IMAGE}
+            docker tag ${DB_SOURCE_IMAGE} ${DB_TARGET_IMAGE}
+            docker push ${DB_TARGET_IMAGE}
+
+            echo "✅ Database image pushed: ${DB_TARGET_IMAGE}"
+          fi
 
       # 构建和推送后端镜像
       - name: 🏗️ 构建和推送后端镜像
@@ -333,6 +350,9 @@ jobs:
               --password-stdin \
               "${{ env.ACR_REGISTRY_VPC }}"
 
+            DB_IMAGE="${{ env.ACR_REGISTRY_VPC }}/${{ env.ACR_NAMESPACE }}/${{ env.ACR_REPOSITORY_DB }}:${{ env.DB_IMAGE_TAG }}"
+            DB_HOST="${{ env.DB_CONTAINER_NAME }}"
+
             # 确保 docker network 存在
             docker network inspect ${{ env.DOCKER_NETWORK }} >/dev/null 2>&1 || \
               docker network create ${{ env.DOCKER_NETWORK }}
@@ -346,7 +366,7 @@ jobs:
               docker volume inspect ${{ env.DB_VOLUME_NAME }} >/dev/null 2>&1 || \
                 docker volume create ${{ env.DB_VOLUME_NAME }}
 
-              docker pull ${{ env.DB_IMAGE }}
+              docker pull ${DB_IMAGE}
 
               docker run -d \
                 --name ${{ env.DB_CONTAINER_NAME }} \
@@ -359,7 +379,7 @@ jobs:
                 -e TZ=Asia/Shanghai \
                 -v ${{ env.DB_VOLUME_NAME }}:/var/lib/mysql \
                 -p 127.0.0.1:${{ vars.DB_PORT }}:3306 \
-                ${{ env.DB_IMAGE }} \
+                ${DB_IMAGE} \
                 --character-set-server=utf8mb4 \
                 --collation-server=utf8mb4_unicode_ci \
                 --default-time-zone=+08:00
@@ -407,7 +427,7 @@ jobs:
               docker run --rm \
                 --network ${{ env.DOCKER_NETWORK }} \
                 -e NODE_ENV=production \
-                -e DB_HOST="${{ vars.DB_HOST }}" \
+                -e DB_HOST="${DB_HOST}" \
                 -e DB_PORT="${{ vars.DB_PORT }}" \
                 -e DB_NAME="${{ vars.DB_NAME }}" \
                 -e DB_USER="${{ vars.DB_USER }}" \
@@ -427,7 +447,7 @@ jobs:
                 -e NODE_ENV=production \
                 -e PORT=3001 \
                 -e FRONTEND_URL="${{ vars.FRONTEND_URL }}" \
-                -e DB_HOST="${{ vars.DB_HOST }}" \
+                -e DB_HOST="${DB_HOST}" \
                 -e DB_PORT="${{ vars.DB_PORT }}" \
                 -e DB_NAME="${{ vars.DB_NAME }}" \
                 -e DB_USER="${{ vars.DB_USER }}" \
@@ -533,7 +553,7 @@ jobs:
 
           ## 🔗 数据库配置
 
-          - **DB_HOST**: \`${{ vars.DB_HOST }}\`
+          - **DB_HOST**: \`${{ env.DB_CONTAINER_NAME }}\`
           - **DB_NAME**: \`${{ vars.DB_NAME }}\`
           - **DB 容器**: \`${{ env.DB_CONTAINER_NAME }}\`
 
