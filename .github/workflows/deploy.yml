@@ -48,8 +48,8 @@ env:
   # Database container configuration
   DB_CONTAINER_NAME: hrsystem-db
   DB_VOLUME_NAME: hrsystem-db-data
-  DB_IMAGE_SOURCE: mysql:8.0
-  DB_IMAGE_TAG: 8.0
+  DB_IMAGE_SOURCE: 'mysql:8.0'
+  DB_IMAGE_TAG: '8.0'
   DOCKER_NETWORK: hrsystem-network
 
 jobs:
@@ -166,9 +166,9 @@ jobs:
           if docker buildx imagetools inspect "${DB_TARGET_IMAGE}" >/dev/null 2>&1; then
             echo "✅ Database image already exists: ${DB_TARGET_IMAGE}"
           else
-            docker pull --platform ${{ env.DEPLOY_PLATFORM }} ${DB_SOURCE_IMAGE}
-            docker tag ${DB_SOURCE_IMAGE} ${DB_TARGET_IMAGE}
-            docker push ${DB_TARGET_IMAGE}
+            docker pull --platform ${{ env.DEPLOY_PLATFORM }} "${DB_SOURCE_IMAGE}"
+            docker tag "${DB_SOURCE_IMAGE}" "${DB_TARGET_IMAGE}"
+            docker push "${DB_TARGET_IMAGE}"
 
             echo "✅ Database image pushed: ${DB_TARGET_IMAGE}"
           fi
@@ -366,7 +366,7 @@ jobs:
               docker volume inspect ${{ env.DB_VOLUME_NAME }} >/dev/null 2>&1 || \
                 docker volume create ${{ env.DB_VOLUME_NAME }}
 
-              docker pull ${DB_IMAGE}
+              docker pull \${DB_IMAGE}
 
               docker run -d \
                 --name ${{ env.DB_CONTAINER_NAME }} \
@@ -379,7 +379,7 @@ jobs:
                 -e TZ=Asia/Shanghai \
                 -v ${{ env.DB_VOLUME_NAME }}:/var/lib/mysql \
                 -p 127.0.0.1:${{ vars.DB_PORT }}:3306 \
-                ${DB_IMAGE} \
+                \${DB_IMAGE} \
                 --character-set-server=utf8mb4 \
                 --collation-server=utf8mb4_unicode_ci \
                 --default-time-zone=+08:00
@@ -427,7 +427,7 @@ jobs:
               docker run --rm \
                 --network ${{ env.DOCKER_NETWORK }} \
                 -e NODE_ENV=production \
-                -e DB_HOST="${DB_HOST}" \
+                -e DB_HOST="\${DB_HOST}" \
                 -e DB_PORT="${{ vars.DB_PORT }}" \
                 -e DB_NAME="${{ vars.DB_NAME }}" \
                 -e DB_USER="${{ vars.DB_USER }}" \
@@ -447,7 +447,7 @@ jobs:
                 -e NODE_ENV=production \
                 -e PORT=3001 \
                 -e FRONTEND_URL="${{ vars.FRONTEND_URL }}" \
-                -e DB_HOST="${DB_HOST}" \
+                -e DB_HOST="\${DB_HOST}" \
                 -e DB_PORT="${{ vars.DB_PORT }}" \
                 -e DB_NAME="${{ vars.DB_NAME }}" \
                 -e DB_USER="${{ vars.DB_USER }}" \
