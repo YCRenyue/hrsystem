@@ -43,6 +43,7 @@ env:
   ACR_REPOSITORY_FRONTEND: hrsystem-frontend
   BACKEND_PORT: 3001
   FRONTEND_PORT: 80
+  DEPLOY_PLATFORM: linux/arm64
   # Database container configuration
   DB_CONTAINER_NAME: hrsystem-db
   DB_VOLUME_NAME: hrsystem-db-data
@@ -168,21 +169,25 @@ jobs:
 
           if [[ "${{ needs.prepare.outputs.use_cache }}" == "true" ]]; then
             docker buildx build \
-              --platform linux/amd64 \
+              --platform ${{ env.DEPLOY_PLATFORM }} \
               --cache-from type=registry,ref=${LATEST_IMAGE} \
               --cache-to type=inline \
               --tag ${FULL_IMAGE} \
               --tag ${LATEST_IMAGE} \
               --push . || {
-              echo "⚠️ Buildx 失败，使用传统构建"
-              docker build --tag ${FULL_IMAGE} --tag ${LATEST_IMAGE} .
-              docker push ${FULL_IMAGE}
-              docker push ${LATEST_IMAGE}
+              echo "⚠️ Buildx 缓存构建失败，改为无缓存重试"
+              docker buildx build \
+                --platform ${{ env.DEPLOY_PLATFORM }} \
+                --tag ${FULL_IMAGE} \
+                --tag ${LATEST_IMAGE} \
+                --push .
             }
           else
-            docker build --tag ${FULL_IMAGE} --tag ${LATEST_IMAGE} .
-            docker push ${FULL_IMAGE}
-            docker push ${LATEST_IMAGE}
+            docker buildx build \
+              --platform ${{ env.DEPLOY_PLATFORM }} \
+              --tag ${FULL_IMAGE} \
+              --tag ${LATEST_IMAGE} \
+              --push .
           fi
 
           echo "✅ Backend image pushed: ${FULL_IMAGE}"
@@ -201,28 +206,28 @@ jobs:
 
           if [[ "${{ needs.prepare.outputs.use_cache }}" == "true" ]]; then
             docker buildx build \
-              --platform linux/amd64 \
+              --platform ${{ env.DEPLOY_PLATFORM }} \
               --build-arg REACT_APP_API_URL=${REACT_APP_API_URL} \
               --cache-from type=registry,ref=${LATEST_IMAGE} \
               --cache-to type=inline \
               --tag ${FULL_IMAGE} \
               --tag ${LATEST_IMAGE} \
               --push . || {
-              echo "⚠️ Buildx 失败，使用传统构建"
-              docker build \
+              echo "⚠️ Buildx 缓存构建失败，改为无缓存重试"
+              docker buildx build \
+                --platform ${{ env.DEPLOY_PLATFORM }} \
                 --build-arg REACT_APP_API_URL=${REACT_APP_API_URL} \
                 --tag ${FULL_IMAGE} \
-                --tag ${LATEST_IMAGE} .
-              docker push ${FULL_IMAGE}
-              docker push ${LATEST_IMAGE}
+                --tag ${LATEST_IMAGE} \
+                --push .
             }
           else
-            docker build \
+            docker buildx build \
+              --platform ${{ env.DEPLOY_PLATFORM }} \
               --build-arg REACT_APP_API_URL=${REACT_APP_API_URL} \
               --tag ${FULL_IMAGE} \
-              --tag ${LATEST_IMAGE} .
-            docker push ${FULL_IMAGE}
-            docker push ${LATEST_IMAGE}
+              --tag ${LATEST_IMAGE} \
+              --push .
           fi
 
           echo "✅ Frontend image pushed: ${FULL_IMAGE}"
@@ -260,7 +265,24 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.ECS_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -p ${{ secrets.ECS_SSH_PORT }} -H ${{ secrets.ECS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+      - name: SSH preflight check
+        run: |
+          set -euo pipefail
+
+          ECS_HOST="${{ secrets.ECS_HOST }}"
+          SSH_PORT="${{ secrets.ECS_SSH_PORT }}"
+
+          echo "Checking TCP connectivity to ${ECS_HOST}:${SSH_PORT}"
+          if ! timeout 10 bash -c "cat < /dev/null > /dev/tcp/${ECS_HOST}/${SSH_PORT}"; then
+            echo "::error::GitHub Actions runner cannot reach ${ECS_HOST}:${SSH_PORT}. Check that ECS is using a public IP or EIP, the security group allows the port, the OS firewall allows the port, and sshd is listening on that port."
+            exit 1
+          fi
+
+          echo "Checking SSH handshake on ${ECS_HOST}:${SSH_PORT}"
+          if ! ssh-keyscan -T 10 -p "${SSH_PORT}" -H "${ECS_HOST}" >> ~/.ssh/known_hosts 2>/dev/null; then
+            echo "::error::TCP is reachable but the SSH handshake failed. This usually means the configured port is not serving sshd, sshd is unhealthy, or the server is actively resetting the runner connection."
+            exit 1
+          fi
 
       - name: 🚀 部署服务到 ECS
         env:
@@ -275,11 +297,37 @@ jobs:
 
           echo "🔗 直连 ECS: ${ECS_HOST}:${SSH_PORT}"
 
-          ssh -o StrictHostKeyChecking=no -p ${SSH_PORT} root@${ECS_HOST} << ENDSSH
+          ssh -T \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=3 \
+            -o StrictHostKeyChecking=yes \
+            -p ${SSH_PORT} root@${ECS_HOST} << ENDSSH
             set -e
             set -x
 
             echo "📦 登录阿里云 ACR..."
+            echo "Server architecture: \$(uname -m)"
+
+            if ! command -v docker >/dev/null 2>&1; then
+              echo "Docker is not installed on the ECS host."
+              exit 127
+            fi
+
+            if ! docker info >/dev/null 2>&1; then
+              echo "Docker daemon is not running, trying to start it..."
+              if command -v systemctl >/dev/null 2>&1; then
+                systemctl start docker || true
+                sleep 3
+              fi
+
+              if ! docker info >/dev/null 2>&1; then
+                echo "Docker daemon is unavailable on the ECS host."
+                exit 1
+              fi
+            fi
+
             echo "${{ secrets.ACR_PASSWORD }}" | docker login \
               --username "${{ secrets.ACR_USERNAME }}" \
               --password-stdin \
