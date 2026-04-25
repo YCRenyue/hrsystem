@@ -360,6 +360,12 @@ jobs:
             # ============================================================
             # 数据库容器初始化（仅在容器不存在时创建）
             # ============================================================
+            if docker ps -a --format '{{.Names}}' | grep -q "^${{ env.DB_CONTAINER_NAME }}\$" && \
+               ! docker ps --format '{{.Names}}' | grep -q "^${{ env.DB_CONTAINER_NAME }}\$"; then
+              echo "Removing stopped database container before recreation..."
+              docker rm ${{ env.DB_CONTAINER_NAME }} >/dev/null 2>&1 || true
+            fi
+
             if ! docker ps -a --format '{{.Names}}' | grep -q "^${{ env.DB_CONTAINER_NAME }}\$"; then
               echo "🗄️ 数据库容器不存在，开始初始化..."
 
@@ -378,7 +384,6 @@ jobs:
                 -e MYSQL_PASSWORD="${{ secrets.DB_PASSWORD }}" \
                 -e TZ=Asia/Shanghai \
                 -v ${{ env.DB_VOLUME_NAME }}:/var/lib/mysql \
-                -p 127.0.0.1:${{ vars.DB_PORT }}:3306 \
                 \${DB_IMAGE} \
                 --character-set-server=utf8mb4 \
                 --collation-server=utf8mb4_unicode_ci \
@@ -409,6 +414,11 @@ jobs:
                     mysqladmin ping -h localhost \
                     -uroot -p"${{ secrets.DB_ROOT_PASSWORD }}" --silent 2>/dev/null; then
                   break
+                fi
+                if [ \$i -eq 30 ]; then
+                  echo "Existing MySQL container did not become ready."
+                  docker logs ${{ env.DB_CONTAINER_NAME }} --tail 50
+                  exit 1
                 fi
                 sleep 2
               done
