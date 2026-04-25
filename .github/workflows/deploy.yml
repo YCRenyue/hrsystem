@@ -43,6 +43,11 @@ env:
   ACR_REPOSITORY_FRONTEND: hrsystem-frontend
   BACKEND_PORT: 3001
   FRONTEND_PORT: 80
+  # Database container configuration
+  DB_CONTAINER_NAME: hrsystem-db
+  DB_VOLUME_NAME: hrsystem-db-data
+  DB_IMAGE: mysql:8.0
+  DOCKER_NETWORK: hrsystem-network
 
 jobs:
   # 1. 检测变更和配置
@@ -239,7 +244,7 @@ jobs:
             echo "frontend_image=${FRONTEND_IMAGE}" >> $GITHUB_OUTPUT
           fi
 
-  # 3. 部署到 ECS (前后端在同一实例，通过 NAT 网关 DNAT 访问)
+  # 3. 部署到 ECS (前后端 + MySQL 在同一实例，直接通过公网 IP 访问)
   deploy-to-ecs:
     name: 🚀 部署到 ECS
     runs-on: ubuntu-latest
@@ -255,8 +260,7 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.ECS_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          # 通过 NAT 网关的自定义端口扫描 SSH host key
-          ssh-keyscan -p ${{ secrets.ECS_SSH_PORT }} -H ${{ secrets.ECS_NAT_IP }} >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keyscan -p ${{ secrets.ECS_SSH_PORT }} -H ${{ secrets.ECS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: 🚀 部署服务到 ECS
         env:
@@ -266,13 +270,12 @@ jobs:
           DEPLOY_BACKEND: ${{ needs.prepare.outputs.should_deploy_backend }}
           DEPLOY_FRONTEND: ${{ needs.prepare.outputs.should_deploy_frontend }}
         run: |
-          # SSH 通过 NAT 网关连接 (NAT_IP:SSH_PORT -> ECS:22)
-          NAT_IP="${{ secrets.ECS_NAT_IP }}"
+          ECS_HOST="${{ secrets.ECS_HOST }}"
           SSH_PORT="${{ secrets.ECS_SSH_PORT }}"
 
-          echo "🔗 通过 NAT 网关连接 ECS: ${NAT_IP}:${SSH_PORT}"
+          echo "🔗 直连 ECS: ${ECS_HOST}:${SSH_PORT}"
 
-          ssh -o StrictHostKeyChecking=no -p ${SSH_PORT} root@${NAT_IP} << ENDSSH
+          ssh -o StrictHostKeyChecking=no -p ${SSH_PORT} root@${ECS_HOST} << ENDSSH
             set -e
             set -x
 
@@ -282,23 +285,96 @@ jobs:
               --password-stdin \
               "${{ env.ACR_REGISTRY_VPC }}"
 
-            # 部署后端
+            # 确保 docker network 存在
+            docker network inspect ${{ env.DOCKER_NETWORK }} >/dev/null 2>&1 || \
+              docker network create ${{ env.DOCKER_NETWORK }}
+
+            # ============================================================
+            # 数据库容器初始化（仅在容器不存在时创建）
+            # ============================================================
+            if ! docker ps -a --format '{{.Names}}' | grep -q "^${{ env.DB_CONTAINER_NAME }}\$"; then
+              echo "🗄️ 数据库容器不存在，开始初始化..."
+
+              docker volume inspect ${{ env.DB_VOLUME_NAME }} >/dev/null 2>&1 || \
+                docker volume create ${{ env.DB_VOLUME_NAME }}
+
+              docker pull ${{ env.DB_IMAGE }}
+
+              docker run -d \
+                --name ${{ env.DB_CONTAINER_NAME }} \
+                --restart unless-stopped \
+                --network ${{ env.DOCKER_NETWORK }} \
+                -e MYSQL_ROOT_PASSWORD="${{ secrets.DB_ROOT_PASSWORD }}" \
+                -e MYSQL_DATABASE="${{ vars.DB_NAME }}" \
+                -e MYSQL_USER="${{ vars.DB_USER }}" \
+                -e MYSQL_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+                -e TZ=Asia/Shanghai \
+                -v ${{ env.DB_VOLUME_NAME }}:/var/lib/mysql \
+                -p 127.0.0.1:${{ vars.DB_PORT }}:3306 \
+                ${{ env.DB_IMAGE }} \
+                --character-set-server=utf8mb4 \
+                --collation-server=utf8mb4_unicode_ci \
+                --default-time-zone=+08:00
+
+              echo "⏳ 等待 MySQL 就绪..."
+              for i in \$(seq 1 60); do
+                if docker exec ${{ env.DB_CONTAINER_NAME }} \
+                    mysqladmin ping -h localhost \
+                    -uroot -p"${{ secrets.DB_ROOT_PASSWORD }}" --silent 2>/dev/null; then
+                  echo "✅ MySQL 已就绪"
+                  break
+                fi
+                if [ \$i -eq 60 ]; then
+                  echo "❌ MySQL 启动超时"
+                  docker logs ${{ env.DB_CONTAINER_NAME }} --tail 50
+                  exit 1
+                fi
+                sleep 2
+              done
+            else
+              echo "🗄️ 数据库容器已存在，确保运行中..."
+              docker start ${{ env.DB_CONTAINER_NAME }} 2>/dev/null || true
+
+              # 等待 MySQL 就绪以便后续 migration
+              for i in \$(seq 1 30); do
+                if docker exec ${{ env.DB_CONTAINER_NAME }} \
+                    mysqladmin ping -h localhost \
+                    -uroot -p"${{ secrets.DB_ROOT_PASSWORD }}" --silent 2>/dev/null; then
+                  break
+                fi
+                sleep 2
+              done
+            fi
+
+            # ============================================================
+            # 部署后端（含 migration）
+            # ============================================================
             if [[ "${DEPLOY_BACKEND}" == "true" ]]; then
               echo "🖥️ 部署后端服务..."
 
               docker pull ${BACKEND_IMAGE}
 
+              # 在启动新后端容器前先跑 migration（基于新镜像里的 migration 文件）
+              echo "🔧 执行数据库 migration..."
+              docker run --rm \
+                --network ${{ env.DOCKER_NETWORK }} \
+                -e NODE_ENV=production \
+                -e DB_HOST="${{ vars.DB_HOST }}" \
+                -e DB_PORT="${{ vars.DB_PORT }}" \
+                -e DB_NAME="${{ vars.DB_NAME }}" \
+                -e DB_USER="${{ vars.DB_USER }}" \
+                -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+                -e DB_TIMEZONE="${{ vars.DB_TIMEZONE }}" \
+                ${BACKEND_IMAGE} \
+                node src/db/migrate.js
+
               docker stop hrsystem-backend 2>/dev/null || true
               docker rm hrsystem-backend 2>/dev/null || true
-
-              # 确保 hrsystem-network 网络存在
-              docker network inspect hrsystem-network >/dev/null 2>&1 || \
-                docker network create hrsystem-network
 
               docker run -d \
                 --name hrsystem-backend \
                 --restart unless-stopped \
-                --network hrsystem-network \
+                --network ${{ env.DOCKER_NETWORK }} \
                 -p ${{ env.BACKEND_PORT }}:3001 \
                 -e NODE_ENV=production \
                 -e PORT=3001 \
@@ -329,27 +405,28 @@ jobs:
               fi
             fi
 
+            # ============================================================
             # 部署前端
+            # ============================================================
             if [[ "${DEPLOY_FRONTEND}" == "true" ]]; then
               echo "🌐 部署前端服务..."
 
               docker pull ${FRONTEND_IMAGE}
 
-              # 停止所有可能占用端口的容器
               docker stop hrsystem-frontend 2>/dev/null || true
               docker rm hrsystem-frontend 2>/dev/null || true
 
-              # 查找并停止占用 80 端口的容器
-              CONTAINER_ON_PORT=$(docker ps -q --filter "publish=${{ env.FRONTEND_PORT }}")
-              if [ -n "$CONTAINER_ON_PORT" ]; then
+              CONTAINER_ON_PORT=\$(docker ps -q --filter "publish=${{ env.FRONTEND_PORT }}")
+              if [ -n "\$CONTAINER_ON_PORT" ]; then
                 echo "发现占用端口 ${{ env.FRONTEND_PORT }} 的容器，正在停止..."
-                docker stop $CONTAINER_ON_PORT 2>/dev/null || true
-                docker rm $CONTAINER_ON_PORT 2>/dev/null || true
+                docker stop \$CONTAINER_ON_PORT 2>/dev/null || true
+                docker rm \$CONTAINER_ON_PORT 2>/dev/null || true
               fi
 
               docker run -d \
                 --name hrsystem-frontend \
                 --restart unless-stopped \
+                --network ${{ env.DOCKER_NETWORK }} \
                 -p ${{ env.FRONTEND_PORT }}:80 \
                 ${FRONTEND_IMAGE}
 
@@ -406,17 +483,11 @@ jobs:
           - **后端端口**: \`${{ env.BACKEND_PORT }}\`
           - **前端端口**: \`${{ env.FRONTEND_PORT }}\`
 
-          ## 📈 下一步操作
-
-          1. 验证服务健康状态
-          2. 检查应用日志
-          3. 运行冒烟测试
-          4. 测试前后端连接
-
           ## 🔗 数据库配置
 
           - **DB_HOST**: \`${{ vars.DB_HOST }}\`
           - **DB_NAME**: \`${{ vars.DB_NAME }}\`
+          - **DB 容器**: \`${{ env.DB_CONTAINER_NAME }}\`
 
           ---
           *Generated by GitHub Actions - Run #${{ github.run_number }}*
