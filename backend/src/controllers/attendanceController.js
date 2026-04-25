@@ -8,6 +8,7 @@ const {
 } = require('../models');
 const permissionService = require('../services/PermissionService');
 const ExcelService = require('../services/ExcelService');
+const attendanceImportService = require('../services/attendanceImportService');
 const { ValidationError } = require('../middleware/errorHandler');
 
 /**
@@ -472,6 +473,55 @@ const importFromExcel = async (req, res) => {
 };
 
 /**
+ * Import 考勤卡表 Excel
+ * 解析多 sheet 的考勤卡表（如 1.3.4, 5.6.7 等）并按姓名匹配员工
+ */
+const importCardExcel = async (req, res) => {
+  if (!req.file) {
+    throw new ValidationError('未上传考勤表文件');
+  }
+
+  const result = await attendanceImportService.importCardWorkbook(
+    req.file.buffer,
+    req.file.originalname
+  );
+
+  res.json({
+    success: true,
+    message: '考勤表导入完成',
+    data: result
+  });
+};
+
+/**
+ * 考勤报表：聚合每位员工的迟到/早退/请假等统计
+ */
+const getAttendanceReport = async (req, res) => {
+  const { period_start, period_end, department_id } = req.query;
+
+  let effectiveDepartmentId = department_id;
+  if (req.user.data_scope === 'department') {
+    effectiveDepartmentId = req.user.department_id;
+  } else if (req.user.data_scope === 'self') {
+    return res.status(403).json({
+      success: false,
+      message: '无权查看考勤报表'
+    });
+  }
+
+  const report = await attendanceImportService.getAttendanceReport({
+    period_start,
+    period_end,
+    department_id: effectiveDepartmentId
+  });
+
+  return res.json({
+    success: true,
+    data: report
+  });
+};
+
+/**
  * Export attendance to Excel
  */
 const exportToExcel = async (req, res) => {
@@ -556,5 +606,7 @@ module.exports = {
   deleteAttendance,
   downloadTemplate,
   importFromExcel,
+  importCardExcel,
+  getAttendanceReport,
   exportToExcel
 };

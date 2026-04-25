@@ -6,6 +6,7 @@ const { Op } = require('sequelize');
 const CanteenMeal = require('../models/CanteenMeal');
 const Employee = require('../models/Employee');
 const ExcelService = require('../services/ExcelService');
+const canteenImportService = require('../services/canteenImportService');
 const {
   ValidationError,
   NotFoundError
@@ -557,6 +558,69 @@ const exportToExcel = async (req, res) => {
   await ExcelService.sendExcelResponse(res, workbook, filename);
 };
 
+/**
+ * Import 食堂刷卡表 Excel (multi-sheet, name-based matching)
+ */
+const importCardExcel = async (req, res) => {
+  if (!req.file) {
+    throw new ValidationError('未上传食堂卡表文件');
+  }
+  const result = await canteenImportService.importCardWorkbook(
+    req.file.buffer,
+    req.file.originalname
+  );
+  res.json({
+    success: true,
+    message: '食堂卡表导入完成',
+    data: result
+  });
+};
+
+/**
+ * 食堂报表：每日/每周中餐晚餐人数 + 每人汇总
+ */
+const getCanteenReport = async (req, res) => {
+  const { start_date, end_date, department_id } = req.query;
+
+  let effectiveDepartmentId = department_id;
+  if (req.user.data_scope === 'department') {
+    effectiveDepartmentId = req.user.department_id;
+  } else if (req.user.data_scope === 'self') {
+    return res.status(403).json({
+      success: false,
+      message: '无权查看食堂报表'
+    });
+  }
+
+  const data = await canteenImportService.getCanteenReport({
+    start_date,
+    end_date,
+    department_id: effectiveDepartmentId
+  });
+
+  return res.json({ success: true, data });
+};
+
+/**
+ * 单个员工的就餐明细
+ */
+const getEmployeeMealDetail = async (req, res) => {
+  const { employee_id } = req.params;
+  const { start_date, end_date } = req.query;
+
+  if (req.user.data_scope === 'self' && req.user.employee_id !== employee_id) {
+    return res.status(403).json({ success: false, message: '无权查看他人记录' });
+  }
+
+  const data = await canteenImportService.getEmployeeMealDetail({
+    employee_id,
+    start_date,
+    end_date
+  });
+
+  return res.json({ success: true, data });
+};
+
 module.exports = {
   getCanteenMeals,
   getCanteenMealById,
@@ -565,5 +629,8 @@ module.exports = {
   deleteCanteenMeal,
   downloadTemplate,
   importFromExcel,
+  importCardExcel,
+  getCanteenReport,
+  getEmployeeMealDetail,
   exportToExcel
 };

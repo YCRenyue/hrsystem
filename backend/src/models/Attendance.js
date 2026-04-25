@@ -30,11 +30,39 @@ const Attendance = sequelize.define('Attendance', {
   },
   check_in_time: {
     type: DataTypes.TIME,
-    comment: '签到时间'
+    comment: '签到时间（当天最早打卡）'
   },
   check_out_time: {
     type: DataTypes.TIME,
-    comment: '签退时间'
+    comment: '签退时间（当天最晚打卡）'
+  },
+  morning_check_in: {
+    type: DataTypes.TIME,
+    comment: '上午上班打卡'
+  },
+  morning_check_out: {
+    type: DataTypes.TIME,
+    comment: '上午下班打卡'
+  },
+  afternoon_check_in: {
+    type: DataTypes.TIME,
+    comment: '下午上班打卡'
+  },
+  afternoon_check_out: {
+    type: DataTypes.TIME,
+    comment: '下午下班打卡'
+  },
+  overtime_check_in: {
+    type: DataTypes.TIME,
+    comment: '加班签到'
+  },
+  overtime_check_out: {
+    type: DataTypes.TIME,
+    comment: '加班签退'
+  },
+  source: {
+    type: DataTypes.STRING(50),
+    comment: '数据来源：manual / card_import'
   },
   status: {
     type: DataTypes.ENUM('normal', 'late', 'early_leave', 'absent', 'leave', 'holiday', 'weekend'),

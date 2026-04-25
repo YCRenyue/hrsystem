@@ -13,13 +13,15 @@ const attendanceController = require('../controllers/attendanceController');
 // Configure multer for file upload
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB (card files can be large)
   fileFilter: (req, file, cb) => {
     const allowedTypes = [
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel'
+      'application/vnd.ms-excel',
+      'application/octet-stream' // some browsers send this for .xls
     ];
-    if (allowedTypes.includes(file.mimetype)) {
+    const validExt = /\.(xlsx|xls)$/i.test(file.originalname);
+    if (allowedTypes.includes(file.mimetype) || validExt) {
       cb(null, true);
     } else {
       cb(new Error('Only Excel files are allowed'));
@@ -76,6 +78,29 @@ router.post(
   requireRole('admin', 'hr_admin', 'department_manager'),
   upload.single('file'),
   asyncHandler(attendanceController.importFromExcel)
+);
+
+/**
+ * @route   POST /api/attendances/import-card
+ * @desc    Import 考勤卡表 Excel (multi-sheet, name-based matching)
+ * @access  Private (HR Admin, Admin)
+ */
+router.post(
+  '/import-card',
+  requireRole('admin', 'hr_admin'),
+  upload.single('file'),
+  asyncHandler(attendanceController.importCardExcel)
+);
+
+/**
+ * @route   GET /api/attendances/report
+ * @desc    考勤报表：按周期聚合请假/迟到/早退等
+ * @access  Private (HR Admin, Admin, Department Manager)
+ */
+router.get(
+  '/report',
+  requireRole('admin', 'hr_admin', 'department_manager'),
+  asyncHandler(attendanceController.getAttendanceReport)
 );
 
 /**

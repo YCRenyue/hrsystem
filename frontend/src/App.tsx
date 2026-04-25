@@ -16,7 +16,7 @@ import EmployeeForm from './pages/Employee/EmployeeForm';
 import EmployeeDetail from './pages/Employee/EmployeeDetail';
 import OnboardingForm from './pages/Onboarding/OnboardingForm';
 import DepartmentList from './pages/Department/DepartmentList';
-import AttendanceList from './pages/Attendance/AttendanceList';
+import AttendanceReport from './pages/Attendance/AttendanceReport';
 import LeaveList from './pages/Leave/LeaveList';
 import UserSettings from './pages/Settings';
 import UserProfile from './pages/Profile/UserProfile';
@@ -24,7 +24,7 @@ import AnnualLeaveList from './pages/AnnualLeave/AnnualLeaveList';
 import AnnualLeaveForm from './pages/AnnualLeave/AnnualLeaveForm';
 import SocialSecurityList from './pages/SocialSecurity/SocialSecurityList';
 import BusinessTripList from './pages/BusinessTrip/BusinessTripList';
-import CanteenMealList from './pages/CanteenMeal/CanteenMealList';
+import CanteenReport from './pages/CanteenMeal/CanteenReport';
 import UserManagement from './pages/UserManagement/UserManagement';
 import DocumentConfirmationList from './pages/DocumentConfirmation/DocumentConfirmationList';
 import DocumentSigningPage from './pages/DocumentConfirmation/DocumentSigningPage';
@@ -113,7 +113,7 @@ function App() {
                     path="attendance"
                     element={
                       <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
-                        <AttendanceList />
+                        <AttendanceReport />
                       </RoleGuard>
                     }
                   />
@@ -184,7 +184,7 @@ function App() {
                     path="canteen-meals"
                     element={
                       <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
-                        <CanteenMealList />
+                        <CanteenReport />
                       </RoleGuard>
                     }
                   />

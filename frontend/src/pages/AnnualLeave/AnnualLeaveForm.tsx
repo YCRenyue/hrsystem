@@ -53,9 +53,22 @@ const AnnualLeaveForm: React.FC = () => {
 
   const fetchEmployees = useCallback(async () => {
     try {
-      const response = await api.get("/employees", { params: { size: 500 } });
+      const response = await api.get("/employees", {
+        params: {
+          page: 1,
+          size: 500,
+          _t: Date.now(),
+        },
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+      });
+
       if (response.data.success) {
-        const list = response.data.data || [];
+        const payload = response.data.data;
+        const list = Array.isArray(payload) ? payload : payload?.items || [];
+
         setEmployees(
           list.map((e: any) => ({
             employee_id: e.employee_id,
