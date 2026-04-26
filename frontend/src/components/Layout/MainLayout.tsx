@@ -101,6 +101,17 @@ const MainLayout: React.FC = () => {
   const isManager = ['admin', 'hr_admin', 'department_manager']
     .includes(user?.role || '');
 
+  const documentConfirmationMenuItem = {
+    key: '/document-confirmations',
+    icon: <FileProtectOutlined />,
+    label: '制度确认',
+    onClick: () => {
+      navigate(isManager
+        ? '/document-confirmations'
+        : '/document-confirmations/my');
+    },
+  };
+
   // Admin/HR menu items - hidden from regular employees
   const managerMenuItems: MenuProps['items'] = isManager ? [
     {
@@ -115,6 +126,7 @@ const MainLayout: React.FC = () => {
       label: '员工管理',
       onClick: () => navigate('/employees'),
     },
+    documentConfirmationMenuItem,
     {
       key: '/departments',
       icon: <ApartmentOutlined />,
@@ -128,6 +140,12 @@ const MainLayout: React.FC = () => {
       onClick: () => navigate('/attendance'),
     },
     {
+      key: '/canteen-meals',
+      icon: <CoffeeOutlined />,
+      label: '食堂报表',
+      onClick: () => navigate('/canteen-meals'),
+    },
+    {
       key: '/annual-leave',
       icon: <CalendarOutlined />,
       label: '年假管理',
@@ -139,17 +157,12 @@ const MainLayout: React.FC = () => {
       label: '社保管理',
       onClick: () => navigate('/social-security'),
     },
-    {
-      key: '/canteen-meals',
-      icon: <CoffeeOutlined />,
-      label: '食堂报表',
-      onClick: () => navigate('/canteen-meals'),
-    },
   ] : [];
 
   // Sidebar navigation menu
   const sidebarMenuItems: MenuProps['items'] = [
     ...managerMenuItems,
+    ...(!isManager ? [documentConfirmationMenuItem] : []),
     {
       key: '/leaves',
       icon: <FileTextOutlined />,
@@ -167,16 +180,6 @@ const MainLayout: React.FC = () => {
       icon: <WalletOutlined />,
       label: '差旅报销',
       onClick: () => navigate('/reimbursements'),
-    },
-    {
-      key: '/document-confirmations',
-      icon: <FileProtectOutlined />,
-      label: '制度确认',
-      onClick: () => {
-        navigate(isManager
-          ? '/document-confirmations'
-          : '/document-confirmations/my');
-      },
     },
     // Admin-only menu items
     ...(user?.role === 'admin' ? [
@@ -245,6 +248,9 @@ const MainLayout: React.FC = () => {
             {location.pathname.match(/^\/reimbursements\/[^/]+\/edit$/) && '编辑报销单'}
             {location.pathname.match(/^\/reimbursements\/[^/]+$/)
               && location.pathname !== '/reimbursements/new' && '报销单详情'}
+            {location.pathname === '/document-confirmations' && '制度确认'}
+            {location.pathname === '/document-confirmations/my' && '我的制度确认'}
+            {location.pathname.match(/^\/document-confirmations\/[^/]+\/[^/]+$/) && '制度确认详情'}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <NotificationBell />

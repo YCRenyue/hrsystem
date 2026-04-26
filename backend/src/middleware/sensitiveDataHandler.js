@@ -71,6 +71,15 @@ function processSensitiveData(data, user, canViewSensitive) {
     return data;
   }
 
+  // 关键：Date / Buffer 等内置对象的"内部 slot"不是可枚举属性，直接遍历会得到 {}，
+  // 必须原样返回，否则前端 dayjs(...) 会得到 Invalid Date。
+  if (
+    data instanceof Date
+    || (typeof Buffer !== 'undefined' && Buffer.isBuffer(data))
+  ) {
+    return data;
+  }
+
   // 如果是数组，递归处理每个元素
   if (Array.isArray(data)) {
     return data.map((item) => processSensitiveData(item, user, canViewSensitive));

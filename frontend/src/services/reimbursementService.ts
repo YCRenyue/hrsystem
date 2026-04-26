@@ -41,6 +41,7 @@ export interface ReimbursementSummary {
     destination: string;
     start_datetime: string;
     end_datetime: string;
+    status?: string;
   };
   approver?: { user_id: string; display_name: string };
 }
