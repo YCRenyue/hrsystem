@@ -19,6 +19,7 @@ const {
 } = require('../models');
 const reimbursementService = require('../services/ReimbursementService');
 const inAppNotification = require('../services/InAppNotificationService');
+const { findEmployeeIdsByName } = require('../utils/employeeSearch');
 const {
   ValidationError,
   NotFoundError,
@@ -128,6 +129,7 @@ const list = async (req, res) => {
     status,
     trip_id: tripId,
     employee_id: employeeIdFilter,
+    employee_name: employeeName,
     keyword
   } = req.query;
 
@@ -145,6 +147,34 @@ const list = async (req, res) => {
       return res.json({ success: true, data: [], pagination: { total: 0, page: 1, size: limit } });
     }
     where.employee_id = req.user.employee_id;
+  }
+
+  // 按姓名搜索（密文存储 → 内存解密匹配）
+  if (employeeName && employeeName.trim()) {
+    const matchedIds = await findEmployeeIdsByName(employeeName);
+    if (matchedIds.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        pagination: {
+          total: 0, page: parseInt(page, 10), size: limit, totalPages: 0
+        }
+      });
+    }
+    if (where.employee_id) {
+      const fixed = where.employee_id;
+      if (!matchedIds.includes(fixed)) {
+        return res.json({
+          success: true,
+          data: [],
+          pagination: {
+            total: 0, page: parseInt(page, 10), size: limit, totalPages: 0
+          }
+        });
+      }
+    } else {
+      where.employee_id = { [Op.in]: matchedIds };
+    }
   }
 
   const include = [

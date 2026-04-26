@@ -30,6 +30,7 @@ const ReimbursementList: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
   const [keyword, setKeyword] = useState('');
+  const [employeeName, setEmployeeName] = useState('');
   const [status, setStatus] = useState<string | undefined>();
 
   const isManager = ['admin', 'hr_admin'].includes(user?.role || '');
@@ -41,6 +42,7 @@ const ReimbursementList: React.FC = () => {
         page,
         size: pageSize,
         keyword: keyword || undefined,
+        employee_name: employeeName || undefined,
         status,
       });
       setData(res.data || []);
@@ -50,7 +52,7 @@ const ReimbursementList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, keyword, status, message]);
+  }, [page, pageSize, keyword, employeeName, status, message]);
 
   useEffect(() => {
     fetchData();
@@ -195,6 +197,17 @@ const ReimbursementList: React.FC = () => {
             onSearch={(v) => {
               setPage(1);
               setKeyword(v);
+            }}
+          />
+        )}
+        {isManager && (
+          <Input.Search
+            placeholder="按员工姓名搜索"
+            allowClear
+            style={{ width: 200 }}
+            onSearch={(v) => {
+              setPage(1);
+              setEmployeeName(v);
             }}
           />
         )}

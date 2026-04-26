@@ -68,6 +68,7 @@ export const reimbursementService = {
     status?: string;
     trip_id?: string;
     employee_id?: string;
+    employee_name?: string;
     keyword?: string;
   } = {}) {
     const res = await api.get('/reimbursements', { params });

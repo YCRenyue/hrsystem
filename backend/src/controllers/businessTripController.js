@@ -19,6 +19,7 @@ const {
 } = require('../models');
 const businessTripService = require('../services/BusinessTripService');
 const inAppNotification = require('../services/InAppNotificationService');
+const { findEmployeeIdsByName } = require('../utils/employeeSearch');
 const {
   ValidationError,
   NotFoundError,
@@ -174,6 +175,7 @@ const getBusinessTrips = async (req, res) => {
     page = 1,
     size = 10,
     keyword,
+    employee_name: employeeName,
     status,
     employee_id: employeeIdFilter,
     startDate,
@@ -199,6 +201,35 @@ const getBusinessTrips = async (req, res) => {
       return res.json({ success: true, data: [], pagination: { total: 0, page: 1, size: limit } });
     }
     where.employee_id = req.user.employee_id;
+  }
+
+  // 按姓名搜索（密文存储 → 内存解密匹配）
+  if (employeeName && employeeName.trim()) {
+    const matchedIds = await findEmployeeIdsByName(employeeName);
+    if (matchedIds.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        pagination: {
+          total: 0, page: parseInt(page, 10), size: limit, totalPages: 0
+        }
+      });
+    }
+    // 与已有 employee_id 限制做交集
+    if (where.employee_id) {
+      where.employee_id = matchedIds.includes(where.employee_id) ? where.employee_id : null;
+      if (where.employee_id === null) {
+        return res.json({
+          success: true,
+          data: [],
+          pagination: {
+            total: 0, page: parseInt(page, 10), size: limit, totalPages: 0
+          }
+        });
+      }
+    } else {
+      where.employee_id = { [Op.in]: matchedIds };
+    }
   }
 
   const include = [

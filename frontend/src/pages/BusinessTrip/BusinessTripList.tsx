@@ -72,6 +72,7 @@ const BusinessTripList: React.FC = () => {
     page: number;
     size: number;
     keyword?: string;
+    employee_name?: string;
     status?: string;
   }>({ page: 1, size: 10 });
 
@@ -96,6 +97,14 @@ const BusinessTripList: React.FC = () => {
 
   const handleSearch = (keyword: string) => {
     setQueryParams({ ...queryParams, keyword, page: 1 });
+  };
+
+  const handleNameSearch = (employeeName: string) => {
+    setQueryParams({
+      ...queryParams,
+      employee_name: employeeName || undefined,
+      page: 1
+    });
   };
 
   const handleStatusFilter = (status?: string) => {
@@ -235,13 +244,24 @@ const BusinessTripList: React.FC = () => {
         <Row gutter={16} align="middle">
           <Col flex="auto">
             <Space size="middle" wrap>
-              <Search
-                placeholder="按员工编号搜索"
-                allowClear
-                enterButton={<SearchOutlined />}
-                onSearch={handleSearch}
-                style={{ width: 280 }}
-              />
+              {isApprover && (
+                <Search
+                  placeholder="按员工编号搜索"
+                  allowClear
+                  enterButton={<SearchOutlined />}
+                  onSearch={handleSearch}
+                  style={{ width: 220 }}
+                />
+              )}
+              {isApprover && (
+                <Search
+                  placeholder="按员工姓名搜索"
+                  allowClear
+                  enterButton={<SearchOutlined />}
+                  onSearch={handleNameSearch}
+                  style={{ width: 220 }}
+                />
+              )}
               <Select
                 placeholder="状态筛选"
                 allowClear
