@@ -128,12 +128,6 @@ const MainLayout: React.FC = () => {
       onClick: () => navigate('/attendance'),
     },
     {
-      key: '/leaves',
-      icon: <FileTextOutlined />,
-      label: '请假管理',
-      onClick: () => navigate('/leaves'),
-    },
-    {
       key: '/annual-leave',
       icon: <CalendarOutlined />,
       label: '年假管理',
@@ -156,6 +150,12 @@ const MainLayout: React.FC = () => {
   // Sidebar navigation menu
   const sidebarMenuItems: MenuProps['items'] = [
     ...managerMenuItems,
+    {
+      key: '/leaves',
+      icon: <FileTextOutlined />,
+      label: '请假管理',
+      onClick: () => navigate('/leaves'),
+    },
     {
       key: '/business-trips',
       icon: <CarOutlined />,

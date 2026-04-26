@@ -124,15 +124,9 @@ function App() {
                     }
                   />
 
-                  {/* Leave management - accessible to admin, hr_admin, and department_manager */}
-                  <Route
-                    path="leaves"
-                    element={
-                      <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
-                        <LeaveList />
-                      </RoleGuard>
-                    }
-                  />
+                  {/* Leave management - accessible to all authenticated users
+                       (employees see own and submit; admin approves) */}
+                  <Route path="leaves" element={<LeaveList />} />
 
                   {/* User profile - accessible to all authenticated users */}
                   <Route path="profile" element={<UserProfile />} />

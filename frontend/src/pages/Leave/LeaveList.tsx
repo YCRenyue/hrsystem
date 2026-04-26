@@ -15,6 +15,8 @@ import {
   Statistic,
   Modal,
   Input,
+  Form,
+  InputNumber,
   App,
   Upload
 } from 'antd';
@@ -26,13 +28,16 @@ import {
   FileTextOutlined,
   DownloadOutlined,
   UploadOutlined,
-  ExportOutlined
+  ExportOutlined,
+  PlusOutlined
 } from '@ant-design/icons';
 import { Pie, Column as ColumnChart } from '@ant-design/charts';
 import type { ColumnsType } from 'antd/es/table';
+import { useSearchParams } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
 import { leaveService, Leave, LeaveStats } from '../../services/leaveService';
 import { usePermission } from '../../hooks/usePermission';
+import { useAuth } from '../../contexts/AuthContext';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
@@ -79,6 +84,9 @@ const getStatusText = (status: string): string => {
 const LeaveList: React.FC = () => {
   const { message, modal } = App.useApp();
   const { hasPermission } = usePermission();
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const isAdmin = user?.role === 'admin';
   const [loading, setLoading] = useState(false);
   const [dataSource, setDataSource] = useState<Leave[]>([]);
   const [stats, setStats] = useState<LeaveStats | null>(null);
@@ -88,12 +96,16 @@ const LeaveList: React.FC = () => {
     total: 0
   });
 
-  // Filter states
-  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs]>([
-    dayjs().subtract(30, 'days'),
-    dayjs()
-  ]);
-  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
+  // Filter states - default to last 30 days, but if a notification deep-links with
+  // ?status=pending or ?highlight=xxx, expand the date range so the record shows up.
+  const initialStatus = searchParams.get('status') || undefined;
+  const highlightId = searchParams.get('highlight') || undefined;
+  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs]>(
+    highlightId || initialStatus
+      ? [dayjs().subtract(180, 'days'), dayjs().add(60, 'days')]
+      : [dayjs().subtract(30, 'days'), dayjs()]
+  );
+  const [statusFilter, setStatusFilter] = useState<string | undefined>(initialStatus);
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
 
   // Approval modal state
@@ -108,6 +120,11 @@ const LeaveList: React.FC = () => {
     action: null,
     notes: ''
   });
+
+  // Create leave modal (employee self-service)
+  const [createModal, setCreateModal] = useState(false);
+  const [createForm] = Form.useForm();
+  const [creating, setCreating] = useState(false);
 
   /**
    * Fetch leave data
@@ -196,6 +213,37 @@ const LeaveList: React.FC = () => {
       action,
       notes: ''
     });
+  };
+
+  /**
+   * Submit a new leave application (employee self-service)
+   */
+  const handleCreateLeave = async () => {
+    try {
+      const values = await createForm.validateFields();
+      setCreating(true);
+      const range = values.range as [Dayjs, Dayjs];
+      const startDate = range[0].format('YYYY-MM-DD');
+      const endDate = range[1].format('YYYY-MM-DD');
+      const days = values.days
+        || range[1].diff(range[0], 'day') + 1;
+      await leaveService.create({
+        leave_type: values.leave_type,
+        start_date: startDate,
+        end_date: endDate,
+        days,
+        reason: values.reason
+      } as any);
+      message.success('请假申请已提交，等待管理员审批');
+      setCreateModal(false);
+      createForm.resetFields();
+      fetchData();
+    } catch (error: any) {
+      if (error?.errorFields) return; // validation
+      message.error(error?.response?.data?.message || '提交失败');
+    } finally {
+      setCreating(false);
+    }
   };
 
   /**
@@ -387,7 +435,7 @@ const LeaveList: React.FC = () => {
       title: '操作',
       key: 'action',
       render: (_: any, record: Leave) => (
-        record.status === 'pending' ? (
+        record.status === 'pending' && isAdmin ? (
           <Space size="small">
             <Button
               type="link"
@@ -570,6 +618,13 @@ const LeaveList: React.FC = () => {
           <Button icon={<ReloadOutlined />} onClick={fetchData}>
             刷新
           </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setCreateModal(true)}
+          >
+            申请请假
+          </Button>
           {hasPermission('employees.export') && (
             <>
               <Button
@@ -608,8 +663,63 @@ const LeaveList: React.FC = () => {
           pagination={pagination}
           onChange={handleTableChange}
           scroll={{ x: 1400 }}
+          rowClassName={(record) => (highlightId && record.leave_id === highlightId
+            ? 'leave-row-highlight'
+            : '')}
         />
+        <style>{`
+          .leave-row-highlight > td {
+            background-color: #fffbe6 !important;
+          }
+        `}</style>
       </Card>
+
+      {/* Create Leave Modal - 员工/管理者均可使用，提交后通知 admin */}
+      <Modal
+        title="申请请假"
+        open={createModal}
+        confirmLoading={creating}
+        onOk={handleCreateLeave}
+        onCancel={() => {
+          setCreateModal(false);
+          createForm.resetFields();
+        }}
+        okText="提交"
+        cancelText="取消"
+      >
+        <Form form={createForm} layout="vertical">
+          <Form.Item
+            name="leave_type"
+            label="请假类型"
+            rules={[{ required: true, message: '请选择请假类型' }]}
+          >
+            <Select placeholder="请选择">
+              <Option value="annual">年假</Option>
+              <Option value="sick">病假</Option>
+              <Option value="personal">事假</Option>
+              <Option value="compensatory">调休</Option>
+              <Option value="unpaid">无薪假</Option>
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="range"
+            label="请假时间"
+            rules={[{ required: true, message: '请选择起止日期' }]}
+          >
+            <DatePicker.RangePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+          </Form.Item>
+          <Form.Item
+            name="days"
+            label="天数"
+            rules={[{ required: true, message: '请填写天数' }]}
+          >
+            <InputNumber min={0.5} step={0.5} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="reason" label="请假原因">
+            <Input.TextArea rows={3} maxLength={500} showCount placeholder="选填" />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       {/* Approval Modal */}
       <Modal

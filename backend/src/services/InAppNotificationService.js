@@ -7,7 +7,6 @@
  * 与 NotificationService（钉钉/邮件）解耦：本服务只写数据库，前端轮询读取。
  */
 
-const { Op } = require('sequelize');
 const {
   Notification,
   User
@@ -23,6 +22,11 @@ const NotificationTypes = Object.freeze({
   BUSINESS_TRIP_APPROVED: 'business_trip_approved',
   BUSINESS_TRIP_REJECTED: 'business_trip_rejected',
   BUSINESS_TRIP_CANCELLED: 'business_trip_cancelled',
+  // 请假
+  LEAVE_SUBMITTED: 'leave_submitted',
+  LEAVE_APPROVED: 'leave_approved',
+  LEAVE_REJECTED: 'leave_rejected',
+  LEAVE_CANCELLED: 'leave_cancelled',
   // 报销
   REIMBURSEMENT_SUBMITTED: 'reimbursement_submitted',
   REIMBURSEMENT_APPROVED: 'reimbursement_approved',
@@ -100,41 +104,20 @@ const sendToMany = async (recipientUserIds, payload, options = {}) => {
 };
 
 /**
- * 查询所有"出差审批人"的用户ID列表（admin / hr_admin / department_manager）。
- * 部门经理目前未做按部门精细路由，全部审批人都收到通知；后续可根据 department_id 过滤。
+ * 查询所有审批人用户ID。
+ * 当前阶段：审批工作流统一为 admin 审批；之后再扩展为多级（员工-经理-admin）。
  *
- * @param {Object} [filters]
- * @param {string} [filters.departmentId] - 优先匹配同部门的 department_manager
+ * @param {Object} [filters] - 预留扩展（departmentId 等），目前忽略
  * @returns {Promise<string[]>}
  */
+// eslint-disable-next-line no-unused-vars
 const getApproverUserIds = async (filters = {}) => {
-  const { departmentId } = filters;
-
-  const baseWhere = {
-    is_active: true,
-    status: 'active',
-    role: { [Op.in]: ['admin', 'hr_admin', 'department_manager'] }
-  };
-
-  // 优先：同部门的 department_manager + 全部 admin/hr_admin
-  if (departmentId) {
-    const targeted = await User.findAll({
-      where: {
-        ...baseWhere,
-        [Op.or]: [
-          { role: { [Op.in]: ['admin', 'hr_admin'] } },
-          { role: 'department_manager', department_id: departmentId }
-        ]
-      },
-      attributes: ['user_id']
-    });
-    if (targeted.length > 0) {
-      return targeted.map((u) => u.user_id);
-    }
-  }
-
   const all = await User.findAll({
-    where: baseWhere,
+    where: {
+      is_active: true,
+      status: 'active',
+      role: 'admin'
+    },
     attributes: ['user_id']
   });
   return all.map((u) => u.user_id);
@@ -142,7 +125,7 @@ const getApproverUserIds = async (filters = {}) => {
 
 /**
  * 查询所有"财务/报销审核人"的用户ID列表。
- * 系统暂未独立 finance 角色，先复用 admin / hr_admin。
+ * 当前阶段：财务角色复用 admin。
  *
  * @returns {Promise<string[]>}
  */
@@ -151,7 +134,7 @@ const getFinanceUserIds = async () => {
     where: {
       is_active: true,
       status: 'active',
-      role: { [Op.in]: ['admin', 'hr_admin'] }
+      role: 'admin'
     },
     attributes: ['user_id']
   });

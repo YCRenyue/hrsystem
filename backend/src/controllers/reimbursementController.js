@@ -25,7 +25,10 @@ const {
   ForbiddenError
 } = require('../middleware/errorHandler');
 
-const APPROVABLE_ROLES = ['admin', 'hr_admin'];
+// 当前阶段：仅 admin 可审核/发放/删除报销单（后续支持多级审批时再扩展）
+const APPROVABLE_ROLES = ['admin'];
+// 用于"可见所有员工记录"的角色集合（HR/部门经理保留查询能力，但不参与审批）
+const VIEW_ALL_ROLES = ['admin', 'hr_admin', 'department_manager'];
 
 const serializeReimbursement = (record) => {
   const obj = record.toJSON();
@@ -37,12 +40,11 @@ const serializeReimbursement = (record) => {
 };
 
 /**
- * 是否为该报销单的关联人员（员工本人或审批人）
+ * 是否可查看该报销单（员工本人；admin/hr_admin/department_manager 可查看全部）
  */
 const canAccessRecord = (user, record) => {
   if (!user) return false;
-  if (APPROVABLE_ROLES.includes(user.role)) return true;
-  if (user.role === 'department_manager') return true;
+  if (VIEW_ALL_ROLES.includes(user.role)) return true;
   return user.employee_id && user.employee_id === record.employee_id;
 };
 
@@ -137,8 +139,8 @@ const list = async (req, res) => {
   if (tripId) where.trip_id = tripId;
   if (employeeIdFilter) where.employee_id = employeeIdFilter;
 
-  // 普通员工只能看自己
-  if (!APPROVABLE_ROLES.includes(req.user.role) && req.user.role !== 'department_manager') {
+  // 普通员工只能看自己；admin/hr_admin/department_manager 可看全部
+  if (!VIEW_ALL_ROLES.includes(req.user.role)) {
     if (!req.user.employee_id) {
       return res.json({ success: true, data: [], pagination: { total: 0, page: 1, size: limit } });
     }
@@ -432,7 +434,7 @@ const cancel = async (req, res) => {
 
   // 通知对方
   try {
-    if (APPROVABLE_ROLES.includes(req.user.role)) {
+    if (VIEW_ALL_ROLES.includes(req.user.role)) {
       const recipientUserId = await findUserIdForEmployee(record.employee_id);
       if (recipientUserId) {
         await inAppNotification.send({

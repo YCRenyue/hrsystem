@@ -25,7 +25,10 @@ const {
   ForbiddenError
 } = require('../middleware/errorHandler');
 
-const APPROVABLE_ROLES = ['admin', 'hr_admin', 'department_manager'];
+// 当前阶段：仅 admin 可审批/删除（多级审批为后续阶段）
+const APPROVABLE_ROLES = ['admin'];
+// 可见所有员工出差记录的角色集合（HR/部门经理保留查询能力）
+const VIEW_ALL_ROLES = ['admin', 'hr_admin', 'department_manager'];
 
 /**
  * 找到员工对应的 user 账号（用于发通知给员工本人）
@@ -99,7 +102,7 @@ const notifyApplicantOnApproval = async (trip, decision, approverUserId, notes) 
  */
 const notifyOnCancel = async (trip, cancellerRole, cancellerUserId, employee) => {
   try {
-    if (APPROVABLE_ROLES.includes(cancellerRole)) {
+    if (VIEW_ALL_ROLES.includes(cancellerRole)) {
       const recipientUserId = await findUserIdForEmployee(trip.employee_id);
       if (recipientUserId) {
         await inAppNotification.send({
@@ -159,7 +162,7 @@ const serializeTrip = (record) => {
  */
 const canAccessTrip = (user, record) => {
   if (!user) return false;
-  if (APPROVABLE_ROLES.includes(user.role)) return true;
+  if (VIEW_ALL_ROLES.includes(user.role)) return true;
   return user.employee_id && record.employee_id === user.employee_id;
 };
 
@@ -190,8 +193,8 @@ const getBusinessTrips = async (req, res) => {
     if (endDate) where.start_datetime[Op.lte] = new Date(`${endDate}T23:59:59`);
   }
 
-  // 普通员工只能看自己
-  if (!APPROVABLE_ROLES.includes(req.user.role)) {
+  // 普通员工只能看自己；admin/hr_admin/department_manager 可查全部
+  if (!VIEW_ALL_ROLES.includes(req.user.role)) {
     if (!req.user.employee_id) {
       return res.json({ success: true, data: [], pagination: { total: 0, page: 1, size: limit } });
     }
@@ -322,10 +325,10 @@ const createBusinessTrip = async (req, res) => {
     submit = true
   } = req.body;
 
-  // 决定本次申请所属员工
-  const isApprover = APPROVABLE_ROLES.includes(req.user.role);
+  // 决定本次申请所属员工：管理者可代替指定，普通员工只能给自己提交
+  const isManager = VIEW_ALL_ROLES.includes(req.user.role);
   let employeeId = bodyEmployeeId;
-  if (!isApprover) {
+  if (!isManager) {
     if (!req.user.employee_id) {
       throw new ForbiddenError('账号未关联员工，无法提交出差申请');
     }
@@ -480,8 +483,8 @@ const submitBusinessTrip = async (req, res) => {
 const approveBusinessTrip = async (req, res) => {
   const { decision, notes } = req.body;
 
-  if (!APPROVABLE_ROLES.includes(req.user.role)) {
-    throw new ForbiddenError('无审批权限');
+  if (req.user.role !== 'admin') {
+    throw new ForbiddenError('无审批权限（当前阶段仅 admin 可审批）');
   }
   if (!['approved', 'rejected'].includes(decision)) {
     throw new ValidationError('decision 必须为 approved 或 rejected');

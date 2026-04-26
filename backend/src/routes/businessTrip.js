@@ -44,10 +44,10 @@ router.post(
   asyncHandler(businessTripController.submitBusinessTrip)
 );
 
-// 审批（仅管理者）
+// 审批（当前阶段：仅 admin；后续会扩展为多级审批 员工-经理-admin）
 router.post(
   '/:id/approve',
-  requireRole('admin', 'hr_admin', 'department_manager'),
+  requireRole('admin'),
   asyncHandler(businessTripController.approveBusinessTrip)
 );
 
@@ -69,10 +69,10 @@ router.get(
   asyncHandler(businessTripController.getWatermarkAudit)
 );
 
-// 删除（仅管理者，且仅 draft/cancelled/rejected）
+// 删除（仅 admin，且仅 draft/cancelled/rejected）
 router.delete(
   '/:id',
-  requireRole('admin', 'hr_admin', 'department_manager'),
+  requireRole('admin'),
   asyncHandler(businessTripController.deleteBusinessTrip)
 );
 

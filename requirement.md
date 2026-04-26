@@ -1983,11 +1983,30 @@ const NotificationService = {
 
 ##### 第二期遗留（待第三期）
 
-- [ ] 财务模块独立角色（finance）：当前复用 admin/hr_admin
+- [ ] 财务模块独立角色（finance）：当前复用 admin
 - [ ] 通知 WebSocket 实时推送（当前为 60s 轮询）
-- [ ] 报销单审批工作流：多级审核（直属上级 → 财务 → 总经理）
+- [ ] 多级审批工作流（员工 → 经理 → admin），目前所有审批统一为 admin 单级
 - [ ] 出差期间缺打卡的定时通知任务（scheduler）
 - [ ] 限额按职级/部门差异化配置
+
+##### 12.5 请假流程 + 站内通信（2026-04-26 增补）
+
+- [x] 员工自助请假申请（POST /api/leaves，无需管理者代提）
+- [x] 请假审批：
+  - 当前阶段：仅 admin 可审批/拒绝
+  - 多级审批（员工 → 经理 → admin）放在第三期
+- [x] 请假触发站内通知：
+  - 员工提交 → 通知所有 admin（链接含 status=pending&highlight=leaveId）
+  - admin 审批/拒绝 → 通知申请人（链接含 highlight=leaveId）
+- [x] LeaveList 改造：
+  - "申请请假"按钮对所有用户可见（含 Modal）
+  - 操作列的批准/拒绝按钮仅 admin 可见
+  - 支持 ?highlight=leaveId 高亮目标记录（黄色行）
+  - 支持 ?status=pending 自动筛选 + 时间窗扩展
+- [x] 全局审批权限收紧：出差、报销、请假 全部限制为 admin 单级审批
+  - 出差/报销中 hr_admin、department_manager 仍可查看全员记录，但不能审批/发放/删除
+  - InAppNotificationService.getApproverUserIds / getFinanceUserIds 仅返回 admin 用户
+- [x] 通知信箱增加 leave_* 类型标签
 
 #### 12.4 就餐管理模块 已完成
 
