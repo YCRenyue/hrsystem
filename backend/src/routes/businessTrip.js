@@ -57,6 +57,18 @@ router.post(
   asyncHandler(businessTripController.cancelBusinessTrip)
 );
 
+// 水印打卡上传记录（已通过 /api/upload/business-trip/:id/file 拿到 object_key 后调用）
+router.post(
+  '/:id/watermark',
+  asyncHandler(businessTripController.addWatermarkPhoto)
+);
+
+// 水印打卡审核（缺卡提示）
+router.get(
+  '/:id/watermark/audit',
+  asyncHandler(businessTripController.getWatermarkAudit)
+);
+
 // 删除（仅管理者，且仅 draft/cancelled/rejected）
 router.delete(
   '/:id',

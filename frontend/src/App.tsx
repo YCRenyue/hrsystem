@@ -31,6 +31,10 @@ import UserManagement from './pages/UserManagement/UserManagement';
 import DocumentConfirmationList from './pages/DocumentConfirmation/DocumentConfirmationList';
 import DocumentSigningPage from './pages/DocumentConfirmation/DocumentSigningPage';
 import MyDocumentConfirmations from './pages/DocumentConfirmation/MyDocumentConfirmations';
+import NotificationCenter from './pages/Notifications/NotificationCenter';
+import ReimbursementList from './pages/Reimbursement/ReimbursementList';
+import ReimbursementForm from './pages/Reimbursement/ReimbursementForm';
+import ReimbursementDetail from './pages/Reimbursement/ReimbursementDetail';
 import './App.css';
 
 function App() {
@@ -209,6 +213,15 @@ function App() {
                     path="document-confirmations/:employeeId/:documentType"
                     element={<DocumentSigningPage />}
                   />
+
+                  {/* In-app notification center - all authenticated users */}
+                  <Route path="notifications" element={<NotificationCenter />} />
+
+                  {/* Reimbursement (Phase 2) - all authenticated users (employee sees own) */}
+                  <Route path="reimbursements" element={<ReimbursementList />} />
+                  <Route path="reimbursements/new" element={<ReimbursementForm />} />
+                  <Route path="reimbursements/:id" element={<ReimbursementDetail />} />
+                  <Route path="reimbursements/:id/edit" element={<ReimbursementForm />} />
 
                   {/* User management - admin only */}
                   <Route

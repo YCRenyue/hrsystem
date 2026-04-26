@@ -1946,21 +1946,48 @@ const NotificationService = {
   - department_manager / hr_admin：查看全员、审批、代为创建/撤销
   - admin：全部权限
 
-##### 第二期待开发（出差管理）
+##### 第二期开发（进行中 - 2026-04-25）
 
-- [ ] 报销单模块（差旅报销）
-  - 关联出差单：必须有已批准的出差单才能报销
-  - 报销类型：交通费、住宿费、餐费、市内交通、其他
-  - 发票上传 + 限额校验、按天住宿/餐补上限
-  - 财务发放流转
+> 用户决定将"钉钉审批通知"替换为"网页右上角站内通知信箱"。
 
-- [ ] 水印打卡照片审核（出差期间留证）
-  - 上传时校验时间戳合规
-  - 缺打卡提醒
+- [x] 站内通知信箱（替代钉钉审批通知，2026-04-25）
+  - 数据表：notifications（接收人/发送人/类型/标题/内容/关联资源/已读状态）
+  - 通知类型：business_trip_submitted/approved/rejected/cancelled、reimbursement_submitted/approved/rejected/paid/cancelled、watermark_missing
+  - 服务：InAppNotificationService.send / sendToMany / list / unreadCount / markRead / markAllRead
+  - REST：/api/notifications, /api/notifications/unread-count, /api/notifications/:id/read, /api/notifications/read-all
+  - 前端：右上角 BellOutlined 徽章（每 60s 轮询未读数）+ Popover 最新 10 条 + 全部已读 + /notifications 整页通知中心
+  - 与出差审批联动：提交→通知所有审批人；审批结果→通知申请人；撤销→通知对方
 
-- [ ] 钉钉审批通知（与现有钉钉模块对接）
-  - 提交后推送给审批人
-  - 审批结果回执推送给申请人
+- [x] 报销单模块（差旅报销，2026-04-25）
+  - 数据表：reimbursements（含财务流转字段）+ reimbursement_items（明细）
+  - 关联出差单：仅 approved/in_progress/completed 出差单可报销，员工自动匹配
+  - 报销类型：长途交通(transport)、住宿(accommodation)、餐费(meal)、市内交通(local_transport)、其他(other)
+  - 限额：住宿 ¥500/天、餐费 ¥150/天（按天累计校验，前后端双重校验）
+  - 发票上传：图片或 PDF（OSS 存 reimbursement/{id}/...）
+  - 状态机：draft → pending → approved/rejected → paid，pending/approved 可撤销
+  - 财务发放：标记 paid 时录入凭证号；同步出差单 reimbursement_status
+  - 通知：提交→通知财务（admin/hr_admin）；审核结果→通知员工；发放→通知员工
+  - 前端：列表/创建/编辑/详情四页 + 路由 /reimbursements*
+  - 菜单："差旅报销"对所有角色可见
+
+- [x] 水印打卡照片审核（出差期间留证，2026-04-25）
+  - 上传接口：POST /api/business-trips/:id/watermark
+  - 校验：taken_at 必须落在出差时间区间内
+  - 数据存储：复用 BusinessTrip.attachments JSON 数组，category='watermark'
+  - 审核接口：GET /api/business-trips/:id/watermark/audit 返回 {expected, actual, missing, total_photos}
+  - 前端：BusinessTripDetail 页面增加 WatermarkPanel
+    - 上传照片 + 选择 taken_at（限定区间内）
+    - 每天打卡情况表格 + 缺打卡红色 Tag
+    - 已上传照片列表（按拍摄时间显示）
+    - 仅 approved/in_progress/completed 出差单可上传
+
+##### 第二期遗留（待第三期）
+
+- [ ] 财务模块独立角色（finance）：当前复用 admin/hr_admin
+- [ ] 通知 WebSocket 实时推送（当前为 60s 轮询）
+- [ ] 报销单审批工作流：多级审核（直属上级 → 财务 → 总经理）
+- [ ] 出差期间缺打卡的定时通知任务（scheduler）
+- [ ] 限额按职级/部门差异化配置
 
 #### 12.4 就餐管理模块 已完成
 

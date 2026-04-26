@@ -32,6 +32,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import WatermarkPanel from './WatermarkPanel';
 
 const { TextArea } = Input;
 
@@ -40,6 +41,8 @@ interface Attachment {
   name: string;
   type: string;
   uploaded_at: string;
+  category?: string;
+  taken_at?: string;
 }
 
 interface TripDetail {
@@ -273,11 +276,23 @@ const BusinessTripDetail: React.FC = () => {
           </Col>
         </Row>
 
+        {['approved', 'in_progress', 'completed'].includes(trip.status) && (
+          <>
+            <Divider orientation="left">水印打卡审核</Divider>
+            <WatermarkPanel
+              tripId={trip.trip_id}
+              tripStart={trip.start_datetime}
+              tripEnd={trip.end_datetime}
+              canUpload={isOwner || isApprover}
+            />
+          </>
+        )}
+
         <Divider orientation="left">附件</Divider>
         <List
           size="small"
           locale={{ emptyText: '暂无附件' }}
-          dataSource={trip.attachments}
+          dataSource={trip.attachments.filter((a) => a.category !== 'watermark')}
           renderItem={(item) => (
             <List.Item
               actions={[

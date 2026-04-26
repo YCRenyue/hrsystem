@@ -18,6 +18,7 @@ const {
   User
 } = require('../models');
 const businessTripService = require('../services/BusinessTripService');
+const inAppNotification = require('../services/InAppNotificationService');
 const {
   ValidationError,
   NotFoundError,
@@ -25,6 +26,115 @@ const {
 } = require('../middleware/errorHandler');
 
 const APPROVABLE_ROLES = ['admin', 'hr_admin', 'department_manager'];
+
+/**
+ * 找到员工对应的 user 账号（用于发通知给员工本人）
+ */
+const findUserIdForEmployee = async (employeeId) => {
+  if (!employeeId) return null;
+  const u = await User.findOne({
+    where: { employee_id: employeeId },
+    attributes: ['user_id']
+  });
+  return u ? u.user_id : null;
+};
+
+/**
+ * 通知所有审批人：有新出差申请待审批
+ */
+const notifyApproversOnSubmit = async (trip, employee, submitterUserId) => {
+  try {
+    const approverIds = await inAppNotification.getApproverUserIds({
+      departmentId: employee?.department_id
+    });
+    const employeeName = (employee && typeof employee.getName === 'function')
+      ? employee.getName()
+      : '员工';
+    await inAppNotification.sendToMany(approverIds, {
+      senderUserId: submitterUserId,
+      type: inAppNotification.NotificationTypes.BUSINESS_TRIP_SUBMITTED,
+      title: '新出差申请待审批',
+      content: `${employeeName} 提交了出差申请 ${trip.trip_number}\n目的地：${trip.destination}\n时间：${trip.start_datetime.toISOString().slice(0, 16).replace('T', ' ')} 至 ${trip.end_datetime.toISOString().slice(0, 16).replace('T', ' ')}`,
+      relatedResource: 'business_trip',
+      relatedId: trip.trip_id,
+      linkUrl: `/business-trips/${trip.trip_id}`
+    });
+  } catch (e) {
+    // 通知失败不阻断业务流程
+    // eslint-disable-next-line no-console
+    console.error('[notifyApproversOnSubmit] failed:', e.message);
+  }
+};
+
+/**
+ * 通知申请人：审批结果
+ */
+const notifyApplicantOnApproval = async (trip, decision, approverUserId, notes) => {
+  try {
+    const recipientUserId = await findUserIdForEmployee(trip.employee_id);
+    if (!recipientUserId) return;
+    const isApproved = decision === 'approved';
+    await inAppNotification.send({
+      recipientUserId,
+      senderUserId: approverUserId,
+      type: isApproved
+        ? inAppNotification.NotificationTypes.BUSINESS_TRIP_APPROVED
+        : inAppNotification.NotificationTypes.BUSINESS_TRIP_REJECTED,
+      title: isApproved ? '出差申请已批准' : '出差申请被拒绝',
+      content: `出差单 ${trip.trip_number} ${isApproved ? '已批准，请按计划出行；考勤已自动同步为出差状态。' : '被拒绝。'}${notes ? `\n审批意见：${notes}` : ''}`,
+      relatedResource: 'business_trip',
+      relatedId: trip.trip_id,
+      linkUrl: `/business-trips/${trip.trip_id}`
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[notifyApplicantOnApproval] failed:', e.message);
+  }
+};
+
+/**
+ * 通知相关方：申请被撤销
+ *  - 申请人撤销 → 通知审批人/原审批人
+ *  - 管理者撤销 → 通知申请人
+ */
+const notifyOnCancel = async (trip, cancellerRole, cancellerUserId, employee) => {
+  try {
+    if (APPROVABLE_ROLES.includes(cancellerRole)) {
+      const recipientUserId = await findUserIdForEmployee(trip.employee_id);
+      if (recipientUserId) {
+        await inAppNotification.send({
+          recipientUserId,
+          senderUserId: cancellerUserId,
+          type: inAppNotification.NotificationTypes.BUSINESS_TRIP_CANCELLED,
+          title: '出差申请已被撤销',
+          content: `出差单 ${trip.trip_number} 已被管理员撤销。${trip.cancellation_reason ? `原因：${trip.cancellation_reason}` : ''}`,
+          relatedResource: 'business_trip',
+          relatedId: trip.trip_id,
+          linkUrl: `/business-trips/${trip.trip_id}`
+        });
+      }
+    } else {
+      const approverIds = await inAppNotification.getApproverUserIds({
+        departmentId: employee?.department_id
+      });
+      const employeeName = (employee && typeof employee.getName === 'function')
+        ? employee.getName()
+        : '员工';
+      await inAppNotification.sendToMany(approverIds, {
+        senderUserId: cancellerUserId,
+        type: inAppNotification.NotificationTypes.BUSINESS_TRIP_CANCELLED,
+        title: '员工撤销出差申请',
+        content: `${employeeName} 撤销了出差单 ${trip.trip_number}${trip.cancellation_reason ? `，原因：${trip.cancellation_reason}` : ''}`,
+        relatedResource: 'business_trip',
+        relatedId: trip.trip_id,
+        linkUrl: `/business-trips/${trip.trip_id}`
+      });
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[notifyOnCancel] failed:', e.message);
+  }
+};
 
 /**
  * 序列化出差记录，解密员工姓名、解析附件
@@ -260,6 +370,10 @@ const createBusinessTrip = async (req, res) => {
     submitted_at: submit ? new Date() : null
   });
 
+  if (submit) {
+    await notifyApproversOnSubmit(trip, employee, req.user.user_id);
+  }
+
   return res.status(201).json({ success: true, data: serializeTrip(trip) });
 };
 
@@ -353,6 +467,9 @@ const submitBusinessTrip = async (req, res) => {
   trip.approval_notes = null;
   await trip.save();
 
+  const employee = await Employee.findByPk(trip.employee_id);
+  await notifyApproversOnSubmit(trip, employee, req.user.user_id);
+
   return res.json({ success: true, data: serializeTrip(trip) });
 };
 
@@ -389,6 +506,8 @@ const approveBusinessTrip = async (req, res) => {
     }
   });
 
+  await notifyApplicantOnApproval(trip, decision, req.user.user_id, notes);
+
   const refreshed = await BusinessTrip.findByPk(trip.trip_id, {
     include: [
       { model: Employee, as: 'employee', attributes: ['employee_id', 'employee_number', 'name_encrypted'] },
@@ -424,6 +543,9 @@ const cancelBusinessTrip = async (req, res) => {
     trip.cancellation_reason = reason || null;
     await trip.save({ transaction: t });
   });
+
+  const employee = await Employee.findByPk(trip.employee_id);
+  await notifyOnCancel(trip, req.user.role, req.user.user_id, employee);
 
   return res.json({ success: true, data: serializeTrip(trip) });
 };
@@ -499,6 +621,68 @@ const getWorkHoursStats = async (req, res) => {
   });
 };
 
+/**
+ * POST /api/business-trips/:id/watermark
+ *  Body: { object_key, name?, type?, taken_at }
+ *  添加一张水印打卡照片，校验拍摄时间在出差期间内
+ */
+const addWatermarkPhoto = async (req, res) => {
+  const trip = await BusinessTrip.findByPk(req.params.id);
+  if (!trip) throw new NotFoundError('出差申请', req.params.id);
+  if (!canAccessTrip(req.user, trip)) throw new ForbiddenError('无权操作该出差申请');
+
+  if (!['approved', 'in_progress', 'completed'].includes(trip.status)) {
+    throw new ValidationError(`仅已批准/进行中的出差可上传水印打卡，当前状态：${trip.status}`);
+  }
+
+  const {
+    object_key: objectKey,
+    name,
+    type,
+    taken_at: takenAt,
+    uploaded_at: uploadedAt
+  } = req.body;
+
+  const list = await businessTripService.addWatermarkPhoto(trip, {
+    object_key: objectKey,
+    name,
+    type,
+    taken_at: takenAt,
+    uploaded_at: uploadedAt
+  });
+
+  return res.json({
+    success: true,
+    data: {
+      attachments: list,
+      audit: businessTripService.auditWatermarkPhotos(trip)
+    }
+  });
+};
+
+/**
+ * GET /api/business-trips/:id/watermark/audit
+ *  返回出差期间每天的水印打卡情况
+ */
+const getWatermarkAudit = async (req, res) => {
+  const trip = await BusinessTrip.findByPk(req.params.id);
+  if (!trip) throw new NotFoundError('出差申请', req.params.id);
+  if (!canAccessTrip(req.user, trip)) throw new ForbiddenError('无权查看该出差申请');
+
+  const audit = businessTripService.auditWatermarkPhotos(trip);
+  const watermarks = businessTripService
+    .parseAttachments(trip)
+    .filter((a) => a.category === 'watermark');
+
+  return res.json({
+    success: true,
+    data: {
+      ...audit,
+      photos: watermarks
+    }
+  });
+};
+
 module.exports = {
   getBusinessTrips,
   getBusinessTripById,
@@ -509,5 +693,7 @@ module.exports = {
   approveBusinessTrip,
   cancelBusinessTrip,
   deleteBusinessTrip,
-  getWorkHoursStats
+  getWorkHoursStats,
+  addWatermarkPhoto,
+  getWatermarkAudit
 };

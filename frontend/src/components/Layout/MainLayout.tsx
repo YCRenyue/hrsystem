@@ -18,10 +18,12 @@ import {
   CoffeeOutlined,
   UsergroupAddOutlined,
   FileProtectOutlined,
+  WalletOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { userService, UserPreferences } from '../../services/userService';
+import NotificationBell from './NotificationBell';
 import type { MenuProps } from 'antd';
 
 const { Header, Sider, Content } = Layout;
@@ -161,6 +163,12 @@ const MainLayout: React.FC = () => {
       onClick: () => navigate('/business-trips'),
     },
     {
+      key: '/reimbursements',
+      icon: <WalletOutlined />,
+      label: '差旅报销',
+      onClick: () => navigate('/reimbursements'),
+    },
+    {
       key: '/document-confirmations',
       icon: <FileProtectOutlined />,
       label: '制度确认',
@@ -231,13 +239,22 @@ const MainLayout: React.FC = () => {
             {location.pathname === '/users' && '用户管理'}
             {location.pathname === '/profile' && '个人资料'}
             {location.pathname === '/settings' && '用户设置'}
+            {location.pathname === '/notifications' && '通知中心'}
+            {location.pathname === '/reimbursements' && '差旅报销'}
+            {location.pathname === '/reimbursements/new' && '新建报销单'}
+            {location.pathname.match(/^\/reimbursements\/[^/]+\/edit$/) && '编辑报销单'}
+            {location.pathname.match(/^\/reimbursements\/[^/]+$/)
+              && location.pathname !== '/reimbursements/new' && '报销单详情'}
           </div>
-          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-            <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-              <Avatar icon={<UserOutlined />} style={{ marginRight: 8 }} />
-              <span>{user?.username || '用户'}</span>
-            </div>
-          </Dropdown>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <NotificationBell />
+            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+              <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <Avatar icon={<UserOutlined />} style={{ marginRight: 8 }} />
+                <span>{user?.username || '用户'}</span>
+              </div>
+            </Dropdown>
+          </div>
         </Header>
         <Content
           style={{

@@ -11,6 +11,9 @@ const SocialSecurity = require('./SocialSecurity');
 const BusinessTrip = require('./BusinessTrip');
 const CanteenMeal = require('./CanteenMeal');
 const TrainingPledge = require('./TrainingPledge');
+const Notification = require('./Notification');
+const Reimbursement = require('./Reimbursement');
+const ReimbursementItem = require('./ReimbursementItem');
 
 /**
  * Model Associations
@@ -185,6 +188,58 @@ Employee.hasOne(TrainingPledge, {
   as: 'trainingPledge'
 });
 
+// Notification associations
+Notification.belongsTo(User, {
+  foreignKey: 'recipient_user_id',
+  as: 'recipient'
+});
+
+Notification.belongsTo(User, {
+  foreignKey: 'sender_user_id',
+  as: 'sender'
+});
+
+User.hasMany(Notification, {
+  foreignKey: 'recipient_user_id',
+  as: 'notifications'
+});
+
+// Reimbursement associations
+Reimbursement.belongsTo(Employee, {
+  foreignKey: 'employee_id',
+  as: 'employee'
+});
+
+Reimbursement.belongsTo(BusinessTrip, {
+  foreignKey: 'trip_id',
+  as: 'trip'
+});
+
+Reimbursement.belongsTo(User, { foreignKey: 'submitted_by', as: 'submitter' });
+Reimbursement.belongsTo(User, { foreignKey: 'approver_id', as: 'approver' });
+Reimbursement.belongsTo(User, { foreignKey: 'paid_by', as: 'payer' });
+Reimbursement.belongsTo(User, { foreignKey: 'cancelled_by', as: 'canceller' });
+
+Reimbursement.hasMany(ReimbursementItem, {
+  foreignKey: 'reimbursement_id',
+  as: 'items'
+});
+
+ReimbursementItem.belongsTo(Reimbursement, {
+  foreignKey: 'reimbursement_id',
+  as: 'reimbursement'
+});
+
+Employee.hasMany(Reimbursement, {
+  foreignKey: 'employee_id',
+  as: 'reimbursements'
+});
+
+BusinessTrip.hasMany(Reimbursement, {
+  foreignKey: 'trip_id',
+  as: 'reimbursements'
+});
+
 /**
  * Sync models with database
  * @param {boolean} force - If true, drops existing tables before creating new ones
@@ -218,7 +273,10 @@ const initModels = () => ({
   SocialSecurity,
   BusinessTrip,
   CanteenMeal,
-  TrainingPledge
+  TrainingPledge,
+  Notification,
+  Reimbursement,
+  ReimbursementItem
 });
 
 module.exports = {
@@ -235,6 +293,9 @@ module.exports = {
   BusinessTrip,
   CanteenMeal,
   TrainingPledge,
+  Notification,
+  Reimbursement,
+  ReimbursementItem,
   syncModels,
   initModels
 };

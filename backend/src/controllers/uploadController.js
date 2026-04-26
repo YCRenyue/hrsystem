@@ -320,6 +320,55 @@ const uploadBusinessTripAttachment = async (req, res) => {
 };
 
 /**
+ * Upload reimbursement invoice (PDF / image)
+ * POST /api/upload/reimbursement/:reimbursementId/invoice
+ *  Note: 即使 reimbursementId 为 'draft'（创建前），也允许先上传得到 OSS key 再随明细一起提交
+ */
+const uploadReimbursementInvoice = async (req, res) => {
+  const { reimbursementId } = req.params;
+  if (!req.file) throw new ValidationError('未选择文件');
+  if (!ossService.isConfigured()) throw new ValidationError('文件上传服务未配置');
+
+  const path = require('path');
+  const crypto = require('crypto');
+  const { ossService: oss } = require('../services/OSSService');
+  if (!oss.client) throw new ValidationError('文件上传服务未初始化');
+
+  const validation = oss.validateFile(req.file);
+  if (!validation.valid) throw new ValidationError(validation.error);
+
+  const ext = path.extname(req.file.originalname).toLowerCase() || '.jpg';
+  const hash = crypto.randomBytes(4).toString('hex');
+  const objectKey = `reimbursement/${reimbursementId}/${Date.now()}_${hash}${ext}`;
+
+  await oss.client.put(objectKey, req.file.buffer, {
+    headers: {
+      'Content-Type': req.file.mimetype,
+      'x-oss-storage-class': 'Standard'
+    }
+  });
+
+  const signed = await oss.getSignedUrl(objectKey);
+
+  logger.info('Reimbursement invoice uploaded', {
+    reimbursementId,
+    objectKey,
+    size: req.file.size
+  });
+
+  return res.json({
+    success: true,
+    data: {
+      object_key: objectKey,
+      name: req.file.originalname,
+      type: req.file.mimetype,
+      uploaded_at: new Date().toISOString(),
+      url: signed.success ? signed.url : null
+    }
+  });
+};
+
+/**
  * Get signed URL for an arbitrary OSS object key (used by attachment preview)
  * GET /api/upload/signed-url?key=...
  */
@@ -342,5 +391,6 @@ module.exports = {
   getEmployeeFileUrls,
   deleteEmployeeFile,
   uploadBusinessTripAttachment,
+  uploadReimbursementInvoice,
   getSignedUrlForKey
 };

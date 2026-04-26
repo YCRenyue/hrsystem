@@ -344,6 +344,101 @@ const isWithinActiveBusinessTrip = async (employeeId, startInput, endInput) => {
  */
 const runInTransaction = async (fn) => sequelize.transaction(fn);
 
+/**
+ * 解析出差申请的附件 JSON
+ * @param {BusinessTrip} trip
+ * @returns {Array<{object_key:string,name:string,type:string,uploaded_at:string,category?:string,taken_at?:string}>}
+ */
+const parseAttachments = (trip) => {
+  if (!trip.attachments) return [];
+  try {
+    return JSON.parse(trip.attachments);
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * 添加水印打卡照片
+ *  - 校验 taken_at 落在出差时间区间内
+ *  - 写回 attachments JSON，标记 category='watermark'
+ * @param {BusinessTrip} trip
+ * @param {{object_key:string,name:string,type:string,taken_at:string|Date,uploaded_at?:string}} photo
+ * @returns {Promise<Array>} 更新后的 attachments
+ */
+const addWatermarkPhoto = async (trip, photo) => {
+  if (!photo || !photo.object_key) {
+    throw new ValidationError('缺少 object_key');
+  }
+  if (!photo.taken_at) {
+    throw new ValidationError('请提供照片拍摄时间 taken_at');
+  }
+  const takenAt = toDate(photo.taken_at);
+  if (Number.isNaN(takenAt.getTime())) {
+    throw new ValidationError('taken_at 格式不合法');
+  }
+
+  const start = toDate(trip.start_datetime);
+  const end = toDate(trip.end_datetime);
+  if (takenAt.getTime() < start.getTime() || takenAt.getTime() > end.getTime()) {
+    throw new ValidationError(`照片拍摄时间 ${takenAt.toISOString()} 不在出差期间 ${start.toISOString()} ~ ${end.toISOString()}`);
+  }
+
+  const list = parseAttachments(trip);
+  list.push({
+    object_key: photo.object_key,
+    name: photo.name || '水印打卡',
+    type: photo.type || 'image/jpeg',
+    uploaded_at: photo.uploaded_at || new Date().toISOString(),
+    taken_at: takenAt.toISOString(),
+    category: 'watermark'
+  });
+
+  trip.attachments = JSON.stringify(list);
+  await trip.save();
+  return list;
+};
+
+/**
+ * 水印打卡审核：返回出差期间每天是否有水印照片
+ *  - expected：start_datetime 至 end_datetime 之间的每个自然日
+ *  - actual：每天的水印照片数量
+ *  - missing：缺少水印照片的日期
+ * @param {BusinessTrip} trip
+ * @returns {{expected:string[], actual:Record<string,number>, missing:string[], total_photos:number}}
+ */
+const auditWatermarkPhotos = (trip) => {
+  const start = toDate(trip.start_datetime);
+  const end = toDate(trip.end_datetime);
+
+  const expected = [];
+  let cursor = startOfDay(start);
+  const lastDay = startOfDay(end);
+  let safety = 0;
+  while (cursor.getTime() <= lastDay.getTime() && safety < 366) {
+    expected.push(formatDate(cursor));
+    cursor = addDays(cursor, 1);
+    safety += 1;
+  }
+
+  const actual = {};
+  const watermarks = parseAttachments(trip).filter((a) => a.category === 'watermark');
+  for (const photo of watermarks) {
+    if (!photo.taken_at) continue;
+    const date = formatDate(toDate(photo.taken_at));
+    actual[date] = (actual[date] || 0) + 1;
+  }
+
+  const missing = expected.filter((d) => !actual[d]);
+
+  return {
+    expected,
+    actual,
+    missing,
+    total_photos: watermarks.length
+  };
+};
+
 module.exports = {
   STANDARD_WORK_HOURS_PER_DAY,
   MS_PER_DAY,
@@ -354,5 +449,8 @@ module.exports = {
   syncAttendanceOnApproval,
   rollbackAttendanceOnCancel,
   isWithinActiveBusinessTrip,
-  runInTransaction
+  runInTransaction,
+  parseAttachments,
+  addWatermarkPhoto,
+  auditWatermarkPhotos
 };
