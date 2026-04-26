@@ -446,6 +446,26 @@ jobs:
                 ${BACKEND_IMAGE} \
                 node src/db/migrate.js
 
+              echo "Seeding admin user..."
+              docker run --rm \
+                --network ${{ env.DOCKER_NETWORK }} \
+                -e NODE_ENV=production \
+                -e DB_HOST="\${DB_HOST}" \
+                -e DB_PORT="${{ vars.DB_PORT }}" \
+                -e DB_NAME="${{ vars.DB_NAME }}" \
+                -e DB_USER="${{ vars.DB_USER }}" \
+                -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+                -e DB_TIMEZONE="${{ vars.DB_TIMEZONE }}" \
+                -e ENCRYPTION_KEY="${{ secrets.ENCRYPTION_KEY }}" \
+                -e SEED_ADMIN_USERNAME="${{ vars.SEED_ADMIN_USERNAME }}" \
+                -e SEED_ADMIN_PASSWORD="${{ secrets.SEED_ADMIN_PASSWORD }}" \
+                -e SEED_ADMIN_EMAIL="${{ vars.SEED_ADMIN_EMAIL }}" \
+                -e SEED_ADMIN_PHONE="${{ vars.SEED_ADMIN_PHONE }}" \
+                -e SEED_ADMIN_DISPLAY_NAME="${{ vars.SEED_ADMIN_DISPLAY_NAME }}" \
+                -e SEED_ADMIN_RESET_PASSWORD="${{ vars.SEED_ADMIN_RESET_PASSWORD }}" \
+                ${BACKEND_IMAGE} \
+                node src/db/seed.js
+
               docker stop hrsystem-backend 2>/dev/null || true
               docker rm hrsystem-backend 2>/dev/null || true
 
