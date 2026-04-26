@@ -230,16 +230,20 @@ const create = async (req, res) => {
     throw new ValidationError('至少录入一条费用明细');
   }
 
-  // 决定报销人：员工本人；管理者可代替
-  const isApprover = APPROVABLE_ROLES.includes(req.user.role);
+  // 决定报销人：
+  //  - 普通员工只能给自己提交
+  //  - 管理者（VIEW_ALL_ROLES）可代为提交，未指定 employee_id 时默认取出差单所属员工
+  const canActOnBehalf = VIEW_ALL_ROLES.includes(req.user.role);
   let employeeId = bodyEmployeeId;
-  if (!isApprover) {
+  if (!canActOnBehalf) {
     if (!req.user.employee_id) {
       throw new ForbiddenError('账号未关联员工，无法提交报销');
     }
     employeeId = req.user.employee_id;
   } else if (!employeeId) {
-    throw new ValidationError('请指定报销员工');
+    const tripForEmp = await BusinessTrip.findByPk(tripId);
+    if (!tripForEmp) throw new ValidationError('关联的出差单不存在');
+    employeeId = tripForEmp.employee_id;
   }
 
   const trip = await reimbursementService.ensureTripReimbursable(tripId, employeeId);

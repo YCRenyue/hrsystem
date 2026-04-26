@@ -49,6 +49,7 @@ interface TripOption {
   start_datetime: string;
   end_datetime: string;
   status: string;
+  employee?: { employee_id: string; employee_number: string; name: string };
 }
 
 const blankItem = (): FormItem => ({
@@ -126,6 +127,7 @@ const ReimbursementForm: React.FC = () => {
           start_datetime: detail.trip.start_datetime,
           end_datetime: detail.trip.end_datetime,
           status: detail.trip.status || '',
+          employee: detail.employee,
         });
       }
     } catch (e: any) {
@@ -396,11 +398,18 @@ const ReimbursementForm: React.FC = () => {
           <Select
             placeholder="选择已批准的出差单"
             disabled={isEdit}
+            showSearch
+            optionFilterProp="label"
             onChange={handleTripChange}
-            options={trips.map((t) => ({
-              value: t.trip_id,
-              label: `${t.trip_number} ${t.destination} (${dayjs(t.start_datetime).format('MM-DD')} ~ ${dayjs(t.end_datetime).format('MM-DD')})`,
-            }))}
+            options={trips.map((t) => {
+              const empLabel = t.employee
+                ? `${t.employee.employee_number} ${t.employee.name || ''}`
+                : '';
+              return {
+                value: t.trip_id,
+                label: `${t.trip_number} · ${empLabel} · ${t.destination} (${dayjs(t.start_datetime).format('MM-DD')} ~ ${dayjs(t.end_datetime).format('MM-DD')})`,
+              };
+            })}
           />
         </Form.Item>
 
@@ -409,7 +418,16 @@ const ReimbursementForm: React.FC = () => {
             type="info"
             showIcon
             style={{ marginBottom: 16 }}
-            message={`出差期间：${dayjs(selectedTrip.start_datetime).format('YYYY-MM-DD HH:mm')} ~ ${dayjs(selectedTrip.end_datetime).format('YYYY-MM-DD HH:mm')}`}
+            message={(
+              <span>
+                {selectedTrip.employee && (
+                  <>报销人：{selectedTrip.employee.employee_number} {selectedTrip.employee.name}<br /></>
+                )}
+                出差期间：{dayjs(selectedTrip.start_datetime).format('YYYY-MM-DD HH:mm')}
+                {' ~ '}
+                {dayjs(selectedTrip.end_datetime).format('YYYY-MM-DD HH:mm')}
+              </span>
+            )}
             description={
               limits
                 ? `限额：住宿 ¥${limits.daily_limits.accommodation}/天，餐费 ¥${limits.daily_limits.meal}/天`
