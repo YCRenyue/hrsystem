@@ -136,93 +136,156 @@
 ### 安装部署
 
 ```bash
-# 克隆项目
+# 1. 克隆项目
 git clone https://github.com/ZixunHuangUPenn/hrsystem.git
 cd hrsystem
 
-# 安装依赖
-npm install
+# 2. 安装全部依赖（根目录、backend、frontend）
+npm run install:all
 
-# 配置环境变量
+# 3. 配置环境变量
 cp .env.example .env
-# 编辑 .env 文件，配置数据库和钉钉API信息
+# 编辑 .env，配置数据库连接、JWT_SECRET、ENCRYPTION_KEY、钉钉 API 等
 
-# 初始化数据库
-npm run db:migrate
+# 4. 初始化数据库（必须依次执行）
+npm run db:migrate    # 创建表结构
+npm run db:seed       # 注入初始化种子数据（默认部门、admin 账号、测试数据等）
+```
 
-# 启动开发服务
+#### 启动开发服务
+
+```bash
+# 方式一：根目录一键并行启动前后端
 npm run dev
+
+# 方式二：分别在两个终端启动
+# 终端 1：启动后端 (http://localhost:3001)
+cd backend
+npm run dev          # 开发模式（nodemon 热重载）
+# 或 npm start       # 生产模式
+
+# 终端 2：启动前端 (http://localhost:3000)
+cd frontend
+npm start            # 开发模式（CRA 开发服务器）
+```
+
+#### 生产环境构建
+
+```bash
+# 构建前端静态资源
+cd frontend && npm run build
+
+# 启动后端
+cd backend && npm start
 ```
 
 ### Docker 部署
 
 ```bash
-# 构建镜像
-docker build -t hrsystem .
+# 构建镜像并启动所有服务（前端 / 后端 / MySQL / Redis / Nginx）
+npm run docker:build
+npm run docker:up
 
-# 使用 Docker Compose 启动
-docker-compose up -d
+# 首次启动后仍需进入后端容器执行迁移和种子
+docker exec -it hrsystem-backend npm run db:migrate
+docker exec -it hrsystem-backend npm run db:seed
+
+# 查看日志 / 关闭服务
+npm run docker:logs
+npm run docker:down
 ```
 
 ## 📖 开发文档
 
 - [📋 需求分析文档](./analysis.md)
-- [📝 详细开发需求](./requirement.md)
-- [🏗️ 架构设计文档](./docs/architecture.md)
-- [🔌 API接口文档](./docs/api.md)
-- [🎨 前端开发指南](./docs/frontend.md)
-- [⚙️ 后端开发指南](./docs/backend.md)
-- [📊 数据库设计](./docs/database.md)
+- [📝 详细开发需求与进度](./requirement.md)
+- [🛠️ 开发指南与代码规范（CLAUDE.md）](./CLAUDE.md)
+- [📦 测试数据说明](./sample_data/import_template_guide.md)
 
 ## 🛣️ 开发路线图
 
-### 阶段一：基础环境搭建 (3天)
+> 整体完成度：**约 80%** ｜ 当前阶段：**阶段十三 - 数据整合 Dashboard 增强**
+> 详细进度请参阅 [requirement.md](./requirement.md)
+
+### 阶段一：基础环境搭建 ✅ 已完成
 
 - [X] 项目架构设计
 - [X] 需求文档完善
-- [ ] 前后端框架初始化
-- [ ] 数据库设计和建表
-- [ ] 钉钉开发环境配置
+- [X] 前后端框架初始化（React 19 + Express 5）
+- [X] 数据库设计与建表（Sequelize 迁移 + 种子数据）
+- [ ] 钉钉开发环境配置（暂缓，已在阶段四接入）
 
-### 阶段二：数据安全和权限系统 (3天)
+### 阶段二：数据安全和权限系统 🟡 进行中（约 80%）
 
-- [ ] AES-256数据加密系统
-- [ ] 三级权限验证中间件
-- [ ] 操作审计日志系统
+- [X] AES-256 数据加密与字段哈希搜索
+- [X] JWT 鉴权与基础角色验证中间件
+- [X] 用户管理 API（admin 调整权限 / 重置密码）
+- [ ] 数据范围（all/department/self）细粒度过滤
+- [X] 操作审计日志（基础完成，敏感操作拦截待补）
+- [X] 敏感数据中间件保留 Date 对象修复
 
-### 阶段三：钉钉集成基础功能 (3天)
+### 阶段三：钉钉集成与通知系统 🟡 进行中（约 70%）
 
-- [ ] 钉钉API封装
-- [ ] OAuth认证系统
-- [ ] 消息推送服务
+- [X] 钉钉 API 封装（access_token 缓存、用户查询）
+- [X] NotificationService 多渠道通知（钉钉 + 邮件 + 站内信）
+- [X] SchedulerService 定时任务（入职推送、合同到期、月度统计等 6 项）
+- [X] 站内通知中心（in-app notifications）
+- [ ] 钉钉 OAuth 登录与组织架构同步
 
-### 阶段四：员工信息管理 (4天)
+### 阶段四：员工信息管理 ✅ 已完成（约 90%）
 
-- [ ] Excel批量导入功能
-- [ ] 在线表单录入
-- [ ] 入职流程自动化
-- [ ] HR管理界面
+- [X] Excel 批量导入 / 导出（87 个测试通过，覆盖率 85%+）
+- [X] 在线表单录入与员工信息编辑
+- [X] HR 管理界面（员工列表、搜索筛选、分页）
+- [X] 部门管理（树形结构、CRUD）
+- [X] 用户账号自动创建（手动 / 批量导入均支持）
+- [ ] 入职流程自动化（30%，待完成自助完善表单）
 
-### 阶段五：智能问答系统 (5天)
+### 阶段五：制度确认模块 ✅ 已完成（2026-04-01）
 
-- [ ] 知识库构建
-- [ ] 语音识别集成
-- [ ] 智能回复引擎
-- [ ] 多模态交互界面
+- [X] 公司管理规章制度 9 页分页阅读 + 末页签署
+- [X] 员工培训承诺函（法律版本 + 变量自动填充）
+- [X] 甲乙双方信息员工可编辑
+- [X] training_pledges 表存储费用 / 服务年限
 
-### 阶段六：考勤和报表系统 (4天)
+### 阶段六：考勤与请假 ✅ 已完成
 
-- [ ] 考勤数据管理
-- [ ] 假期管理系统
-- [ ] 多维度报表生成
-- [ ] 数据可视化
+- [X] 考勤打卡 CRUD 与统计 API
+- [X] 考勤卡表 Excel 导入（识别 1.3.4 / 5.6.7 等多 Sheet）
+- [X] 考勤报表页（迟到 / 早退 / 请假 / 加班 TOP 榜）
+- [X] 员工自助请假申请 + admin 审批 + 站内通知
 
-### 阶段七：测试和部署 (3天)
+### 阶段七：业务数据模块 ✅ 已完成（2025-12-05）
 
-- [ ] 单元测试和集成测试
-- [ ] 性能优化
-- [ ] 云端部署配置
-- [ ] 监控和日志系统
+- [X] 年假管理（应休 / 已休 / 剩余自动计算）
+- [X] 社保公积金管理
+- [X] 出差补助管理（支持员工姓名搜索）
+- [X] 报销管理（admin/manager 代办时自动绑定员工）
+- [X] 食堂报表（每日 / 每周中晚餐人数 + 个人汇总）
+- [X] 各模块 Excel 导入导出 + 模板下载
+
+### 阶段八：智能问答系统 ⏳ 待开始
+
+- [ ] 知识库建设（考勤 / 社保 / 假期 / 薪酬等）
+- [ ] 关键词匹配问答引擎（一期）
+- [ ] LLM API 接入（二期）
+- [ ] 前端悬浮聊天窗口
+- [ ] 钉钉机器人群聊问答
+
+### 阶段九：Dashboard 数据整合 🟡 进行中
+
+- [X] 基础统计卡片（员工总数、考勤率、请假等）
+- [X] 入职趋势图表
+- [ ] 部门分布、考勤异常、假期使用等可视化图表
+- [ ] 待审批 / 提醒事项面板
+- [ ] 个性化布局与移动端适配
+
+### 阶段十：测试与部署 🟡 进行中
+
+- [X] 后端单元测试（87 个用例，覆盖率 85%+）
+- [ ] 前端单元测试（覆盖率 0%，待补充）
+- [ ] 端到端集成测试
+- [ ] 云端部署与监控告警
 
 ## 📊 性能指标
 
