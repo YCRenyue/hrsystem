@@ -1,112 +1,75 @@
 /**
  * Business Trip Routes
+ *
+ * 出差申请的 REST 端点。第一期范围：申请、审批、撤销、查询、工时统计。
+ * 附件上传走通用 /api/upload 端点（OSS），表单仅保存 OSS object key 列表。
  */
+
 const express = require('express');
 
 const router = express.Router();
-const multer = require('multer');
 const businessTripController = require('../controllers/businessTripController');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 
-// Configure multer for file upload
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    const allowedMimes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel'
-    ];
-
-    if (allowedMimes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only Excel files are allowed'));
-    }
-  }
-});
-
-// All routes require authentication
 router.use(authenticateToken);
 
-/**
- * @route   GET /api/business-trip
- * @desc    Get business trip records
- * @access  Private (HR Admin, Department Manager, Admin)
- */
+// 列表 / 查询（员工只能看到自己的，由 controller 控制）
 router.get('/', asyncHandler(businessTripController.getBusinessTrips));
 
-/**
- * @route   GET /api/business-trip/template
- * @desc    Download Excel template
- * @access  Private (HR Admin, Department Manager, Admin)
- */
+// 冲突检查（提交前预校验）
 router.get(
-  '/template',
-  requireRole('admin', 'hr_admin', 'department_manager'),
-  asyncHandler(businessTripController.downloadTemplate)
+  '/conflicts/check',
+  asyncHandler(businessTripController.checkConflicts)
 );
 
-/**
- * @route   GET /api/business-trip/export
- * @desc    Export to Excel
- * @access  Private (HR Admin, Department Manager, Admin)
- */
+// 工时统计
 router.get(
-  '/export',
-  requireRole('admin', 'hr_admin', 'department_manager'),
-  asyncHandler(businessTripController.exportToExcel)
+  '/stats/work-hours',
+  asyncHandler(businessTripController.getWorkHoursStats)
 );
 
-/**
- * @route   POST /api/business-trip/import
- * @desc    Import from Excel
- * @access  Private (HR Admin, Admin)
- */
-router.post(
-  '/import',
-  requireRole('admin', 'hr_admin'),
-  upload.single('file'),
-  asyncHandler(businessTripController.importFromExcel)
-);
-
-/**
- * @route   GET /api/business-trip/:id
- * @desc    Get single business trip record
- * @access  Private
- */
+// 单条详情
 router.get('/:id', asyncHandler(businessTripController.getBusinessTripById));
 
-/**
- * @route   POST /api/business-trip
- * @desc    Create business trip record
- * @access  Private (HR Admin, Admin)
- */
+// 创建：员工本人或管理者可代为创建
+router.post('/', asyncHandler(businessTripController.createBusinessTrip));
+
+// 编辑：仅 draft/pending/rejected 状态可改
+router.put('/:id', asyncHandler(businessTripController.updateBusinessTrip));
+
+// 提交（draft/rejected → pending）
 router.post(
-  '/',
-  requireRole('admin', 'hr_admin'),
-  asyncHandler(businessTripController.createBusinessTrip)
+  '/:id/submit',
+  asyncHandler(businessTripController.submitBusinessTrip)
 );
 
-/**
- * @route   PUT /api/business-trip/:id
- * @desc    Update business trip record
- * @access  Private (HR Admin, Admin)
- */
-router.put(
-  '/:id',
-  requireRole('admin', 'hr_admin'),
-  asyncHandler(businessTripController.updateBusinessTrip)
+// 审批（当前阶段：仅 admin；后续会扩展为多级审批 员工-经理-admin）
+router.post(
+  '/:id/approve',
+  requireRole('admin'),
+  asyncHandler(businessTripController.approveBusinessTrip)
 );
 
-/**
- * @route   DELETE /api/business-trip/:id
- * @desc    Delete business trip record
- * @access  Private (Admin only)
- */
+// 撤销（员工本人或管理者）
+router.post(
+  '/:id/cancel',
+  asyncHandler(businessTripController.cancelBusinessTrip)
+);
+
+// 水印打卡上传记录（已通过 /api/upload/business-trip/:id/file 拿到 object_key 后调用）
+router.post(
+  '/:id/watermark',
+  asyncHandler(businessTripController.addWatermarkPhoto)
+);
+
+// 水印打卡审核（缺卡提示）
+router.get(
+  '/:id/watermark/audit',
+  asyncHandler(businessTripController.getWatermarkAudit)
+);
+
+// 删除（仅 admin，且仅 draft/cancelled/rejected）
 router.delete(
   '/:id',
   requireRole('admin'),

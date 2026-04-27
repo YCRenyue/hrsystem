@@ -1,603 +1,733 @@
 /**
  * Business Trip Controller
- * Handles business trip allowance management operations
+ *
+ * 出差申请管理：
+ *   - 申请创建/编辑/查询/查看
+ *   - 提交、审批（通过/拒绝）、撤销
+ *   - 附件 JSON 字段管理（OSS key 列表，文件本身上传走 /api/upload）
+ *
+ * 权限：
+ *   - employee：可查看本人记录、提交/撤销自己的申请
+ *   - department_manager / hr_admin / admin：审批、查看全员
  */
+
 const { Op } = require('sequelize');
-const BusinessTrip = require('../models/BusinessTrip');
-const Employee = require('../models/Employee');
-const User = require('../models/User');
-const ExcelService = require('../services/ExcelService');
+const {
+  BusinessTrip,
+  Employee,
+  User
+} = require('../models');
+const businessTripService = require('../services/BusinessTripService');
+const inAppNotification = require('../services/InAppNotificationService');
+const { findEmployeeIdsByName } = require('../utils/employeeSearch');
 const {
   ValidationError,
-  NotFoundError
+  NotFoundError,
+  ForbiddenError
 } = require('../middleware/errorHandler');
 
-// Status mapping: Chinese to English
-const STATUS_CHINESE_TO_ENGLISH = {
-  草稿: 'draft',
-  待审批: 'pending',
-  已批准: 'approved',
-  已拒绝: 'rejected',
-  已支付: 'paid'
-};
-
-// Valid English status values
-const VALID_STATUS_VALUES = ['draft', 'pending', 'approved', 'rejected', 'paid'];
+// 当前阶段：仅 admin 可审批/删除（多级审批为后续阶段）
+const APPROVABLE_ROLES = ['admin'];
+// 可见所有员工出差记录的角色集合（HR/部门经理保留查询能力）
+const VIEW_ALL_ROLES = ['admin', 'hr_admin', 'department_manager'];
 
 /**
- * Convert status to English value
- * Accepts both Chinese and English status values
- * @param {string} status - Status value (Chinese or English)
- * @returns {string} English status value
+ * 找到员工对应的 user 账号（用于发通知给员工本人）
  */
-const normalizeStatus = (status) => {
-  if (!status) return 'draft';
-  const trimmedStatus = String(status).trim();
-  // If already in English and valid, return as is
-  if (VALID_STATUS_VALUES.includes(trimmedStatus)) {
-    return trimmedStatus;
-  }
-  // Try to map from Chinese
-  const englishStatus = STATUS_CHINESE_TO_ENGLISH[trimmedStatus];
-  if (englishStatus) {
-    return englishStatus;
-  }
-  // Default to draft if unrecognized
-  return 'draft';
+const findUserIdForEmployee = async (employeeId) => {
+  if (!employeeId) return null;
+  const u = await User.findOne({
+    where: { employee_id: employeeId },
+    attributes: ['user_id']
+  });
+  return u ? u.user_id : null;
 };
 
 /**
- * Get business trip records with pagination and filtering
+ * 通知所有审批人：有新出差申请待审批
+ */
+const notifyApproversOnSubmit = async (trip, employee, submitterUserId) => {
+  try {
+    const approverIds = await inAppNotification.getApproverUserIds({
+      departmentId: employee?.department_id
+    });
+    const employeeName = (employee && typeof employee.getName === 'function')
+      ? employee.getName()
+      : '员工';
+    await inAppNotification.sendToMany(approverIds, {
+      senderUserId: submitterUserId,
+      type: inAppNotification.NotificationTypes.BUSINESS_TRIP_SUBMITTED,
+      title: '新出差申请待审批',
+      content: `${employeeName} 提交了出差申请 ${trip.trip_number}\n目的地：${trip.destination}\n时间：${trip.start_datetime.toISOString().slice(0, 16).replace('T', ' ')} 至 ${trip.end_datetime.toISOString().slice(0, 16).replace('T', ' ')}`,
+      relatedResource: 'business_trip',
+      relatedId: trip.trip_id,
+      linkUrl: `/business-trips/${trip.trip_id}`
+    });
+  } catch (e) {
+    // 通知失败不阻断业务流程
+    // eslint-disable-next-line no-console
+    console.error('[notifyApproversOnSubmit] failed:', e.message);
+  }
+};
+
+/**
+ * 通知申请人：审批结果
+ */
+const notifyApplicantOnApproval = async (trip, decision, approverUserId, notes) => {
+  try {
+    const recipientUserId = await findUserIdForEmployee(trip.employee_id);
+    if (!recipientUserId) return;
+    const isApproved = decision === 'approved';
+    await inAppNotification.send({
+      recipientUserId,
+      senderUserId: approverUserId,
+      type: isApproved
+        ? inAppNotification.NotificationTypes.BUSINESS_TRIP_APPROVED
+        : inAppNotification.NotificationTypes.BUSINESS_TRIP_REJECTED,
+      title: isApproved ? '出差申请已批准' : '出差申请被拒绝',
+      content: `出差单 ${trip.trip_number} ${isApproved ? '已批准，请按计划出行；考勤已自动同步为出差状态。' : '被拒绝。'}${notes ? `\n审批意见：${notes}` : ''}`,
+      relatedResource: 'business_trip',
+      relatedId: trip.trip_id,
+      linkUrl: `/business-trips/${trip.trip_id}`
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[notifyApplicantOnApproval] failed:', e.message);
+  }
+};
+
+/**
+ * 通知相关方：申请被撤销
+ *  - 申请人撤销 → 通知审批人/原审批人
+ *  - 管理者撤销 → 通知申请人
+ */
+const notifyOnCancel = async (trip, cancellerRole, cancellerUserId, employee) => {
+  try {
+    if (VIEW_ALL_ROLES.includes(cancellerRole)) {
+      const recipientUserId = await findUserIdForEmployee(trip.employee_id);
+      if (recipientUserId) {
+        await inAppNotification.send({
+          recipientUserId,
+          senderUserId: cancellerUserId,
+          type: inAppNotification.NotificationTypes.BUSINESS_TRIP_CANCELLED,
+          title: '出差申请已被撤销',
+          content: `出差单 ${trip.trip_number} 已被管理员撤销。${trip.cancellation_reason ? `原因：${trip.cancellation_reason}` : ''}`,
+          relatedResource: 'business_trip',
+          relatedId: trip.trip_id,
+          linkUrl: `/business-trips/${trip.trip_id}`
+        });
+      }
+    } else {
+      const approverIds = await inAppNotification.getApproverUserIds({
+        departmentId: employee?.department_id
+      });
+      const employeeName = (employee && typeof employee.getName === 'function')
+        ? employee.getName()
+        : '员工';
+      await inAppNotification.sendToMany(approverIds, {
+        senderUserId: cancellerUserId,
+        type: inAppNotification.NotificationTypes.BUSINESS_TRIP_CANCELLED,
+        title: '员工撤销出差申请',
+        content: `${employeeName} 撤销了出差单 ${trip.trip_number}${trip.cancellation_reason ? `，原因：${trip.cancellation_reason}` : ''}`,
+        relatedResource: 'business_trip',
+        relatedId: trip.trip_id,
+        linkUrl: `/business-trips/${trip.trip_id}`
+      });
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[notifyOnCancel] failed:', e.message);
+  }
+};
+
+/**
+ * 序列化出差记录，解密员工姓名、解析附件
+ * @param {BusinessTrip} record
+ * @returns {Object}
+ */
+const serializeTrip = (record) => {
+  const obj = record.toJSON();
+  if (record.employee && typeof record.employee.getName === 'function') {
+    obj.employee.name = record.employee.getName();
+    delete obj.employee.name_encrypted;
+  }
+  obj.attachments = record.getAttachments();
+  return obj;
+};
+
+/**
+ * 检查当前用户是否有权访问指定记录
+ * @param {Object} user 来自 JWT 的载荷
+ * @param {BusinessTrip} record
+ * @returns {boolean}
+ */
+const canAccessTrip = (user, record) => {
+  if (!user) return false;
+  if (VIEW_ALL_ROLES.includes(user.role)) return true;
+  return user.employee_id && record.employee_id === user.employee_id;
+};
+
+/**
+ * GET /api/business-trips
  */
 const getBusinessTrips = async (req, res) => {
   const {
     page = 1,
-    limit = 10,
-    search,
+    size = 10,
+    keyword,
+    employee_name: employeeName,
     status,
+    employee_id: employeeIdFilter,
     startDate,
     endDate
   } = req.query;
 
-  const offset = (page - 1) * limit;
+  const limit = Math.max(1, parseInt(size, 10));
+  const offset = (Math.max(1, parseInt(page, 10)) - 1) * limit;
+
   const where = {};
+  if (status) where.status = status;
+  if (employeeIdFilter) where.employee_id = employeeIdFilter;
 
-  // Filter by status
-  if (status) {
-    where.status = status;
-  }
-
-  // Filter by date range
   if (startDate || endDate) {
-    where.start_date = {};
-    if (startDate) {
-      where.start_date[Op.gte] = startDate;
-    }
-    if (endDate) {
-      where.start_date[Op.lte] = endDate;
-    }
+    where.start_datetime = {};
+    if (startDate) where.start_datetime[Op.gte] = new Date(startDate);
+    if (endDate) where.start_datetime[Op.lte] = new Date(`${endDate}T23:59:59`);
   }
 
-  // Build query options
-  const queryOptions = {
-    where,
-    include: [
-      {
-        model: Employee,
-        as: 'employee',
-        attributes: ['employee_id', 'employee_number', 'name_encrypted'],
-        required: true
-      },
-      {
-        model: User,
-        as: 'approver',
-        attributes: ['user_id', 'display_name', 'username'],
-        required: false
+  // 普通员工只能看自己；admin/hr_admin/department_manager 可查全部
+  if (!VIEW_ALL_ROLES.includes(req.user.role)) {
+    if (!req.user.employee_id) {
+      return res.json({ success: true, data: [], pagination: { total: 0, page: 1, size: limit } });
+    }
+    where.employee_id = req.user.employee_id;
+  }
+
+  // 按姓名搜索（密文存储 → 内存解密匹配）
+  if (employeeName && employeeName.trim()) {
+    const matchedIds = await findEmployeeIdsByName(employeeName);
+    if (matchedIds.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        pagination: {
+          total: 0, page: parseInt(page, 10), size: limit, totalPages: 0
+        }
+      });
+    }
+    // 与已有 employee_id 限制做交集
+    if (where.employee_id) {
+      where.employee_id = matchedIds.includes(where.employee_id) ? where.employee_id : null;
+      if (where.employee_id === null) {
+        return res.json({
+          success: true,
+          data: [],
+          pagination: {
+            total: 0, page: parseInt(page, 10), size: limit, totalPages: 0
+          }
+        });
       }
-    ],
-    limit: parseInt(limit, 10),
-    offset: parseInt(offset, 10),
-    order: [['created_at', 'DESC']]
-  };
-
-  // Search by employee number
-  if (search) {
-    queryOptions.include[0].where = {
-      [Op.or]: [
-        { employee_number: { [Op.like]: `%${search}%` } }
-      ]
-    };
+    } else {
+      where.employee_id = { [Op.in]: matchedIds };
+    }
   }
 
-  const { count, rows } = await BusinessTrip.findAndCountAll(queryOptions);
-
-  // Decrypt employee names
-  const data = rows.map((record) => {
-    const obj = record.toJSON();
-    if (obj.employee) {
-      obj.employee.name = record.employee.getName();
-      delete obj.employee.name_encrypted;
+  const include = [
+    {
+      model: Employee,
+      as: 'employee',
+      attributes: ['employee_id', 'employee_number', 'name_encrypted'],
+      required: true
+    },
+    {
+      model: User,
+      as: 'approver',
+      attributes: ['user_id', 'display_name', 'username'],
+      required: false
     }
-    return obj;
+  ];
+
+  if (keyword) {
+    include[0].where = { employee_number: { [Op.like]: `%${keyword}%` } };
+  }
+
+  const { count, rows } = await BusinessTrip.findAndCountAll({
+    where,
+    include,
+    limit,
+    offset,
+    order: [['created_at', 'DESC']]
   });
 
-  res.json({
+  return res.json({
     success: true,
-    data,
+    data: rows.map(serializeTrip),
     pagination: {
       total: count,
       page: parseInt(page, 10),
-      limit: parseInt(limit, 10),
+      size: limit,
       totalPages: Math.ceil(count / limit)
     }
   });
 };
 
 /**
- * Get single business trip record
+ * GET /api/business-trips/:id
  */
 const getBusinessTripById = async (req, res) => {
-  const { id } = req.params;
-
-  const record = await BusinessTrip.findByPk(id, {
+  const record = await BusinessTrip.findByPk(req.params.id, {
     include: [
       {
         model: Employee,
         as: 'employee',
-        attributes: ['employee_id', 'employee_number', 'name_encrypted']
+        attributes: ['employee_id', 'employee_number', 'name_encrypted', 'department_id']
       },
-      {
-        model: User,
-        as: 'approver',
-        attributes: ['user_id', 'display_name', 'username']
-      }
+      { model: User, as: 'approver', attributes: ['user_id', 'display_name', 'username'] },
+      { model: User, as: 'submitter', attributes: ['user_id', 'display_name', 'username'] },
+      { model: User, as: 'canceller', attributes: ['user_id', 'display_name', 'username'] }
     ]
   });
 
-  if (!record) {
-    throw new NotFoundError('Business trip record', id);
+  if (!record) throw new NotFoundError('出差申请', req.params.id);
+  if (!canAccessTrip(req.user, record)) throw new ForbiddenError('无权查看该出差申请');
+
+  return res.json({ success: true, data: serializeTrip(record) });
+};
+
+/**
+ * GET /api/business-trips/conflicts/check
+ *  Query: employee_id, start_datetime, end_datetime, exclude_trip_id?
+ */
+const checkConflicts = async (req, res) => {
+  const {
+    employee_id: employeeId,
+    start_datetime: startDatetime,
+    end_datetime: endDatetime,
+    exclude_trip_id: excludeTripId
+  } = req.query;
+
+  if (!employeeId || !startDatetime || !endDatetime) {
+    throw new ValidationError('员工ID、出差开始与结束时间均为必填');
   }
 
-  const data = record.toJSON();
-  if (data.employee) {
-    data.employee.name = record.employee.getName();
-    delete data.employee.name_encrypted;
-  }
+  const conflicts = await businessTripService.detectConflicts(
+    employeeId,
+    startDatetime,
+    endDatetime,
+    excludeTripId
+  );
 
-  res.json({
+  return res.json({
     success: true,
-    data
+    data: {
+      hasConflict: conflicts.leaves.length > 0 || conflicts.trips.length > 0,
+      conflictLeaves: conflicts.leaves.map((l) => ({
+        leave_id: l.leave_id,
+        leave_type: l.leave_type,
+        start_date: l.start_date,
+        end_date: l.end_date,
+        days: l.days
+      })),
+      conflictTrips: conflicts.trips.map((t) => ({
+        trip_id: t.trip_id,
+        trip_number: t.trip_number,
+        start_datetime: t.start_datetime,
+        end_datetime: t.end_datetime,
+        status: t.status
+      }))
+    }
   });
 };
 
 /**
- * Create business trip record
+ * POST /api/business-trips
+ *  权限：员工本人，或 HR/admin 代为创建
  */
 const createBusinessTrip = async (req, res) => {
   const {
-    employee_id,
-    trip_number,
-    start_date,
-    end_date,
+    employee_id: bodyEmployeeId,
+    start_datetime: startDatetime,
+    end_datetime: endDatetime,
     destination,
+    itinerary,
     purpose,
-    days,
-    transportation_allowance = 0,
-    accommodation_allowance = 0,
-    meal_allowance = 0,
-    other_allowance = 0,
-    approver_id,
-    approval_notes,
-    notes
+    transport,
+    attachments,
+    submit = true
   } = req.body;
 
-  // Validation
-  if (!employee_id || !trip_number || !start_date || !end_date
-    || !destination || days === undefined) {
-    throw new ValidationError(
-      'Employee ID, trip number, dates, destination, and days are required'
-    );
-  }
-
-  // Check if employee exists
-  const employee = await Employee.findByPk(employee_id);
-  if (!employee) {
-    throw new NotFoundError('Employee', employee_id);
-  }
-
-  // Check for duplicate trip number
-  const existing = await BusinessTrip.findOne({
-    where: { trip_number }
-  });
-
-  if (existing) {
-    throw new ValidationError(
-      `Business trip number ${trip_number} already exists`
-    );
-  }
-
-  // Validate approver if provided
-  if (approver_id) {
-    const approver = await User.findByPk(approver_id);
-    if (!approver) {
-      throw new NotFoundError('Approver', approver_id);
+  // 决定本次申请所属员工：管理者可代替指定，普通员工只能给自己提交
+  const isManager = VIEW_ALL_ROLES.includes(req.user.role);
+  let employeeId = bodyEmployeeId;
+  if (!isManager) {
+    if (!req.user.employee_id) {
+      throw new ForbiddenError('账号未关联员工，无法提交出差申请');
     }
+    employeeId = req.user.employee_id;
+  } else if (!employeeId) {
+    throw new ValidationError('请指定出差员工');
   }
 
-  // Calculate total allowance
-  const totalAllowance = parseFloat(transportation_allowance || 0)
-    + parseFloat(accommodation_allowance || 0)
-    + parseFloat(meal_allowance || 0)
-    + parseFloat(other_allowance || 0);
+  if (!startDatetime || !endDatetime || !destination) {
+    throw new ValidationError('出差时间和目的地为必填');
+  }
 
-  const record = await BusinessTrip.create({
-    employee_id,
-    trip_number,
-    start_date,
-    end_date,
+  const employee = await Employee.findByPk(employeeId);
+  if (!employee) throw new NotFoundError('员工', employeeId);
+
+  // 计算时长 + 冲突检查
+  const durations = businessTripService.calculateDurations(startDatetime, endDatetime);
+  const conflicts = await businessTripService.detectConflicts(
+    employeeId,
+    startDatetime,
+    endDatetime
+  );
+  businessTripService.assertNoConflicts(conflicts);
+
+  const tripNumber = await businessTripService.generateTripNumber();
+
+  const trip = await BusinessTrip.create({
+    employee_id: employeeId,
+    trip_number: tripNumber,
+    start_datetime: new Date(startDatetime),
+    end_datetime: new Date(endDatetime),
     destination,
-    purpose,
-    days: parseInt(days, 10),
-    transportation_allowance: parseFloat(transportation_allowance),
-    accommodation_allowance: parseFloat(accommodation_allowance),
-    meal_allowance: parseFloat(meal_allowance),
-    other_allowance: parseFloat(other_allowance),
-    total_allowance: totalAllowance,
-    approver_id,
-    approval_notes,
-    notes
+    itinerary: itinerary || null,
+    purpose: purpose || null,
+    transport: transport || null,
+    duration_hours: durations.duration_hours,
+    work_hours: durations.work_hours,
+    span_days: durations.span_days,
+    attachments: attachments ? JSON.stringify(attachments) : null,
+    status: submit ? 'pending' : 'draft',
+    submitted_by: req.user.user_id,
+    submitted_at: submit ? new Date() : null
   });
 
-  res.status(201).json({
-    success: true,
-    data: record
-  });
+  if (submit) {
+    await notifyApproversOnSubmit(trip, employee, req.user.user_id);
+  }
+
+  return res.status(201).json({ success: true, data: serializeTrip(trip) });
 };
 
 /**
- * Update business trip record
+ * PUT /api/business-trips/:id
+ *  仅 draft / pending / rejected 状态可编辑
  */
 const updateBusinessTrip = async (req, res) => {
-  const { id } = req.params;
+  const trip = await BusinessTrip.findByPk(req.params.id);
+  if (!trip) throw new NotFoundError('出差申请', req.params.id);
+
+  if (!canAccessTrip(req.user, trip)) {
+    throw new ForbiddenError('无权修改该出差申请');
+  }
+
+  if (trip.isLocked()) {
+    throw new ValidationError('已批准/进行中的出差申请不可直接修改，请先撤销后重新申请');
+  }
+
   const {
-    start_date,
-    end_date,
+    start_datetime: startDatetime,
+    end_datetime: endDatetime,
     destination,
+    itinerary,
     purpose,
-    days,
-    transportation_allowance,
-    accommodation_allowance,
-    meal_allowance,
-    other_allowance,
-    status,
-    approver_id,
-    approval_notes,
-    notes
+    transport,
+    attachments
   } = req.body;
 
-  const record = await BusinessTrip.findByPk(id);
+  const newStart = startDatetime ? new Date(startDatetime) : trip.start_datetime;
+  const newEnd = endDatetime ? new Date(endDatetime) : trip.end_datetime;
 
-  if (!record) {
-    throw new NotFoundError('Business trip record', id);
+  // 时间变更需要重新计算与查冲突
+  if (startDatetime || endDatetime) {
+    const durations = businessTripService.calculateDurations(newStart, newEnd);
+    const conflicts = await businessTripService.detectConflicts(
+      trip.employee_id,
+      newStart,
+      newEnd,
+      trip.trip_id
+    );
+    businessTripService.assertNoConflicts(conflicts);
+
+    trip.start_datetime = newStart;
+    trip.end_datetime = newEnd;
+    trip.duration_hours = durations.duration_hours;
+    trip.work_hours = durations.work_hours;
+    trip.span_days = durations.span_days;
   }
 
-  // Validate approver if changing
-  if (approver_id && approver_id !== record.approver_id) {
-    const approver = await User.findByPk(approver_id);
-    if (!approver) {
-      throw new NotFoundError('Approver', approver_id);
-    }
+  if (destination !== undefined) trip.destination = destination;
+  if (itinerary !== undefined) trip.itinerary = itinerary;
+  if (purpose !== undefined) trip.purpose = purpose;
+  if (transport !== undefined) trip.transport = transport;
+  if (attachments !== undefined) {
+    trip.attachments = attachments ? JSON.stringify(attachments) : null;
   }
 
-  // Calculate total allowance if any allowance changed
-  let totalAllowance = record.total_allowance;
-  if (transportation_allowance !== undefined
-    || accommodation_allowance !== undefined
-    || meal_allowance !== undefined
-    || other_allowance !== undefined) {
-    totalAllowance = parseFloat(transportation_allowance ?? record.transportation_allowance)
-      + parseFloat(accommodation_allowance ?? record.accommodation_allowance)
-      + parseFloat(meal_allowance ?? record.meal_allowance)
-      + parseFloat(other_allowance ?? record.other_allowance);
-  }
+  await trip.save();
 
-  await record.update({
-    start_date: start_date !== undefined ? start_date : record.start_date,
-    end_date: end_date !== undefined ? end_date : record.end_date,
-    destination: destination !== undefined ? destination : record.destination,
-    purpose: purpose !== undefined ? purpose : record.purpose,
-    days: days !== undefined ? parseInt(days, 10) : record.days,
-    transportation_allowance: transportation_allowance !== undefined
-      ? parseFloat(transportation_allowance)
-      : record.transportation_allowance,
-    accommodation_allowance: accommodation_allowance !== undefined
-      ? parseFloat(accommodation_allowance)
-      : record.accommodation_allowance,
-    meal_allowance: meal_allowance !== undefined
-      ? parseFloat(meal_allowance)
-      : record.meal_allowance,
-    other_allowance: other_allowance !== undefined
-      ? parseFloat(other_allowance)
-      : record.other_allowance,
-    total_allowance: totalAllowance,
-    status: status !== undefined ? status : record.status,
-    approver_id: approver_id !== undefined ? approver_id : record.approver_id,
-    approval_notes: approval_notes !== undefined
-      ? approval_notes
-      : record.approval_notes,
-    notes: notes !== undefined ? notes : record.notes
-  });
-
-  res.json({
-    success: true,
-    data: record
-  });
+  return res.json({ success: true, data: serializeTrip(trip) });
 };
 
 /**
- * Delete business trip record
+ * POST /api/business-trips/:id/submit
+ *  将草稿/驳回状态转为待审批
+ */
+const submitBusinessTrip = async (req, res) => {
+  const trip = await BusinessTrip.findByPk(req.params.id);
+  if (!trip) throw new NotFoundError('出差申请', req.params.id);
+  if (!canAccessTrip(req.user, trip)) throw new ForbiddenError('无权提交该出差申请');
+
+  if (!['draft', 'rejected'].includes(trip.status)) {
+    throw new ValidationError(`当前状态(${trip.status})不可提交`);
+  }
+
+  // 提交前再次校验冲突
+  const conflicts = await businessTripService.detectConflicts(
+    trip.employee_id,
+    trip.start_datetime,
+    trip.end_datetime,
+    trip.trip_id
+  );
+  businessTripService.assertNoConflicts(conflicts);
+
+  trip.status = 'pending';
+  trip.submitted_at = new Date();
+  trip.submitted_by = req.user.user_id;
+  trip.approver_id = null;
+  trip.approved_at = null;
+  trip.approval_notes = null;
+  await trip.save();
+
+  const employee = await Employee.findByPk(trip.employee_id);
+  await notifyApproversOnSubmit(trip, employee, req.user.user_id);
+
+  return res.json({ success: true, data: serializeTrip(trip) });
+};
+
+/**
+ * POST /api/business-trips/:id/approve
+ *  Body: { decision: 'approved' | 'rejected', notes? }
+ */
+const approveBusinessTrip = async (req, res) => {
+  const { decision, notes } = req.body;
+
+  if (req.user.role !== 'admin') {
+    throw new ForbiddenError('无审批权限（当前阶段仅 admin 可审批）');
+  }
+  if (!['approved', 'rejected'].includes(decision)) {
+    throw new ValidationError('decision 必须为 approved 或 rejected');
+  }
+
+  const trip = await BusinessTrip.findByPk(req.params.id);
+  if (!trip) throw new NotFoundError('出差申请', req.params.id);
+  if (trip.status !== 'pending') {
+    throw new ValidationError(`当前状态(${trip.status})不可审批`);
+  }
+
+  await businessTripService.runInTransaction(async (t) => {
+    trip.status = decision;
+    trip.approver_id = req.user.user_id;
+    trip.approved_at = new Date();
+    trip.approval_notes = notes || null;
+    await trip.save({ transaction: t });
+
+    if (decision === 'approved') {
+      // 锁定考勤区间，覆盖打卡为出差状态
+      await businessTripService.syncAttendanceOnApproval(trip, { transaction: t });
+    }
+  });
+
+  await notifyApplicantOnApproval(trip, decision, req.user.user_id, notes);
+
+  const refreshed = await BusinessTrip.findByPk(trip.trip_id, {
+    include: [
+      { model: Employee, as: 'employee', attributes: ['employee_id', 'employee_number', 'name_encrypted'] },
+      { model: User, as: 'approver', attributes: ['user_id', 'display_name'] }
+    ]
+  });
+
+  return res.json({ success: true, data: serializeTrip(refreshed) });
+};
+
+/**
+ * POST /api/business-trips/:id/cancel
+ *  Body: { reason? }
+ *  允许 pending/approved/in_progress 状态撤销，approved 撤销时回溯考勤记录
+ */
+const cancelBusinessTrip = async (req, res) => {
+  const { reason } = req.body;
+  const trip = await BusinessTrip.findByPk(req.params.id);
+  if (!trip) throw new NotFoundError('出差申请', req.params.id);
+  if (!canAccessTrip(req.user, trip)) throw new ForbiddenError('无权撤销该出差申请');
+
+  if (!['pending', 'approved', 'in_progress'].includes(trip.status)) {
+    throw new ValidationError(`当前状态(${trip.status})不可撤销`);
+  }
+
+  await businessTripService.runInTransaction(async (t) => {
+    if (['approved', 'in_progress'].includes(trip.status)) {
+      await businessTripService.rollbackAttendanceOnCancel(trip, { transaction: t });
+    }
+    trip.status = 'cancelled';
+    trip.cancelled_at = new Date();
+    trip.cancelled_by = req.user.user_id;
+    trip.cancellation_reason = reason || null;
+    await trip.save({ transaction: t });
+  });
+
+  const employee = await Employee.findByPk(trip.employee_id);
+  await notifyOnCancel(trip, req.user.role, req.user.user_id, employee);
+
+  return res.json({ success: true, data: serializeTrip(trip) });
+};
+
+/**
+ * DELETE /api/business-trips/:id
+ *  仅允许删除草稿、已撤销、已拒绝状态的记录（保留审计）
  */
 const deleteBusinessTrip = async (req, res) => {
-  const { id } = req.params;
+  const trip = await BusinessTrip.findByPk(req.params.id);
+  if (!trip) throw new NotFoundError('出差申请', req.params.id);
 
-  const record = await BusinessTrip.findByPk(id);
-
-  if (!record) {
-    throw new NotFoundError('Business trip record', id);
+  if (!APPROVABLE_ROLES.includes(req.user.role)) {
+    throw new ForbiddenError('无删除权限');
+  }
+  if (!['draft', 'cancelled', 'rejected'].includes(trip.status)) {
+    throw new ValidationError('仅草稿/已撤销/已拒绝的申请可删除');
   }
 
-  await record.destroy();
+  await trip.destroy();
+  return res.json({ success: true, message: '出差申请已删除' });
+};
 
-  res.json({
+/**
+ * GET /api/business-trips/stats/work-hours
+ *  Query: employee_id, year, month
+ *  返回指定员工指定月份的出差工时合计（用于工时统计页面）
+ */
+const getWorkHoursStats = async (req, res) => {
+  const { employee_id: employeeId, year, month } = req.query;
+  if (!employeeId || !year || !month) {
+    throw new ValidationError('需要提供 employee_id, year, month');
+  }
+
+  const yyyy = parseInt(year, 10);
+  const mm = parseInt(month, 10);
+  const start = new Date(yyyy, mm - 1, 1);
+  const end = new Date(yyyy, mm, 0, 23, 59, 59, 999);
+
+  // 加权统计：仅取已批准、进行中或已完成的出差
+  const trips = await BusinessTrip.findAll({
+    where: {
+      employee_id: employeeId,
+      status: { [Op.in]: ['approved', 'in_progress', 'completed'] },
+      start_datetime: { [Op.lte]: end },
+      end_datetime: { [Op.gte]: start }
+    }
+  });
+
+  // 简化：跨月时按重叠区间重新折算工时
+  let totalWorkHours = 0;
+  let totalSpanDays = 0;
+  for (const trip of trips) {
+    const segStart = trip.start_datetime > start ? trip.start_datetime : start;
+    const segEnd = trip.end_datetime < end ? trip.end_datetime : end;
+    if (segEnd > segStart) {
+      const durations = businessTripService.calculateDurations(segStart, segEnd);
+      totalWorkHours += durations.work_hours;
+      totalSpanDays += durations.span_days;
+    }
+  }
+
+  return res.json({
     success: true,
-    message: '出差记录删除成功'
+    data: {
+      employee_id: employeeId,
+      year: yyyy,
+      month: mm,
+      total_work_hours: Number(totalWorkHours.toFixed(2)),
+      total_span_days: Number(totalSpanDays.toFixed(2)),
+      trip_count: trips.length
+    }
   });
 };
 
 /**
- * Download Excel template
+ * POST /api/business-trips/:id/watermark
+ *  Body: { object_key, name?, type?, taken_at }
+ *  添加一张水印打卡照片，校验拍摄时间在出差期间内
  */
-const downloadTemplate = async (req, res) => {
-  const columns = [
-    { header: '员工编号', key: 'employee_number', width: 15 },
-    { header: '出差单号', key: 'trip_number', width: 15 },
-    { header: '开始日期', key: 'start_date', width: 15 },
-    { header: '结束日期', key: 'end_date', width: 15 },
-    { header: '目的地', key: 'destination', width: 20 },
-    { header: '目的', key: 'purpose', width: 30 },
-    { header: '天数', key: 'days', width: 10 },
-    { header: '交通补助', key: 'transportation_allowance', width: 12 },
-    { header: '住宿补助', key: 'accommodation_allowance', width: 12 },
-    { header: '餐费补助', key: 'meal_allowance', width: 12 },
-    { header: '其他补助', key: 'other_allowance', width: 12 },
-    { header: '状态', key: 'status', width: 12 },
-    { header: '备注', key: 'notes', width: 30 }
-  ];
+const addWatermarkPhoto = async (req, res) => {
+  const trip = await BusinessTrip.findByPk(req.params.id);
+  if (!trip) throw new NotFoundError('出差申请', req.params.id);
+  if (!canAccessTrip(req.user, trip)) throw new ForbiddenError('无权操作该出差申请');
 
-  const sampleData = [
-    {
-      employee_number: 'EMP001',
-      trip_number: 'BT202501001',
-      start_date: '2025-01-15',
-      end_date: '2025-01-17',
-      destination: '北京',
-      purpose: '客户洽谈',
-      days: 3,
-      transportation_allowance: 500,
-      accommodation_allowance: 600,
-      meal_allowance: 300,
-      other_allowance: 100,
-      status: 'draft',
-      notes: '示例数据'
-    }
-  ];
-
-  const workbook = ExcelService.createTemplate(columns, sampleData);
-  const filename = `business_trip_template_${
-    new Date().toISOString().split('T')[0]
-  }.xlsx`;
-
-  await ExcelService.sendExcelResponse(res, workbook, filename);
-};
-
-/**
- * Import from Excel
- */
-const importFromExcel = async (req, res) => {
-  if (!req.file) {
-    throw new ValidationError('No file uploaded');
+  if (!['approved', 'in_progress', 'completed'].includes(trip.status)) {
+    throw new ValidationError(`仅已批准/进行中的出差可上传水印打卡，当前状态：${trip.status}`);
   }
 
-  const results = await ExcelService.importFromBuffer(
-    req.file.buffer,
-    async (row, _rowNum) => {
-      const employeeNumber = ExcelService.getCellValue(row.getCell(1));
-      const tripNumber = ExcelService.getCellValue(row.getCell(2));
-      const startDate = ExcelService.parseExcelDate(row.getCell(3).value);
-      const endDate = ExcelService.parseExcelDate(row.getCell(4).value);
-      const destination = ExcelService.getCellValue(row.getCell(5));
-      const purpose = ExcelService.getCellValue(row.getCell(6));
-      const days = ExcelService.getCellValue(row.getCell(7));
-      const transportationAllowance = ExcelService.getCellValue(row.getCell(8)) || 0;
-      const accommodationAllowance = ExcelService.getCellValue(row.getCell(9)) || 0;
-      const mealAllowance = ExcelService.getCellValue(row.getCell(10)) || 0;
-      const otherAllowance = ExcelService.getCellValue(row.getCell(11)) || 0;
-      const statusRaw = ExcelService.getCellValue(row.getCell(12));
-      const status = normalizeStatus(statusRaw);
-      const notes = ExcelService.getCellValue(row.getCell(13));
-
-      if (!employeeNumber) {
-        throw new Error('Employee number is required');
-      }
-
-      if (!tripNumber) {
-        throw new Error('Trip number is required');
-      }
-
-      // Find employee
-      const employee = await Employee.findOne({
-        where: { employee_number: employeeNumber }
-      });
-
-      if (!employee) {
-        throw new Error(`Employee ${employeeNumber} not found`);
-      }
-
-      // Check for duplicate trip number
-      const existing = await BusinessTrip.findOne({
-        where: { trip_number: tripNumber }
-      });
-
-      const transportationAllowanceNum = parseFloat(transportationAllowance);
-      const accommodationAllowanceNum = parseFloat(accommodationAllowance);
-      const mealAllowanceNum = parseFloat(mealAllowance);
-      const otherAllowanceNum = parseFloat(otherAllowance);
-      const totalAllowance = transportationAllowanceNum
-        + accommodationAllowanceNum
-        + mealAllowanceNum
-        + otherAllowanceNum;
-
-      const data = {
-        employee_id: employee.employee_id,
-        trip_number: tripNumber,
-        start_date: startDate,
-        end_date: endDate,
-        destination,
-        purpose,
-        days: parseInt(days, 10),
-        transportation_allowance: transportationAllowanceNum,
-        accommodation_allowance: accommodationAllowanceNum,
-        meal_allowance: mealAllowanceNum,
-        other_allowance: otherAllowanceNum,
-        total_allowance: totalAllowance,
-        status,
-        notes
-      };
-
-      if (existing) {
-        await existing.update(data);
-      } else {
-        await BusinessTrip.create(data);
-      }
-    }
-  );
-
-  res.json({
-    success: true,
-    data: results
-  });
-};
-
-/**
- * Export to Excel
- */
-const exportToExcel = async (req, res) => {
   const {
-    status, search, startDate, endDate
-  } = req.query;
+    object_key: objectKey,
+    name,
+    type,
+    taken_at: takenAt,
+    uploaded_at: uploadedAt
+  } = req.body;
 
-  const where = {};
+  const list = await businessTripService.addWatermarkPhoto(trip, {
+    object_key: objectKey,
+    name,
+    type,
+    taken_at: takenAt,
+    uploaded_at: uploadedAt
+  });
 
-  if (status) {
-    where.status = status;
-  }
-
-  if (startDate || endDate) {
-    where.start_date = {};
-    if (startDate) {
-      where.start_date[Op.gte] = startDate;
+  return res.json({
+    success: true,
+    data: {
+      attachments: list,
+      audit: businessTripService.auditWatermarkPhotos(trip)
     }
-    if (endDate) {
-      where.start_date[Op.lte] = endDate;
+  });
+};
+
+/**
+ * GET /api/business-trips/:id/watermark/audit
+ *  返回出差期间每天的水印打卡情况
+ */
+const getWatermarkAudit = async (req, res) => {
+  const trip = await BusinessTrip.findByPk(req.params.id);
+  if (!trip) throw new NotFoundError('出差申请', req.params.id);
+  if (!canAccessTrip(req.user, trip)) throw new ForbiddenError('无权查看该出差申请');
+
+  const audit = businessTripService.auditWatermarkPhotos(trip);
+  const watermarks = businessTripService
+    .parseAttachments(trip)
+    .filter((a) => a.category === 'watermark');
+
+  return res.json({
+    success: true,
+    data: {
+      ...audit,
+      photos: watermarks
     }
-  }
-
-  const queryOptions = {
-    where,
-    include: [
-      {
-        model: Employee,
-        as: 'employee',
-        attributes: ['employee_number', 'name_encrypted'],
-        required: true
-      },
-      {
-        model: User,
-        as: 'approver',
-        attributes: ['user_id', 'display_name'],
-        required: false
-      }
-    ],
-    order: [['created_at', 'DESC']]
-  };
-
-  if (search) {
-    queryOptions.include[0].where = {
-      [Op.or]: [
-        { employee_number: { [Op.like]: `%${search}%` } }
-      ]
-    };
-  }
-
-  const records = await BusinessTrip.findAll(queryOptions);
-
-  const data = records.map((record) => ({
-    employee_number: record.employee.employee_number,
-    employee_name: record.employee.getName(),
-    trip_number: record.trip_number,
-    start_date: record.start_date,
-    end_date: record.end_date,
-    destination: record.destination,
-    purpose: record.purpose,
-    days: record.days,
-    transportation_allowance: record.transportation_allowance,
-    accommodation_allowance: record.accommodation_allowance,
-    meal_allowance: record.meal_allowance,
-    other_allowance: record.other_allowance,
-    total_allowance: record.total_allowance,
-    status: record.status,
-    approver_name: record.approver ? record.approver.display_name : '',
-    approval_notes: record.approval_notes,
-    notes: record.notes
-  }));
-
-  const columns = [
-    { header: '员工编号', key: 'employee_number', width: 15 },
-    { header: '员工姓名', key: 'employee_name', width: 15 },
-    { header: '出差单号', key: 'trip_number', width: 15 },
-    { header: '开始日期', key: 'start_date', width: 15 },
-    { header: '结束日期', key: 'end_date', width: 15 },
-    { header: '目的地', key: 'destination', width: 20 },
-    { header: '目的', key: 'purpose', width: 30 },
-    { header: '天数', key: 'days', width: 10 },
-    { header: '交通补助', key: 'transportation_allowance', width: 12 },
-    { header: '住宿补助', key: 'accommodation_allowance', width: 12 },
-    { header: '餐费补助', key: 'meal_allowance', width: 12 },
-    { header: '其他补助', key: 'other_allowance', width: 12 },
-    { header: '合计补助', key: 'total_allowance', width: 12 },
-    { header: '状态', key: 'status', width: 12 },
-    { header: '审批人', key: 'approver_name', width: 15 },
-    { header: '审批意见', key: 'approval_notes', width: 30 },
-    { header: '备注', key: 'notes', width: 30 }
-  ];
-
-  const workbook = await ExcelService.exportToExcel(
-    data,
-    columns,
-    'Business Trip'
-  );
-
-  const filename = `business_trip_${new Date().toISOString().split('T')[0]}.xlsx`;
-  await ExcelService.sendExcelResponse(res, workbook, filename);
+  });
 };
 
 module.exports = {
   getBusinessTrips,
   getBusinessTripById,
+  checkConflicts,
   createBusinessTrip,
   updateBusinessTrip,
+  submitBusinessTrip,
+  approveBusinessTrip,
+  cancelBusinessTrip,
   deleteBusinessTrip,
-  downloadTemplate,
-  importFromExcel,
-  exportToExcel
+  getWorkHoursStats,
+  addWatermarkPhoto,
+  getWatermarkAudit
 };

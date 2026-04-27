@@ -8,7 +8,22 @@ const {
 } = require('../models');
 const permissionService = require('../services/PermissionService');
 const ExcelService = require('../services/ExcelService');
+const inAppNotification = require('../services/InAppNotificationService');
 const { ValidationError } = require('../middleware/errorHandler');
+
+const APPROVAL_ROLES = ['admin'];
+
+/**
+ * 找到指定员工对应的 user 账号（用于发通知给申请人）
+ */
+const findUserIdForEmployee = async (employeeId) => {
+  if (!employeeId) return null;
+  const u = await User.findOne({
+    where: { employee_id: employeeId },
+    attributes: ['user_id']
+  });
+  return u ? u.user_id : null;
+};
 
 /**
  * 请假类型映射
@@ -64,11 +79,14 @@ const statusReverseMap = {
 
 /**
  * Create leave application
+ *
+ * 员工本人可提交（自动填入 employee_id）；管理者可代为创建。
+ * 提交后向所有审批人（admin）推送站内通知。
  */
 const createLeave = async (req, res) => {
   try {
     const {
-      employee_id,
+      employee_id: bodyEmployeeId,
       leave_type,
       start_date,
       end_date,
@@ -77,7 +95,22 @@ const createLeave = async (req, res) => {
       attachment_url
     } = req.body;
 
-    if (!employee_id || !leave_type || !start_date || !end_date || !days) {
+    // 决定本次申请所属员工：管理者可指定，普通员工只能给自己提交
+    const isManager = ['admin', 'hr_admin', 'department_manager'].includes(req.user.role);
+    let employeeId = bodyEmployeeId;
+    if (!isManager) {
+      if (!req.user.employee_id) {
+        return res.status(403).json({
+          success: false,
+          message: '账号未关联员工，无法提交请假申请'
+        });
+      }
+      employeeId = req.user.employee_id;
+    } else if (!employeeId) {
+      employeeId = req.user.employee_id;
+    }
+
+    if (!employeeId || !leave_type || !start_date || !end_date || !days) {
       return res.status(400).json({
         success: false,
         message: '员工ID、请假类型、日期和天数为必填项'
@@ -85,7 +118,7 @@ const createLeave = async (req, res) => {
     }
 
     const leave = await Leave.create({
-      employee_id,
+      employee_id: employeeId,
       leave_type,
       start_date,
       end_date,
@@ -94,6 +127,26 @@ const createLeave = async (req, res) => {
       status: 'pending',
       attachment_url
     });
+
+    // 推送通知给所有审批人（admin）
+    try {
+      const employee = await Employee.findByPk(employeeId);
+      const employeeName = employee && typeof employee.getName === 'function'
+        ? employee.getName()
+        : '员工';
+      const approverIds = await inAppNotification.getApproverUserIds();
+      await inAppNotification.sendToMany(approverIds, {
+        senderUserId: req.user.user_id,
+        type: inAppNotification.NotificationTypes.LEAVE_SUBMITTED,
+        title: '新请假申请待审批',
+        content: `${employeeName} 提交了请假申请\n类型：${leave_type}\n时间：${start_date} 至 ${end_date}\n天数：${days}天\n${reason ? `事由：${reason}` : ''}`,
+        relatedResource: 'leave',
+        relatedId: leave.leave_id,
+        linkUrl: `/leaves?status=pending&highlight=${leave.leave_id}`
+      });
+    } catch (notifyErr) {
+      console.error('[leave.create notify] failed:', notifyErr.message);
+    }
 
     return res.status(201).json({
       success: true,
@@ -288,11 +341,13 @@ const getLeaveStats = async (req, res) => {
 
 /**
  * Update leave application
+ *
+ * 状态变更（approved/rejected）需要 admin 权限；记录审批人，并向申请人推送站内通知。
  */
 const updateLeave = async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    const updateData = { ...req.body };
 
     const leave = await Leave.findByPk(id);
     if (!leave) {
@@ -302,12 +357,44 @@ const updateLeave = async (req, res) => {
       });
     }
 
-    // If approving/rejecting, add timestamp
-    if (updateData.status === 'approved' || updateData.status === 'rejected') {
+    const isApproval = updateData.status === 'approved' || updateData.status === 'rejected';
+
+    if (isApproval) {
+      if (!APPROVAL_ROLES.includes(req.user.role)) {
+        return res.status(403).json({
+          success: false,
+          message: '无审批权限（当前阶段仅 admin 可审批）'
+        });
+      }
       updateData.approved_at = new Date();
+      updateData.approver_id = req.user.user_id;
     }
 
     await leave.update(updateData);
+
+    // 审批通过/拒绝 → 通知申请人
+    if (isApproval) {
+      try {
+        const recipientUserId = await findUserIdForEmployee(leave.employee_id);
+        if (recipientUserId) {
+          const approved = updateData.status === 'approved';
+          await inAppNotification.send({
+            recipientUserId,
+            senderUserId: req.user.user_id,
+            type: approved
+              ? inAppNotification.NotificationTypes.LEAVE_APPROVED
+              : inAppNotification.NotificationTypes.LEAVE_REJECTED,
+            title: approved ? '请假申请已批准' : '请假申请被拒绝',
+            content: `请假时间 ${leave.start_date} 至 ${leave.end_date}（${leave.days}天）${approved ? '已批准。' : '被拒绝。'}${updateData.approval_notes ? `\n审批意见：${updateData.approval_notes}` : ''}`,
+            relatedResource: 'leave',
+            relatedId: leave.leave_id,
+            linkUrl: `/leaves?highlight=${leave.leave_id}`
+          });
+        }
+      } catch (notifyErr) {
+        console.error('[leave.update notify] failed:', notifyErr.message);
+      }
+    }
 
     return res.json({
       success: true,

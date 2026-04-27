@@ -94,6 +94,8 @@ app.use('/api/social-security', require('./routes/socialSecurity'));
 app.use('/api/business-trips', require('./routes/businessTrip'));
 app.use('/api/canteen-meals', require('./routes/canteenMeal'));
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/reimbursements', require('./routes/reimbursements'));
 
 // Error handling middleware
 const { errorHandler } = require('./middleware/errorHandler');

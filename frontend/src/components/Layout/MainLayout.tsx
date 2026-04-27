@@ -18,10 +18,12 @@ import {
   CoffeeOutlined,
   UsergroupAddOutlined,
   FileProtectOutlined,
+  WalletOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { userService, UserPreferences } from '../../services/userService';
+import NotificationBell from './NotificationBell';
 import type { MenuProps } from 'antd';
 
 const { Header, Sider, Content } = Layout;
@@ -99,6 +101,17 @@ const MainLayout: React.FC = () => {
   const isManager = ['admin', 'hr_admin', 'department_manager']
     .includes(user?.role || '');
 
+  const documentConfirmationMenuItem = {
+    key: '/document-confirmations',
+    icon: <FileProtectOutlined />,
+    label: '制度确认',
+    onClick: () => {
+      navigate(isManager
+        ? '/document-confirmations'
+        : '/document-confirmations/my');
+    },
+  };
+
   // Admin/HR menu items - hidden from regular employees
   const managerMenuItems: MenuProps['items'] = isManager ? [
     {
@@ -113,6 +126,7 @@ const MainLayout: React.FC = () => {
       label: '员工管理',
       onClick: () => navigate('/employees'),
     },
+    documentConfirmationMenuItem,
     {
       key: '/departments',
       icon: <ApartmentOutlined />,
@@ -126,10 +140,10 @@ const MainLayout: React.FC = () => {
       onClick: () => navigate('/attendance'),
     },
     {
-      key: '/leaves',
-      icon: <FileTextOutlined />,
-      label: '请假管理',
-      onClick: () => navigate('/leaves'),
+      key: '/canteen-meals',
+      icon: <CoffeeOutlined />,
+      label: '食堂报表',
+      onClick: () => navigate('/canteen-meals'),
     },
     {
       key: '/annual-leave',
@@ -143,6 +157,18 @@ const MainLayout: React.FC = () => {
       label: '社保管理',
       onClick: () => navigate('/social-security'),
     },
+  ] : [];
+
+  // Sidebar navigation menu
+  const sidebarMenuItems: MenuProps['items'] = [
+    ...managerMenuItems,
+    ...(!isManager ? [documentConfirmationMenuItem] : []),
+    {
+      key: '/leaves',
+      icon: <FileTextOutlined />,
+      label: '请假管理',
+      onClick: () => navigate('/leaves'),
+    },
     {
       key: '/business-trips',
       icon: <CarOutlined />,
@@ -150,25 +176,10 @@ const MainLayout: React.FC = () => {
       onClick: () => navigate('/business-trips'),
     },
     {
-      key: '/canteen-meals',
-      icon: <CoffeeOutlined />,
-      label: '食堂报表',
-      onClick: () => navigate('/canteen-meals'),
-    },
-  ] : [];
-
-  // Sidebar navigation menu
-  const sidebarMenuItems: MenuProps['items'] = [
-    ...managerMenuItems,
-    {
-      key: '/document-confirmations',
-      icon: <FileProtectOutlined />,
-      label: '制度确认',
-      onClick: () => {
-        navigate(isManager
-          ? '/document-confirmations'
-          : '/document-confirmations/my');
-      },
+      key: '/reimbursements',
+      icon: <WalletOutlined />,
+      label: '差旅报销',
+      onClick: () => navigate('/reimbursements'),
     },
     // Admin-only menu items
     ...(user?.role === 'admin' ? [
@@ -223,17 +234,33 @@ const MainLayout: React.FC = () => {
             {location.pathname === '/annual-leave' && '年假管理'}
             {location.pathname === '/social-security' && '社保管理'}
             {location.pathname === '/business-trips' && '出差管理'}
+            {location.pathname === '/business-trips/new' && '新建出差申请'}
+            {location.pathname.match(/^\/business-trips\/[^/]+\/edit$/) && '编辑出差申请'}
+            {location.pathname.match(/^\/business-trips\/[^/]+$/)
+              && location.pathname !== '/business-trips/new' && '出差申请详情'}
             {location.pathname === '/canteen-meals' && '食堂报表'}
             {location.pathname === '/users' && '用户管理'}
             {location.pathname === '/profile' && '个人资料'}
             {location.pathname === '/settings' && '用户设置'}
+            {location.pathname === '/notifications' && '通知中心'}
+            {location.pathname === '/reimbursements' && '差旅报销'}
+            {location.pathname === '/reimbursements/new' && '新建报销单'}
+            {location.pathname.match(/^\/reimbursements\/[^/]+\/edit$/) && '编辑报销单'}
+            {location.pathname.match(/^\/reimbursements\/[^/]+$/)
+              && location.pathname !== '/reimbursements/new' && '报销单详情'}
+            {location.pathname === '/document-confirmations' && '制度确认'}
+            {location.pathname === '/document-confirmations/my' && '我的制度确认'}
+            {location.pathname.match(/^\/document-confirmations\/[^/]+\/[^/]+$/) && '制度确认详情'}
           </div>
-          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-            <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-              <Avatar icon={<UserOutlined />} style={{ marginRight: 8 }} />
-              <span>{user?.username || '用户'}</span>
-            </div>
-          </Dropdown>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <NotificationBell />
+            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+              <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <Avatar icon={<UserOutlined />} style={{ marginRight: 8 }} />
+                <span>{user?.username || '用户'}</span>
+              </div>
+            </Dropdown>
+          </div>
         </Header>
         <Content
           style={{

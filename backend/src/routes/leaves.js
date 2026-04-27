@@ -86,18 +86,14 @@ router.get('/:id', asyncHandler(leaveController.getLeaveById));
 
 /**
  * @route   POST /api/leaves
- * @desc    Create leave record
- * @access  Private (HR Admin, Admin, Department Manager)
+ * @desc    Create leave record (员工本人或管理者)
+ * @access  Private (任何已认证用户：员工提交本人申请，管理者可代为提交)
  */
-router.post(
-  '/',
-  requireRole('admin', 'hr_admin', 'department_manager'),
-  asyncHandler(leaveController.createLeave)
-);
+router.post('/', asyncHandler(leaveController.createLeave));
 
 /**
  * @route   PUT /api/leaves/:id
- * @desc    Update leave record
+ * @desc    Update leave record（含审批/拒绝），controller 内对状态变更校验权限
  * @access  Private (HR Admin, Admin, Department Manager)
  */
 router.put(

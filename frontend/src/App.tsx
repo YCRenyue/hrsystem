@@ -24,11 +24,17 @@ import AnnualLeaveList from './pages/AnnualLeave/AnnualLeaveList';
 import AnnualLeaveForm from './pages/AnnualLeave/AnnualLeaveForm';
 import SocialSecurityList from './pages/SocialSecurity/SocialSecurityList';
 import BusinessTripList from './pages/BusinessTrip/BusinessTripList';
+import BusinessTripForm from './pages/BusinessTrip/BusinessTripForm';
+import BusinessTripDetail from './pages/BusinessTrip/BusinessTripDetail';
 import CanteenReport from './pages/CanteenMeal/CanteenReport';
 import UserManagement from './pages/UserManagement/UserManagement';
 import DocumentConfirmationList from './pages/DocumentConfirmation/DocumentConfirmationList';
 import DocumentSigningPage from './pages/DocumentConfirmation/DocumentSigningPage';
 import MyDocumentConfirmations from './pages/DocumentConfirmation/MyDocumentConfirmations';
+import NotificationCenter from './pages/Notifications/NotificationCenter';
+import ReimbursementList from './pages/Reimbursement/ReimbursementList';
+import ReimbursementForm from './pages/Reimbursement/ReimbursementForm';
+import ReimbursementDetail from './pages/Reimbursement/ReimbursementDetail';
 import './App.css';
 
 function App() {
@@ -118,15 +124,9 @@ function App() {
                     }
                   />
 
-                  {/* Leave management - accessible to admin, hr_admin, and department_manager */}
-                  <Route
-                    path="leaves"
-                    element={
-                      <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
-                        <LeaveList />
-                      </RoleGuard>
-                    }
-                  />
+                  {/* Leave management - accessible to all authenticated users
+                       (employees see own and submit; admin approves) */}
+                  <Route path="leaves" element={<LeaveList />} />
 
                   {/* User profile - accessible to all authenticated users */}
                   <Route path="profile" element={<UserProfile />} />
@@ -171,14 +171,11 @@ function App() {
                     }
                   />
 
-                  <Route
-                    path="business-trips"
-                    element={
-                      <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
-                        <BusinessTripList />
-                      </RoleGuard>
-                    }
-                  />
+                  {/* 出差管理：所有已认证用户均可看到（员工只能看本人申请） */}
+                  <Route path="business-trips" element={<BusinessTripList />} />
+                  <Route path="business-trips/new" element={<BusinessTripForm />} />
+                  <Route path="business-trips/:id" element={<BusinessTripDetail />} />
+                  <Route path="business-trips/:id/edit" element={<BusinessTripForm />} />
 
                   <Route
                     path="canteen-meals"
@@ -210,6 +207,15 @@ function App() {
                     path="document-confirmations/:employeeId/:documentType"
                     element={<DocumentSigningPage />}
                   />
+
+                  {/* In-app notification center - all authenticated users */}
+                  <Route path="notifications" element={<NotificationCenter />} />
+
+                  {/* Reimbursement (Phase 2) - all authenticated users (employee sees own) */}
+                  <Route path="reimbursements" element={<ReimbursementList />} />
+                  <Route path="reimbursements/new" element={<ReimbursementForm />} />
+                  <Route path="reimbursements/:id" element={<ReimbursementDetail />} />
+                  <Route path="reimbursements/:id/edit" element={<ReimbursementForm />} />
 
                   {/* User management - admin only */}
                   <Route

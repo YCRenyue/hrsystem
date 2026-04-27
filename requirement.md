@@ -1887,48 +1887,126 @@ const NotificationService = {
   - department_manager：仅查看
   - employee：仅查看个人记录
 
-#### 12.3 出差补助管理模块 已完成
+#### 12.3 出差管理模块（重构第一期：申请-审批-考勤联动）
 
-**优先级**: 中 | **依赖**: 员工管理 | **完成日期**: 2025-12-05
+**优先级**: 高 | **依赖**: 员工管理、考勤管理、请假管理 | **完成日期**: 2026-04-25
 
-- [x] 设计business_trip_allowance表结构 (已完成 - 2025-12-05)
-  - 字段：补助ID、员工ID、出差日期、目的地、天数
-  - 补助类型：交通补助、住宿补助、餐费补助
-  - 补助金额、申请状态、审批人、审批时间
-  - 附件：票据扫描件
+> 原 `business_trip_allowance` 表（仅HR录入补助记录）已废弃删除，
+> 重新设计为完整的"申请→审批→执行→撤销"闭环；
+> 报销联动、水印打卡审核拆到第二期实现。
 
-- [x] 实现出差补助API (已完成 - 2025-12-05)
-  - GET /api/business-trips - 获取补助列表
-  - GET /api/business-trips/:id - 获取单条记录
-  - POST /api/business-trips - 创建出差补助
-  - PUT /api/business-trips/:id - 更新补助记录
-  - DELETE /api/business-trips/:id - 删除记录
-  - GET /api/business-trips/template - 下载Excel模板
-  - POST /api/business-trips/import - 导入Excel数据
-  - GET /api/business-trips/export - 导出Excel数据
+- [x] 重新设计 business_trip_applications 表结构 (已完成 - 2026-04-25)
+  - 字段：申请ID、员工ID、出差单号、起止时间(精确到分钟)
+  - 时长字段：duration_hours（总时长）、work_hours（计入工时）、span_days（跨越天数）
+  - 行程：destination、itinerary、purpose、transport
+  - 状态：draft / pending / approved / rejected / cancelled / in_progress / completed
+  - 审批轨迹：submitted_by/at, approver_id/approved_at/notes, cancelled_by/at/reason
+  - 附件：JSON 数组，存储 OSS object_key、文件名、上传时间
+  - 报销钩子：reimbursement_status（第二期使用）
+  - 迁移文件：`backend/src/db/migrations/12-recreate-business-trip-applications.js`
+  - 同步扩展 attendances 表：增加 business_trip_id、previous_status，扩 status 枚举加入 business_trip
 
-- [x] 创建出差补助管理页面 (已完成 - 2025-12-05)
-  - 文件：`frontend/src/pages/BusinessTrip/BusinessTripList.tsx`
-  - 列表展示：出差单号、员工信息、日期、目的地、补助合计、状态
-  - 按状态筛选、员工搜索
-  - Excel导入导出功能（三按钮布局）
-  - 状态标签（草稿/待审批/已批准/已拒绝/已支付）
+- [x] 实现出差业务服务层 (已完成 - 2026-04-25)
+  - 文件：`backend/src/services/BusinessTripService.js`
+  - 时长计算：周末与节假日不计入工时；首尾按实际小时折算（每天上限 8h）
+  - 冲突检测：同时段已批假 / 重叠的其他出差申请（严格模式阻止提交）
+  - 审批联动：通过后将工作日的考勤覆盖为 business_trip 状态，保存 previous_status
+  - 撤销回溯：恢复 previous_status；新建的考勤记录直接删除
+  - 出差单号生成：BTYYYYMMDD####
 
-- [ ] 实现审批流程 (待开发)
-  - 提交申请 -> 部门经理审批 -> HR审核 -> 财务发放
-  - 支持驳回和修改
-  - 审批通知（钉钉）
+- [x] 实现出差申请 API (已完成 - 2026-04-25)
+  - 文件：`backend/src/controllers/businessTripController.js`、`backend/src/routes/businessTrip.js`
+  - GET    /api/business-trips - 列表（员工只能看本人）
+  - GET    /api/business-trips/:id - 详情
+  - GET    /api/business-trips/conflicts/check - 冲突预检
+  - GET    /api/business-trips/stats/work-hours - 月度工时统计
+  - POST   /api/business-trips - 新建（员工本人或管理者代为创建）
+  - PUT    /api/business-trips/:id - 编辑（仅 draft/pending/rejected）
+  - POST   /api/business-trips/:id/submit - 草稿/驳回 → 待审批
+  - POST   /api/business-trips/:id/approve - 审批通过/拒绝（管理者）
+  - POST   /api/business-trips/:id/cancel - 撤销（员工本人或管理者）
+  - DELETE /api/business-trips/:id - 删除（仅 draft/cancelled/rejected）
+  - 附件上传：POST /api/upload/business-trip/:tripId/file，OSS 存储
+  - 签名预览：GET /api/upload/signed-url?key=...
 
-- [ ] 实现月度统计推送 (待开发)
-  - 每月1日自动统计上月出差补助
-  - 推送给财务和HR
-  - 生成补助明细Excel
+- [x] 创建出差管理前端页面 (已完成 - 2026-04-25)
+  - `frontend/src/pages/BusinessTrip/BusinessTripList.tsx`：列表 + 状态筛选 + 撤销
+  - `frontend/src/pages/BusinessTrip/BusinessTripForm.tsx`：申请表单
+    - 时间选择精确到分钟，前端实时算工时预览
+    - 提交前自动调冲突预检接口、错误高亮
+    - 附件上传（行程单、发票、水印照片）
+  - `frontend/src/pages/BusinessTrip/BusinessTripDetail.tsx`：详情 + 审批面板
+    - 管理者在 pending 状态可批准/拒绝
+    - 显示审批轨迹、撤销轨迹、附件预览
+  - 路由：/business-trips, /business-trips/new, /business-trips/:id, /business-trips/:id/edit
+  - 菜单："出差管理"对所有角色可见（员工只能看本人申请）
 
-- [x] 权限控制 (已完成 - 2025-12-05)
-  - employee：查看
-  - department_manager：查看、导出
-  - hr_admin：查看所有、编辑、导入导出
+- [x] 权限控制 (已完成 - 2026-04-25)
+  - employee：查看本人申请、提交/编辑/撤销自己的申请、上传附件
+  - department_manager / hr_admin：查看全员、审批、代为创建/撤销
   - admin：全部权限
+
+##### 第二期开发（进行中 - 2026-04-25）
+
+> 用户决定将"钉钉审批通知"替换为"网页右上角站内通知信箱"。
+
+- [x] 站内通知信箱（替代钉钉审批通知，2026-04-25）
+  - 数据表：notifications（接收人/发送人/类型/标题/内容/关联资源/已读状态）
+  - 通知类型：business_trip_submitted/approved/rejected/cancelled、reimbursement_submitted/approved/rejected/paid/cancelled、watermark_missing
+  - 服务：InAppNotificationService.send / sendToMany / list / unreadCount / markRead / markAllRead
+  - REST：/api/notifications, /api/notifications/unread-count, /api/notifications/:id/read, /api/notifications/read-all
+  - 前端：右上角 BellOutlined 徽章（每 60s 轮询未读数）+ Popover 最新 10 条 + 全部已读 + /notifications 整页通知中心
+  - 与出差审批联动：提交→通知所有审批人；审批结果→通知申请人；撤销→通知对方
+
+- [x] 报销单模块（差旅报销，2026-04-25）
+  - 数据表：reimbursements（含财务流转字段）+ reimbursement_items（明细）
+  - 关联出差单：仅 approved/in_progress/completed 出差单可报销，员工自动匹配
+  - 报销类型：长途交通(transport)、住宿(accommodation)、餐费(meal)、市内交通(local_transport)、其他(other)
+  - 限额：住宿 ¥500/天、餐费 ¥150/天（按天累计校验，前后端双重校验）
+  - 发票上传：图片或 PDF（OSS 存 reimbursement/{id}/...）
+  - 状态机：draft → pending → approved/rejected → paid，pending/approved 可撤销
+  - 财务发放：标记 paid 时录入凭证号；同步出差单 reimbursement_status
+  - 通知：提交→通知财务（admin/hr_admin）；审核结果→通知员工；发放→通知员工
+  - 前端：列表/创建/编辑/详情四页 + 路由 /reimbursements*
+  - 菜单："差旅报销"对所有角色可见
+
+- [x] 水印打卡照片审核（出差期间留证，2026-04-25）
+  - 上传接口：POST /api/business-trips/:id/watermark
+  - 校验：taken_at 必须落在出差时间区间内
+  - 数据存储：复用 BusinessTrip.attachments JSON 数组，category='watermark'
+  - 审核接口：GET /api/business-trips/:id/watermark/audit 返回 {expected, actual, missing, total_photos}
+  - 前端：BusinessTripDetail 页面增加 WatermarkPanel
+    - 上传照片 + 选择 taken_at（限定区间内）
+    - 每天打卡情况表格 + 缺打卡红色 Tag
+    - 已上传照片列表（按拍摄时间显示）
+    - 仅 approved/in_progress/completed 出差单可上传
+
+##### 第二期遗留（待第三期）
+
+- [ ] 财务模块独立角色（finance）：当前复用 admin
+- [ ] 通知 WebSocket 实时推送（当前为 60s 轮询）
+- [ ] 多级审批工作流（员工 → 经理 → admin），目前所有审批统一为 admin 单级
+- [ ] 出差期间缺打卡的定时通知任务（scheduler）
+- [ ] 限额按职级/部门差异化配置
+
+##### 12.5 请假流程 + 站内通信（2026-04-26 增补）
+
+- [x] 员工自助请假申请（POST /api/leaves，无需管理者代提）
+- [x] 请假审批：
+  - 当前阶段：仅 admin 可审批/拒绝
+  - 多级审批（员工 → 经理 → admin）放在第三期
+- [x] 请假触发站内通知：
+  - 员工提交 → 通知所有 admin（链接含 status=pending&highlight=leaveId）
+  - admin 审批/拒绝 → 通知申请人（链接含 highlight=leaveId）
+- [x] LeaveList 改造：
+  - "申请请假"按钮对所有用户可见（含 Modal）
+  - 操作列的批准/拒绝按钮仅 admin 可见
+  - 支持 ?highlight=leaveId 高亮目标记录（黄色行）
+  - 支持 ?status=pending 自动筛选 + 时间窗扩展
+- [x] 全局审批权限收紧：出差、报销、请假 全部限制为 admin 单级审批
+  - 出差/报销中 hr_admin、department_manager 仍可查看全员记录，但不能审批/发放/删除
+  - InAppNotificationService.getApproverUserIds / getFinanceUserIds 仅返回 admin 用户
+- [x] 通知信箱增加 leave_* 类型标签
 
 #### 12.4 就餐管理模块 已完成
 
