@@ -147,10 +147,29 @@ export const employeeService = {
    */
   async saveTrainingPledge(
     employeeId: string,
-    data: { training_cost: number; service_years: number }
-  ): Promise<{ pledge_id: string; employee_id: string; training_cost: number; service_years: number }> {
+    data: {
+      training_cost: number;
+      service_years: number;
+      party_a_name: string;
+      party_a_address: string;
+    }
+  ): Promise<{
+    pledge_id: string;
+    employee_id: string;
+    training_cost: number;
+    service_years: number;
+    party_a_name: string;
+    party_a_address: string;
+  }> {
     const response = await apiClient.put<
-      ApiResponse<{ pledge_id: string; employee_id: string; training_cost: number; service_years: number }>
+      ApiResponse<{
+        pledge_id: string;
+        employee_id: string;
+        training_cost: number;
+        service_years: number;
+        party_a_name: string;
+        party_a_address: string;
+      }>
     >(`/employees/${employeeId}/training-pledge`, data);
     return response.data.data!;
   },

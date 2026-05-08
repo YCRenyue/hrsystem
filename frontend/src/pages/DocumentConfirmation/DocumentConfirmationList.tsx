@@ -17,6 +17,7 @@ import {
   App,
   Modal,
   Form,
+  Input,
   InputNumber,
 } from "antd";
 import {
@@ -155,6 +156,8 @@ const DocumentConfirmationList: React.FC = () => {
         pledgeForm.setFieldsValue({
           training_cost: Number(pledge.training_cost),
           service_years: pledge.service_years,
+          party_a_name: pledge.party_a_name || "",
+          party_a_address: pledge.party_a_address || "",
         });
       }
     } catch {
@@ -385,9 +388,33 @@ const DocumentConfirmationList: React.FC = () => {
         confirmLoading={pledgeModalLoading}
         okText="保存"
         cancelText="取消"
-        width={480}
+        width={520}
       >
         <Form form={pledgeForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item
+            name="party_a_name"
+            label="甲方名称"
+            rules={[
+              { required: true, message: "请输入甲方名称" },
+              { max: 200, message: "甲方名称长度不能超过 200 字符" },
+            ]}
+          >
+            <Input placeholder="请输入甲方名称（公司全称）" maxLength={200} />
+          </Form.Item>
+          <Form.Item
+            name="party_a_address"
+            label="甲方住所地"
+            rules={[
+              { required: true, message: "请输入甲方住所地" },
+              { max: 500, message: "甲方住所地长度不能超过 500 字符" },
+            ]}
+          >
+            <Input.TextArea
+              placeholder="请输入甲方住所地（公司注册地址）"
+              maxLength={500}
+              autoSize={{ minRows: 2, maxRows: 4 }}
+            />
+          </Form.Item>
           <Form.Item
             name="training_cost"
             label="培训总费用（元）"

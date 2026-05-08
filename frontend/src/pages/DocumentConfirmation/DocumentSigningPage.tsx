@@ -71,8 +71,8 @@ function genderToText(gender?: string): string {
 
 function buildDefaultPartyInfo(emp: Employee): PartyInfo {
   return {
-    party_a_name: "盐城仁越生物科技有限公司",
-    party_a_address: "江苏建湖县民营科技创业园四号路51号",
+    party_a_name: "",
+    party_a_address: "",
     employee_name: emp.name || "",
     employee_gender: genderToText(emp.gender as string | undefined),
     employee_id_card: emp.id_card || "",
@@ -217,23 +217,28 @@ const DocumentSigningPage: React.FC = () => {
       setEmployee(data);
       if (docType === "training_pledge" && !preservePartyInfo) {
         const pledge = (data as any).trainingPledge;
-        // If pledge has saved party info (from a previous signing), load it;
-        // otherwise fall back to building defaults from the employee record.
-        if (pledge?.party_a_name) {
+        // Party A info is HR-configured on the pledge; employee-fillable fields
+        // come from the saved snapshot (after signing) or sensible defaults.
+        if (data.training_pledge_status) {
           setPartyInfo({
-            party_a_name: pledge.party_a_name || "",
-            party_a_address: pledge.party_a_address || "",
+            party_a_name: pledge?.party_a_name || "",
+            party_a_address: pledge?.party_a_address || "",
             employee_name: data.name || "",
-            employee_gender: pledge.employee_gender || "",
-            employee_id_card: pledge.employee_id_card || "",
-            employee_household_address: pledge.employee_household_address || "",
-            employee_current_address: pledge.employee_current_address || "",
-            contract_sign_date: pledge.contract_sign_date || "",
-            contract_start_date: pledge.contract_start_date || "",
-            contract_end_date: pledge.contract_end_date || "",
+            employee_gender: pledge?.employee_gender || "",
+            employee_id_card: pledge?.employee_id_card || "",
+            employee_household_address: pledge?.employee_household_address || "",
+            employee_current_address: pledge?.employee_current_address || "",
+            contract_sign_date: pledge?.contract_sign_date || "",
+            contract_start_date: pledge?.contract_start_date || "",
+            contract_end_date: pledge?.contract_end_date || "",
           });
         } else {
-          setPartyInfo(buildDefaultPartyInfo(data));
+          const defaults = buildDefaultPartyInfo(data);
+          setPartyInfo({
+            ...defaults,
+            party_a_name: pledge?.party_a_name || "",
+            party_a_address: pledge?.party_a_address || "",
+          });
         }
       }
     } catch (error: any) {
@@ -532,26 +537,18 @@ const DocumentSigningPage: React.FC = () => {
           styles={{ header: { fontWeight: 600 } }}
         >
           <Form layout="vertical" size="small">
-            <Divider orientation="left" orientationMargin={0}>甲方信息</Divider>
+            <Divider orientation="left" orientationMargin={0}>
+              甲方信息（由HR配置，不可修改）
+            </Divider>
             <Row gutter={16}>
               <Col xs={24} sm={12}>
                 <Form.Item label="名称">
-                  <Input
-                    value={partyInfo.party_a_name}
-                    onChange={(e) =>
-                      setPartyInfo({ ...partyInfo, party_a_name: e.target.value })
-                    }
-                  />
+                  <Input value={partyInfo.party_a_name} disabled />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12}>
                 <Form.Item label="住所地">
-                  <Input
-                    value={partyInfo.party_a_address}
-                    onChange={(e) =>
-                      setPartyInfo({ ...partyInfo, party_a_address: e.target.value })
-                    }
-                  />
+                  <Input value={partyInfo.party_a_address} disabled />
                 </Form.Item>
               </Col>
             </Row>

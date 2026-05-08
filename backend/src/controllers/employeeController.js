@@ -575,10 +575,12 @@ const signDocument = async (req, res) => {
     [signedAtField]: new Date()
   });
 
-  // Save party info snapshot to TrainingPledge record when signing training_pledge
+  // Save party info snapshot to TrainingPledge record when signing training_pledge.
+  // Party A fields (party_a_name, party_a_address) are HR-controlled and intentionally
+  // excluded here so that employee submissions cannot overwrite them.
   if (documentType === 'training_pledge' && partyInfo && typeof partyInfo === 'object') {
     const allowedFields = [
-      'party_a_name', 'party_a_address', 'employee_gender', 'employee_id_card',
+      'employee_gender', 'employee_id_card',
       'employee_household_address', 'employee_current_address',
       'contract_sign_date', 'contract_start_date', 'contract_end_date'
     ];
@@ -609,7 +611,12 @@ const signDocument = async (req, res) => {
  */
 const saveTrainingPledge = async (req, res) => {
   const { id } = req.params;
-  const { training_cost, service_years } = req.body;
+  const {
+    training_cost,
+    service_years,
+    party_a_name,
+    party_a_address
+  } = req.body;
 
   const userRole = req.user?.role;
   if (!['admin', 'hr_admin'].includes(userRole)) {
@@ -624,6 +631,19 @@ const saveTrainingPledge = async (req, res) => {
     throw new ValidationError('service_years must be an integer between 1 and 10');
   }
 
+  if (typeof party_a_name !== 'string' || party_a_name.trim().length === 0) {
+    throw new ValidationError('party_a_name is required');
+  }
+  if (party_a_name.trim().length > 200) {
+    throw new ValidationError('party_a_name must be 200 characters or fewer');
+  }
+  if (typeof party_a_address !== 'string' || party_a_address.trim().length === 0) {
+    throw new ValidationError('party_a_address is required');
+  }
+  if (party_a_address.trim().length > 500) {
+    throw new ValidationError('party_a_address must be 500 characters or fewer');
+  }
+
   const employee = await Employee.findByPk(id);
   if (!employee) {
     throw new NotFoundError('Employee', id);
@@ -636,7 +656,9 @@ const saveTrainingPledge = async (req, res) => {
       pledge_id: uuidv4(),
       employee_id: id,
       training_cost: Number(training_cost),
-      service_years: Number(service_years)
+      service_years: Number(service_years),
+      party_a_name: party_a_name.trim(),
+      party_a_address: party_a_address.trim()
     },
     { conflictFields: ['employee_id'] }
   );
@@ -648,7 +670,9 @@ const saveTrainingPledge = async (req, res) => {
       pledge_id: pledge.pledge_id,
       employee_id: pledge.employee_id,
       training_cost: pledge.training_cost,
-      service_years: pledge.service_years
+      service_years: pledge.service_years,
+      party_a_name: pledge.party_a_name,
+      party_a_address: pledge.party_a_address
     }
   });
 };
