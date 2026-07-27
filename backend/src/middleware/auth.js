@@ -2,8 +2,7 @@
  * Authentication Middleware
  */
 const jwt = require('jsonwebtoken');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secure_jwt_secret_here';
+const { JWT_SECRET } = require('../config/jwt');
 
 /**
  * Verify JWT token and attach user to request

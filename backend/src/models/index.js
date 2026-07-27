@@ -14,6 +14,7 @@ const TrainingPledge = require('./TrainingPledge');
 const Notification = require('./Notification');
 const Reimbursement = require('./Reimbursement');
 const ReimbursementItem = require('./ReimbursementItem');
+const OperationLog = require('./OperationLog');
 
 /**
  * Model Associations
@@ -240,6 +241,12 @@ BusinessTrip.hasMany(Reimbursement, {
   as: 'reimbursements'
 });
 
+// OperationLog associations（审计日志 → 操作人）
+OperationLog.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'operator'
+});
+
 /**
  * Sync models with database
  * @param {boolean} force - If true, drops existing tables before creating new ones
@@ -276,7 +283,8 @@ const initModels = () => ({
   TrainingPledge,
   Notification,
   Reimbursement,
-  ReimbursementItem
+  ReimbursementItem,
+  OperationLog
 });
 
 module.exports = {
@@ -296,6 +304,7 @@ module.exports = {
   Notification,
   Reimbursement,
   ReimbursementItem,
+  OperationLog,
   syncModels,
   initModels
 };

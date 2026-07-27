@@ -5,6 +5,11 @@
 > **文档说明**: 本文档为HR管理系统的详细需求和开发进度跟踪文档。每次开发前请先阅读，开发完成后请更新进度。
 >
 > **最新更新**:
+> - (2026-07-26) 交付前安全加固（阻断项修复）：
+>   - (B1) 员工数据范围行级过滤：员工列表/详情/导出按 data_scope 强制过滤，部门经理仅本部门、员工仅本人，修复此前部门经理可越权读取全员 PII 的漏洞（employeeController applyEmployeeScope/canAccessEmployee）
+>   - (B2) JWT 密钥生产 fail-fast：新增 config/jwt.js，生产环境缺失或使用默认密钥时拒绝启动；authController 与 auth 中间件统一引用，消除可预测默认密钥导致 token 伪造的风险
+>   - (B3) 敏感操作审计落库：新增 OperationLog 模型 + operation_logs 迁移(14) + utils/audit，员工增删改导出、用户角色变更/改密/删除均写审计（仅记录元信息，不含敏感明文）。注意：需执行 `npm run db:migrate` 建表
+> - (2026-07-26) 前端依赖修复：@types/d3-dispatch 3.0.7 使用 TS5 的 const 类型参数导致 TS4.9 解析失败，通过 package.json overrides 锁定为 3.0.6，`tsc --noEmit` 恢复通过
 > - (2026-07-26) 重建后端基础测试：新增 src/__tests__/services 下 3 个服务单测（businessTripService/reimbursementService/schedulerService），共 21 个用例，覆盖工时计算、费用/限额校验、报销状态派生，以及本次 P0/P1/生命周期联动逻辑；采用 jest.spyOn 打桩模型，无需真实数据库。`npm run test:backend` 全绿
 > - (2026-07-26) 模块联动修复：
 >   - (P0) 出差撤销联动报销单：撤销出差时，draft/pending/approved 的关联报销单一并撤销；存在已发放(paid)报销时阻断撤销并提示先处理退款（BusinessTripService.cancelLinkedReimbursements）
