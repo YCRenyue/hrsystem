@@ -218,11 +218,6 @@ export interface LoginCredentials {
   password: string;
 }
 
-export interface DingTalkAuthResponse {
-  code: string;
-  state: string;
-}
-
 // Query/Filter types
 export interface EmployeeQueryParams {
   page?: number;

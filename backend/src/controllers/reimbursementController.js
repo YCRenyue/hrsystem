@@ -26,9 +26,11 @@ const {
   ForbiddenError
 } = require('../middleware/errorHandler');
 
-// 当前阶段：仅 admin 可审核/发放/删除报销单（后续支持多级审批时再扩展）
-const APPROVABLE_ROLES = ['admin'];
-// 用于"可见所有员工记录"的角色集合（HR/部门经理保留查询能力，但不参与审批）
+// 财务审核/发放角色（对应需求：HR/管理员承担费用审核与发放）
+const APPROVER_ROLES = ['admin', 'hr_admin'];
+// 仅 admin 可物理删除报销单（保留审计边界）
+const DELETABLE_ROLES = ['admin'];
+// 用于"可见所有员工记录"的角色集合（HR/部门经理保留查询能力）
 const VIEW_ALL_ROLES = ['admin', 'hr_admin', 'department_manager'];
 
 const serializeReimbursement = (record) => {
@@ -391,7 +393,7 @@ const submit = async (req, res) => {
  */
 const approve = async (req, res) => {
   const { decision, notes } = req.body;
-  if (!APPROVABLE_ROLES.includes(req.user.role)) throw new ForbiddenError('无审核权限');
+  if (!APPROVER_ROLES.includes(req.user.role)) throw new ForbiddenError('无审核权限');
   if (!['approved', 'rejected'].includes(decision)) {
     throw new ValidationError('decision 必须为 approved 或 rejected');
   }
@@ -422,7 +424,7 @@ const approve = async (req, res) => {
  *  仅 approved → paid
  */
 const markPaid = async (req, res) => {
-  if (!APPROVABLE_ROLES.includes(req.user.role)) throw new ForbiddenError('无发放权限');
+  if (!APPROVER_ROLES.includes(req.user.role)) throw new ForbiddenError('无发放权限');
 
   const { payment_reference: paymentReference } = req.body;
   const record = await Reimbursement.findByPk(req.params.id);
@@ -508,7 +510,7 @@ const cancel = async (req, res) => {
 const remove = async (req, res) => {
   const record = await Reimbursement.findByPk(req.params.id);
   if (!record) throw new NotFoundError('报销单', req.params.id);
-  if (!APPROVABLE_ROLES.includes(req.user.role)) throw new ForbiddenError('无删除权限');
+  if (!DELETABLE_ROLES.includes(req.user.role)) throw new ForbiddenError('无删除权限');
   if (!['draft', 'cancelled', 'rejected'].includes(record.status)) {
     throw new ValidationError('仅草稿/已撤销/已拒绝的报销单可删除');
   }

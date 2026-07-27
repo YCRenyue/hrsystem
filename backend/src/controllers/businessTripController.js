@@ -26,8 +26,10 @@ const {
   ForbiddenError
 } = require('../middleware/errorHandler');
 
-// 当前阶段：仅 admin 可审批/删除（多级审批为后续阶段）
-const APPROVABLE_ROLES = ['admin'];
+// 一级审批角色（对应需求：部门负责人/HR/管理员）
+const APPROVER_ROLES = ['admin', 'hr_admin', 'department_manager'];
+// 仅 admin 可物理删除记录（保留审计边界）
+const DELETABLE_ROLES = ['admin'];
 // 可见所有员工出差记录的角色集合（HR/部门经理保留查询能力）
 const VIEW_ALL_ROLES = ['admin', 'hr_admin', 'department_manager'];
 
@@ -514,8 +516,8 @@ const submitBusinessTrip = async (req, res) => {
 const approveBusinessTrip = async (req, res) => {
   const { decision, notes } = req.body;
 
-  if (req.user.role !== 'admin') {
-    throw new ForbiddenError('无审批权限（当前阶段仅 admin 可审批）');
+  if (!APPROVER_ROLES.includes(req.user.role)) {
+    throw new ForbiddenError('无审批权限（仅部门负责人/HR/管理员可审批）');
   }
   if (!['approved', 'rejected'].includes(decision)) {
     throw new ValidationError('decision 必须为 approved 或 rejected');
@@ -525,6 +527,10 @@ const approveBusinessTrip = async (req, res) => {
   if (!trip) throw new NotFoundError('出差申请', req.params.id);
   if (trip.status !== 'pending') {
     throw new ValidationError(`当前状态(${trip.status})不可审批`);
+  }
+  // 禁止审批自己提交的出差申请（admin 除外，便于单人环境调试）
+  if (req.user.role !== 'admin' && trip.employee_id === req.user.employee_id) {
+    throw new ForbiddenError('不能审批自己的出差申请');
   }
 
   await businessTripService.runInTransaction(async (t) => {
@@ -568,6 +574,13 @@ const cancelBusinessTrip = async (req, res) => {
   }
 
   await businessTripService.runInTransaction(async (t) => {
+    // 先联动处理报销单：存在已发放报销时在此抛错阻断整个撤销事务
+    await businessTripService.cancelLinkedReimbursements(trip, {
+      userId: req.user.user_id,
+      reason,
+      transaction: t
+    });
+
     if (['approved', 'in_progress'].includes(trip.status)) {
       await businessTripService.rollbackAttendanceOnCancel(trip, { transaction: t });
     }
@@ -575,6 +588,7 @@ const cancelBusinessTrip = async (req, res) => {
     trip.cancelled_at = new Date();
     trip.cancelled_by = req.user.user_id;
     trip.cancellation_reason = reason || null;
+    trip.reimbursement_status = 'not_started';
     await trip.save({ transaction: t });
   });
 
@@ -592,7 +606,7 @@ const deleteBusinessTrip = async (req, res) => {
   const trip = await BusinessTrip.findByPk(req.params.id);
   if (!trip) throw new NotFoundError('出差申请', req.params.id);
 
-  if (!APPROVABLE_ROLES.includes(req.user.role)) {
+  if (!DELETABLE_ROLES.includes(req.user.role)) {
     throw new ForbiddenError('无删除权限');
   }
   if (!['draft', 'cancelled', 'rejected'].includes(trip.status)) {

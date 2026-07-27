@@ -19,6 +19,9 @@ module.exports = {
     quotes: ['error', 'single'],
     'comma-dangle': ['error', 'never'],
     indent: ['error', 2],
+    // Line endings are normalized via .gitattributes (eol=lf); disable the lint
+    // rule so checkouts on Windows (CRLF) don't produce thousands of errors.
+    'linebreak-style': 'off',
 
     // Function and file size limits - relaxed for complex business logic
     'max-lines': ['warn', { max: 600, skipBlankLines: true, skipComments: true }],

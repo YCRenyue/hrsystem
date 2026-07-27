@@ -17,6 +17,7 @@ const {
   BusinessTrip,
   Attendance,
   Leave,
+  Reimbursement,
   sequelize
 } = require('../models');
 const { ValidationError } = require('../middleware/errorHandler');
@@ -316,6 +317,54 @@ const rollbackAttendanceOnCancel = async (trip, { transaction } = {}) => {
 };
 
 /**
+ * 撤销出差时联动处理其关联报销单
+ *
+ * 规则（对应需求《出差报销联动清单》4-(2) "允许撤销已关联的报销单"）：
+ *  - 存在已发放(paid)的报销 → 抛错阻断撤销（款项已支付，需先处理退款）
+ *  - draft/pending/approved 的报销 → 一并撤销，记录撤销原因
+ *
+ * @param {BusinessTrip} trip
+ * @param {Object} options
+ * @param {string} [options.userId] 操作人 user_id
+ * @param {string} [options.reason] 撤销原因
+ * @param {import('sequelize').Transaction} [options.transaction]
+ * @returns {Promise<number>} 被联动撤销的报销单数量
+ */
+const cancelLinkedReimbursements = async (trip, { userId, reason, transaction } = {}) => {
+  const records = await Reimbursement.findAll({
+    where: { trip_id: trip.trip_id },
+    transaction
+  });
+
+  const paid = records.filter((r) => r.status === 'paid');
+  if (paid.length > 0) {
+    throw new ValidationError('该出差单存在已发放的报销单，无法撤销，请先处理报销退款', {
+      paidReimbursements: paid.map((r) => ({
+        reimbursement_id: r.reimbursement_id,
+        reimbursement_number: r.reimbursement_number,
+        total_amount: r.total_amount
+      }))
+    });
+  }
+
+  let cancelledCount = 0;
+  for (const record of records) {
+    if (['draft', 'pending', 'approved'].includes(record.status)) {
+      record.status = 'cancelled';
+      record.cancelled_at = new Date();
+      record.cancelled_by = userId || null;
+      record.cancellation_reason = reason
+        ? `出差单已撤销：${reason}`
+        : '关联出差单已撤销';
+      await record.save({ transaction });
+      cancelledCount += 1;
+    }
+  }
+
+  return cancelledCount;
+};
+
+/**
  * 校验出差期间不允许提交加班（供加班接口/扩展模块调用）
  * @param {string} employeeId
  * @param {Date|string} startInput
@@ -448,6 +497,7 @@ module.exports = {
   assertNoConflicts,
   syncAttendanceOnApproval,
   rollbackAttendanceOnCancel,
+  cancelLinkedReimbursements,
   isWithinActiveBusinessTrip,
   runInTransaction,
   parseAttachments,

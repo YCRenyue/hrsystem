@@ -1,0 +1,16 @@
+# Normalize line endings: store as LF in the repo, auto-convert on checkout.
+* text=auto eol=lf
+
+# Binary assets must never be normalized.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.docx binary
+*.xlsx binary
+*.xls binary
+*.woff binary
+*.woff2 binary
+*.ttf binary

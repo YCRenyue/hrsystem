@@ -5,6 +5,13 @@
 > **文档说明**: 本文档为HR管理系统的详细需求和开发进度跟踪文档。每次开发前请先阅读，开发完成后请更新进度。
 >
 > **最新更新**:
+> - (2026-07-26) 重建后端基础测试：新增 src/__tests__/services 下 3 个服务单测（businessTripService/reimbursementService/schedulerService），共 21 个用例，覆盖工时计算、费用/限额校验、报销状态派生，以及本次 P0/P1/生命周期联动逻辑；采用 jest.spyOn 打桩模型，无需真实数据库。`npm run test:backend` 全绿
+> - (2026-07-26) 模块联动修复：
+>   - (P0) 出差撤销联动报销单：撤销出差时，draft/pending/approved 的关联报销单一并撤销；存在已发放(paid)报销时阻断撤销并提示先处理退款（BusinessTripService.cancelLinkedReimbursements）
+>   - (P1) 审批角色对齐需求：出差审批放开至 部门负责人/HR/管理员，报销审核与发放放开至 HR/管理员；与前端按钮可见角色一致，修复此前前端显示审批按钮但后端返回 403 的不一致；新增"禁止审批本人出差申请"防护
+>   - (P1) 出差状态推进：SchedulerService 新增每小时定时任务 runBusinessTripLifecycle，按日期将 approved→in_progress→completed，激活此前的死状态
+> - (2026-07-26) 工程改进：新增 .gitattributes（eol=lf）并关闭后端 eslint linebreak-style，修复 Windows CRLF 检出导致 lint:backend 全量报错、无法通过提交前门禁的问题；顺带修复迁移文件 09 的 comma-dangle 错误（后端 lint 现 0 error）
+> - (2026-07-26) 登录方式精简：移除钉钉/微信第三方登录入口，仅保留账号密码登录。删除前端 DingTalkCallback 页面、authService.handleDingTalkCallback、后端 /auth/dingtalk/* 路由与控制器方法及 oauthHelper 工具（DingTalk 通知集成保留不受影响）
 > - (2026-04-23) 食堂卡表导入：复用考勤卡表布局，将每日上午/下午打卡解析为午餐/晚餐消费记录；食堂页面改为食堂报表，提供每日/每周中餐晚餐人数、每人用餐汇总与明细查看
 > - (2026-04-23) 考勤卡表导入：支持解析多工作表（1.3.4/5.6.7 等）按姓名匹配员工，存储上午/下午/加班打卡明细与周期汇总，新增考勤报表页（/attendance/report）展示迟到/早退/请假人员与次数
 > - (2026-04-01) 制度确认模块升级：培训服务承诺函改为正式法律版本，支持HR配置费用/年限，模板变量自动填充；管理规章制度改为分页在线阅读（9页），需阅读全部后方可签署；新增 training_pledges 数据库表
