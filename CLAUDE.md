@@ -848,12 +848,18 @@ const Employee = sequelize.define('Employee', {
 
 - `CLAUDE.md` - 本文件，Claude Code 的模式和指导
 - `README.md` - 项目概述和快速开始
-- `requirement.md` - 详细的功能需求
+- `requirement.md` - 开发进度追踪表：功能点清单与完成状态（开发前必读、完成后必更）
+- `docs/ProjectRequirement.md` - 客户方原始需求说明书（项目背景、目标、核心数据表、功能模块）
+- `docs/UpdatedRequirement.pdf` - 客户方更新版需求
+- `docs/BusinessReimburseRequirement.pdf` - 出差报销需求
 - `docs/architecture.md` - 系统架构和设计
 - `docs/api.md` - API 端点文档
 - `docs/database.md` - 数据库模式和设计
 - `docs/backend.md` - 后端开发指南
 - `docs/frontend.md` - 前端开发指南
+
+注意区分：`requirement.md` 记录"做到哪一步了"，`docs/` 下的需求文档记录"客户要什么"，
+两者用途不同，不要混用。`docs/` 下同名的 `.docx` 与 `.pdf` 是同一份内容的两种格式。
 
 ## 部署
 

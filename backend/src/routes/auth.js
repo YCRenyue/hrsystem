@@ -29,18 +29,4 @@ router.get('/me', authenticateToken, asyncHandler(authController.getCurrentUser)
  */
 router.post('/logout', authenticateToken, asyncHandler(authController.logout));
 
-/**
- * @route   GET /api/auth/dingtalk/login-url
- * @desc    Get DingTalk OAuth login URL
- * @access  Public
- */
-router.get('/dingtalk/login-url', asyncHandler(authController.getDingTalkLoginUrl));
-
-/**
- * @route   POST /api/auth/dingtalk/callback
- * @desc    DingTalk OAuth callback
- * @access  Public
- */
-router.post('/dingtalk/callback', asyncHandler(authController.handleDingTalkCallback));
-
 module.exports = router;

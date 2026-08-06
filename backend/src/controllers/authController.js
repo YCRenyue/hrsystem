@@ -5,9 +5,7 @@ const jwt = require('jsonwebtoken');
 const _bcrypt = require('bcryptjs');
 const { User } = require('../models');
 const { UnauthorizedError, ValidationError, NotFoundError } = require('../middleware/errorHandler');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secure_jwt_secret_here';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/jwt');
 
 /**
  * Generate JWT token
@@ -113,100 +111,8 @@ const logout = async (req, res) => {
   });
 };
 
-/**
- * Get DingTalk OAuth login URL
- */
-const getDingTalkLoginUrl = async (req, res) => {
-  const { generateDingTalkLoginUrl } = require('../utils/oauthHelper');
-
-  const clientId = process.env.DINGTALK_APP_KEY;
-  const redirectUri = `${process.env.FRONTEND_URL}/auth/dingtalk/callback`;
-
-  if (!clientId) {
-    throw new ValidationError('钉钉OAuth未配置');
-  }
-
-  const loginUrl = generateDingTalkLoginUrl({
-    clientId,
-    redirectUri,
-    scope: 'openid'
-  });
-
-  res.json({
-    success: true,
-    data: { loginUrl }
-  });
-};
-
-/**
- * DingTalk OAuth callback handler
- */
-const handleDingTalkCallback = async (req, res) => {
-  const dingTalkService = require('../services/DingTalkService');
-  const { Employee } = require('../models');
-  const { code, state: _state } = req.body;
-
-  if (!code) {
-    throw new ValidationError('授权码为必填项');
-  }
-
-  // Exchange code for access token
-  const tokenData = await dingTalkService.exchangeCodeForToken(code);
-
-  // Get user info from DingTalk
-  const userInfo = await dingTalkService.getUserInfoByToken(tokenData.accessToken);
-
-  // Find employee by DingTalk user ID or mobile
-  let employee = await Employee.findOne({
-    where: { dingtalk_user_id: userInfo.openid }
-  });
-
-  if (!employee && userInfo.mobile) {
-    const employees = await Employee.findAll();
-    employee = employees.find((emp) => emp.getPhone() === userInfo.mobile);
-
-    if (employee) {
-      employee.dingtalk_user_id = userInfo.openid;
-      await employee.save();
-    }
-  }
-
-  if (!employee) {
-    throw new UnauthorizedError('系统中未找到该用户');
-  }
-
-  // Find associated user account
-  const user = await User.findOne({
-    where: { employee_id: employee.employee_id }
-  });
-
-  if (!user) {
-    throw new UnauthorizedError('用户账户不存在');
-  }
-
-  if (!user.is_active) {
-    throw new UnauthorizedError('账户已被禁用');
-  }
-
-  // Record successful login
-  const ipAddress = req.ip || req.connection.remoteAddress;
-  await user.recordSuccessfulLogin(ipAddress);
-
-  const token = generateToken(user.toSafeObject());
-
-  res.json({
-    success: true,
-    data: {
-      token,
-      user: user.toSafeObject()
-    }
-  });
-};
-
 module.exports = {
   login,
   getCurrentUser,
-  logout,
-  getDingTalkLoginUrl,
-  handleDingTalkCallback
+  logout
 };

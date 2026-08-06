@@ -11,7 +11,7 @@
 
 const cron = require('node-cron');
 const { Op } = require('sequelize');
-const { Employee, OnboardingProcess } = require('../models');
+const { Employee, OnboardingProcess, BusinessTrip } = require('../models');
 const notificationService = require('./NotificationService');
 const logger = require('../utils/logger');
 
@@ -71,6 +71,13 @@ class SchedulerService {
     this.jobs.push(
       cron.schedule('0 10 1 * *', () => {
         this.runMonthlyStatistics();
+      })
+    );
+
+    // Hourly task - Advance business trip statuses (approved -> in_progress -> completed)
+    this.jobs.push(
+      cron.schedule('0 * * * *', () => {
+        this.runBusinessTripLifecycle();
       })
     );
 
@@ -350,6 +357,47 @@ class SchedulerService {
   }
 
   /**
+   * Business trip lifecycle transitions - advance approved trips by date.
+   *  - approved and already started (not ended)  -> in_progress
+   *  - approved/in_progress and already ended     -> completed
+   * Runs hourly so datetime-granular trips update promptly.
+   */
+  async runBusinessTripLifecycle() {
+    logger.info('Running business trip lifecycle transitions...');
+
+    try {
+      const now = new Date();
+
+      const [toInProgress] = await BusinessTrip.update(
+        { status: 'in_progress' },
+        {
+          where: {
+            status: 'approved',
+            start_datetime: { [Op.lte]: now },
+            end_datetime: { [Op.gt]: now }
+          }
+        }
+      );
+
+      const [toCompleted] = await BusinessTrip.update(
+        { status: 'completed' },
+        {
+          where: {
+            status: { [Op.in]: ['approved', 'in_progress'] },
+            end_datetime: { [Op.lte]: now }
+          }
+        }
+      );
+
+      logger.info(
+        `Business trip lifecycle: ${toInProgress} -> in_progress, ${toCompleted} -> completed`
+      );
+    } catch (error) {
+      logger.error('Error in business trip lifecycle task:', error.message);
+    }
+  }
+
+  /**
    * Generate a unique form token
    *
    * @private
@@ -372,7 +420,8 @@ class SchedulerService {
       welcome: () => this.runWelcomeMessages(),
       training: () => this.runTrainingReminders(),
       'contract-expiry': () => this.runContractExpiryReminders(),
-      statistics: () => this.runMonthlyStatistics()
+      statistics: () => this.runMonthlyStatistics(),
+      'business-trip-lifecycle': () => this.runBusinessTripLifecycle()
     };
 
     if (tasks[taskName]) {

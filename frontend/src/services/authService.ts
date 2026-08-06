@@ -48,22 +48,6 @@ export const authService = {
   },
 
   /**
-   * DingTalk OAuth callback handler
-   */
-  async handleDingTalkCallback(code: string, state: string): Promise<LoginResponse> {
-    const response = await apiClient.post<ApiResponse<LoginResponse>>(
-      '/auth/dingtalk/callback',
-      { code, state }
-    );
-    const { token, user } = response.data.data!;
-
-    localStorage.setItem('auth_token', token);
-    localStorage.setItem('user_info', JSON.stringify(user));
-
-    return { token, user };
-  },
-
-  /**
    * Get stored user info from localStorage
    */
   getStoredUser(): User | null {

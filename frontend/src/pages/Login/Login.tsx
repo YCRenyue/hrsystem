@@ -2,8 +2,8 @@
  * Login Page - User authentication
  */
 import React, { useState } from 'react';
-import { Form, Input, Button, Card, Divider, App } from 'antd';
-import { UserOutlined, LockOutlined, DingdingOutlined, WechatOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Card, App } from 'antd';
+import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import './Login.css';
@@ -27,30 +27,6 @@ const Login: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleDingTalkLogin = async () => {
-    try {
-      setLoading(true);
-      const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiBaseUrl}/auth/dingtalk/login-url`);
-      const data = await response.json();
-      if (data.success && data.data.loginUrl) {
-        window.location.href = data.data.loginUrl;
-      } else {
-        message.error('Failed to get DingTalk login URL');
-      }
-    } catch (error) {
-      message.error('Failed to initiate DingTalk login');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleWeChatLogin = () => {
-    message.info('微信 OAuth 集成即将推出');
-    // TODO: Implement WeChat OAuth flow
-    // window.location.href = WECHAT_OAUTH_URL;
   };
 
   return (
@@ -78,31 +54,6 @@ const Login: React.FC = () => {
             </Button>
           </Form.Item>
         </Form>
-
-        <Divider>或</Divider>
-
-        <Button
-          icon={<DingdingOutlined />}
-          onClick={handleDingTalkLogin}
-          block
-          size="large"
-        >
-          使用钉钉登录 (等待配置)
-        </Button>
-
-        <Button
-          icon={<WechatOutlined />}
-          onClick={handleWeChatLogin}
-          block
-          size="large"
-          style={{ marginTop: 12, backgroundColor: '#07C160', borderColor: '#07C160', color: '#fff' }}
-        >
-          使用微信登录 (等待配置)
-        </Button>
-
-        <div style={{ textAlign: 'center', marginTop: 24, color: '#999' }}>
-          <small>Dev</small>
-        </div>
       </Card>
     </div>
   );

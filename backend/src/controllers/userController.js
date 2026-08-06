@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const { Op } = require('sequelize');
 const { User, Employee, Department } = require('../models');
 const _permissionService = require('../services/PermissionService');
+const { recordOperation } = require('../utils/audit');
 
 /**
  * Default password for password reset
@@ -500,6 +501,13 @@ const updateUserRole = async (req, res) => {
     });
   }
 
+  const before = {
+    role: user.role,
+    data_scope: user.data_scope,
+    can_view_sensitive: user.can_view_sensitive,
+    status: user.status
+  };
+
   // Update user fields
   if (role !== undefined) user.role = role;
   if (data_scope !== undefined) user.data_scope = data_scope;
@@ -507,6 +515,20 @@ const updateUserRole = async (req, res) => {
   if (status !== undefined) user.status = status;
 
   await user.save();
+
+  await recordOperation({
+    req,
+    operationType: 'role_change',
+    tableName: 'users',
+    recordId: user.user_id,
+    oldValues: before,
+    newValues: {
+      role: user.role,
+      data_scope: user.data_scope,
+      can_view_sensitive: user.can_view_sensitive,
+      status: user.status
+    }
+  });
 
   return res.json({
     success: true,
@@ -542,6 +564,14 @@ const resetUserPassword = async (req, res) => {
 
   await user.save();
 
+  await recordOperation({
+    req,
+    operationType: 'password_reset',
+    tableName: 'users',
+    recordId: user.user_id,
+    newValues: { username: user.username }
+  });
+
   return res.json({
     success: true,
     message: `密码已重置为：${DEFAULT_PASSWORD}`
@@ -572,6 +602,14 @@ const deleteUser = async (req, res) => {
   }
 
   await user.destroy();
+
+  await recordOperation({
+    req,
+    operationType: 'delete',
+    tableName: 'users',
+    recordId: id,
+    oldValues: { username: user.username, role: user.role }
+  });
 
   return res.json({
     success: true,

@@ -18,7 +18,7 @@ module.exports = {
       ['employee_current_address', { type: Sequelize.STRING(500), allowNull: true }],
       ['contract_sign_date', { type: Sequelize.STRING(50), allowNull: true }],
       ['contract_start_date', { type: Sequelize.STRING(50), allowNull: true }],
-      ['contract_end_date', { type: Sequelize.STRING(50), allowNull: true }],
+      ['contract_end_date', { type: Sequelize.STRING(50), allowNull: true }]
     ];
 
     for (const [columnName, options] of columns) {
@@ -40,7 +40,7 @@ module.exports = {
       'employee_current_address',
       'contract_sign_date',
       'contract_start_date',
-      'contract_end_date',
+      'contract_end_date'
     ];
 
     for (const columnName of columns) {

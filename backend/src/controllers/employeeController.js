@@ -6,9 +6,51 @@ const {
   Employee, Department, User, TrainingPledge
 } = require('../models');
 const employeeImportService = require('../services/employeeImportService');
-const { NotFoundError, ValidationError } = require('../middleware/errorHandler');
+const {
+  NotFoundError, ValidationError, ForbiddenError
+} = require('../middleware/errorHandler');
 const { encryptionService } = require('../utils/encryption');
+const { recordOperation } = require('../utils/audit');
 const { sequelize } = require('../config/database');
+
+// 无法匹配任何 UUID 的哨兵值，用于数据范围为空时返回空集
+const NO_MATCH = '__no_match__';
+
+/**
+ * 依据登录用户的数据范围（data_scope）向 where 注入行级过滤。
+ *  - all：不加限制
+ *  - department：仅本部门（无部门则返回空集）
+ *  - self：仅本人员工记录
+ * 作为路由守卫之外的纵深防御，防止越权读取他部门员工 PII。
+ * @param {Object} where Sequelize where 对象（原地修改）
+ * @param {Object} user req.user（JWT 载荷）
+ */
+const applyEmployeeScope = (where, user) => {
+  const scope = user?.data_scope;
+  if (scope === 'department') {
+    where.department_id = user.department_id || NO_MATCH;
+  } else if (scope === 'self') {
+    where.employee_id = user.employee_id || NO_MATCH;
+  }
+};
+
+/**
+ * 判断用户是否有权访问单条员工记录（用于详情查看）
+ * @param {Object} user req.user
+ * @param {Object} employee Employee 实例
+ * @returns {boolean}
+ */
+const canAccessEmployee = (user, employee) => {
+  const scope = user?.data_scope;
+  if (scope === 'department') {
+    return employee.department_id === user.department_id
+      || employee.employee_id === user.employee_id;
+  }
+  if (scope === 'self') {
+    return employee.employee_id === user.employee_id;
+  }
+  return true;
+};
 
 /**
  * Default password for new employee accounts
@@ -78,6 +120,9 @@ const getEmployees = async (req, res) => {
   if (parsedTrainingPledgeStatus !== undefined) {
     where.training_pledge_status = parsedTrainingPledgeStatus;
   }
+
+  // 行级数据范围过滤（覆盖前面按 query 传入的 department_id）
+  applyEmployeeScope(where, req.user);
 
   // Build order clause
   let orderClause;
@@ -181,6 +226,11 @@ const getEmployeeById = async (req, res) => {
 
   if (!employee) {
     throw new NotFoundError('Employee', id);
+  }
+
+  // 数据范围校验：部门经理不可跨部门查看，普通员工仅可查看本人
+  if (!canAccessEmployee(req.user, employee)) {
+    throw new ForbiddenError('无权查看该员工信息');
   }
 
   // Check if user can view sensitive data
@@ -289,6 +339,18 @@ const createEmployee = async (req, res) => {
 
     await transaction.commit();
 
+    await recordOperation({
+      req,
+      operationType: 'create',
+      tableName: 'employees',
+      recordId: employee.employee_id,
+      newValues: {
+        employee_number: employee.employee_number,
+        department_id: employee.department_id,
+        status: employee.status
+      }
+    });
+
     res.status(201).json({
       success: true,
       data: employee.toSafeObject(true),
@@ -339,6 +401,19 @@ const updateEmployee = async (req, res) => {
   employee.updated_by = req.user?.user_id;
   await employee.save();
 
+  // 审计：仅记录被修改的字段名，不记录敏感明文
+  await recordOperation({
+    req,
+    operationType: 'update',
+    tableName: 'employees',
+    recordId: id,
+    newValues: {
+      changed_fields: Object.keys(updateData),
+      department_id: employee.department_id,
+      status: employee.status
+    }
+  });
+
   // Reload with associations
   await employee.reload({
     include: [
@@ -369,6 +444,18 @@ const deleteEmployee = async (req, res) => {
   }
 
   await employee.destroy();
+
+  await recordOperation({
+    req,
+    operationType: 'delete',
+    tableName: 'employees',
+    recordId: id,
+    oldValues: {
+      employee_number: employee.employee_number,
+      department_id: employee.department_id,
+      status: employee.status
+    }
+  });
 
   res.json({
     success: true,
@@ -455,6 +542,9 @@ const exportToExcel = async (req, res) => {
   if (status) where.status = status;
   if (employment_type) where.employment_type = employment_type;
 
+  // 行级数据范围过滤（覆盖 query 传入的 department_id）
+  applyEmployeeScope(where, req.user);
+
   // Fetch all employees
   const employees = await Employee.findAll({
     where,
@@ -490,6 +580,18 @@ const exportToExcel = async (req, res) => {
 
   // Check if user can view sensitive data
   const canViewSensitive = req.user?.role === 'admin' || req.user?.role === 'hr_admin';
+
+  // 审计：导出敏感数据是高风险操作，记录筛选条件与导出行数
+  await recordOperation({
+    req,
+    operationType: 'export',
+    tableName: 'employees',
+    newValues: {
+      filters: { department_id, status, employment_type },
+      count: employees.length,
+      sensitive_included: canViewSensitive
+    }
+  });
 
   // Add rows
   employees.forEach((employee) => {
