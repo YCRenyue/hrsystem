@@ -35,6 +35,7 @@ import NotificationCenter from './pages/Notifications/NotificationCenter';
 import ReimbursementList from './pages/Reimbursement/ReimbursementList';
 import ReimbursementForm from './pages/Reimbursement/ReimbursementForm';
 import ReimbursementDetail from './pages/Reimbursement/ReimbursementDetail';
+import ForcedPasswordChange from './pages/Login/ForcedPasswordChange';
 import './App.css';
 
 function App() {
@@ -53,6 +54,14 @@ function App() {
             <Router>
               <Routes>
                 <Route path="/login" element={<Login />} />
+                <Route
+                  path="/change-password"
+                  element={
+                    <ProtectedRoute>
+                      <ForcedPasswordChange />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route
                   path="/"
                   element={

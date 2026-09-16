@@ -19,6 +19,10 @@ const Login: React.FC = () => {
     try {
       const loggedInUser = await login(values.username, values.password);
       message.success('登录成功！');
+      if (loggedInUser.must_change_password) {
+        navigate('/change-password');
+        return;
+      }
       const isManager = ['admin', 'hr_admin', 'department_manager']
         .includes(loggedInUser?.role);
       navigate(isManager ? '/dashboard' : '/document-confirmations/my');

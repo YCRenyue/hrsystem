@@ -24,7 +24,6 @@ import {
   LoadingOutlined,
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { UploadFile } from 'antd/es/upload/interface';
 import dayjs from 'dayjs';
 import { Gender } from '../../types';
 import apiClient from '../../services/api';

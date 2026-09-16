@@ -1,7 +1,6 @@
 /**
  * Onboarding Controller
  */
-const crypto = require('crypto');
 const { OnboardingProcess, Employee } = require('../models');
 const { NotFoundError, ValidationError } = require('../middleware/errorHandler');
 const notificationService = require('../services/NotificationService');
@@ -144,7 +143,7 @@ const submitOnboardingForm = async (req, res) => {
   await process.employee.save();
 
   // Update onboarding process status
-  await process.markAsCompleted(formData);
+  await process.markAsCompleted();
 
   res.json({
     success: true,
@@ -171,28 +170,28 @@ const sendOnboardingForm = async (req, res) => {
 
   // Check if onboarding process already exists
   let onboardingProcess = await OnboardingProcess.findOne({
-    where: { employee_id: employeeId }
+    where: { employee_id: employeeId },
+    order: [['created_at', 'DESC']]
   });
 
-  // Create new process if not exists
+  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+  // Create a process or renew an expired/missing token before sending.
   if (!onboardingProcess) {
-    const formToken = crypto.randomBytes(32).toString('hex');
     onboardingProcess = await OnboardingProcess.create({
       employee_id: employeeId,
-      status: 'pending',
-      form_token: formToken,
-      token_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+      status: 'pending'
     });
   }
 
-  // Generate form URL (use global process object for env)
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  const formUrl = `${baseUrl}/onboarding/${onboardingProcess.form_token}`;
+  if (!onboardingProcess.form_token || onboardingProcess.isTokenExpired()) {
+    onboardingProcess.status = 'pending';
+    onboardingProcess.generateFormToken();
+  }
+  const formUrl = onboardingProcess.generateFormLink(baseUrl);
+  await onboardingProcess.save();
 
-  logger.info(`Sending onboarding form to ${employee.email}`, {
-    employeeId,
-    formUrl
-  });
+  logger.info(`Sending onboarding form to ${employee.email}`, { employeeId });
 
   // Send notification
   const result = await notificationService.sendOnboardingNotification(

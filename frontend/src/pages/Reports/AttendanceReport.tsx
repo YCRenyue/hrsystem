@@ -87,6 +87,8 @@ const AttendanceReport: React.FC = () => {
       start_date: dayjs().subtract(30, 'days').format('YYYY-MM-DD'),
       end_date: dayjs().format('YYYY-MM-DD')
     });
+    // The initial report should run once with the default period.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchDepartments = async () => {

@@ -187,10 +187,29 @@ const changePassword = async (req, res) => {
       });
     }
 
-    // Hash new password
-    const newPasswordHash = await bcrypt.hash(newPassword, 10);
-    user.password_hash = newPasswordHash;
-    await user.save();
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(newPassword)) {
+      return res.status(400).json({
+        success: false,
+        message: '新密码至少8个字符，并且必须包含大小写字母和数字'
+      });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: '新密码不能与当前密码相同'
+      });
+    }
+
+    await user.updatePassword(newPassword);
+
+    await recordOperation({
+      req,
+      operationType: 'password_change',
+      tableName: 'users',
+      recordId: user.user_id,
+      newValues: { must_change_password: false }
+    });
 
     return res.json({
       success: true,

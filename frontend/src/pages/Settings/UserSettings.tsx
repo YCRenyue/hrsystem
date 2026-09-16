@@ -228,9 +228,9 @@ const UserSettings: React.FC = () => {
           name="newPassword"
           rules={[
             { required: true, message: '请输入新密码' },
-            { min: 6, message: '密码至少6个字符' },
+            { min: 8, message: '密码至少8个字符' },
             {
-              pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/,
+              pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/,
               message: '密码必须包含大小写字母和数字'
             }
           ]}

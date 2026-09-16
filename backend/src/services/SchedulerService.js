@@ -108,64 +108,71 @@ class SchedulerService {
     logger.info('Running daily onboarding task...');
 
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = new Date().toISOString().slice(0, 10);
 
       // Find employees whose entry date is today and haven't completed onboarding
       const employees = await Employee.findAll({
         where: {
-          entry_date: {
-            [Op.eq]: today
-          },
+          entry_date: today,
           status: 'pending',
           data_complete: false
-        },
-        include: [
-          {
-            model: OnboardingProcess,
-            as: 'onboardingProcess',
-            required: false
-          }
-        ]
+        }
       });
 
       logger.info(`Found ${employees.length} employees starting today`);
 
       for (const employee of employees) {
         try {
-          // Generate form token if not exists
-          // eslint-disable-next-line prefer-destructuring
-          let onboardingProcess = employee.onboardingProcess;
+          // Serial execution limits pressure on notification providers.
+          // eslint-disable-next-line no-await-in-loop
+          let onboardingProcess = await OnboardingProcess.findOne({
+            where: {
+              employee_id: employee.employee_id,
+              status: { [Op.ne]: 'completed' }
+            },
+            order: [['created_at', 'DESC']]
+          });
           if (!onboardingProcess) {
             /* eslint-disable no-await-in-loop */
-            // 串行处理：依赖外部通知服务，避免并发风险
             onboardingProcess = await OnboardingProcess.create({
               employee_id: employee.employee_id,
-              process_status: 'pending',
-              form_token: this._generateFormToken()
+              status: 'pending'
             });
           }
 
-          // Generate form URL
           const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-          const formUrl = `${baseUrl}/onboarding/${onboardingProcess.form_token}`;
+          if (!onboardingProcess.form_token || onboardingProcess.isTokenExpired()) {
+            onboardingProcess.status = 'pending';
+            onboardingProcess.generateFormToken();
+          }
+          const formUrl = onboardingProcess.generateFormLink(baseUrl);
+          await onboardingProcess.save();
 
-          // Send notification
           const result = await notificationService.sendOnboardingNotification(
-            employee,
+            {
+              name: employee.getName(),
+              email: employee.email,
+              dingtalk_user_id: employee.dingtalk_user_id
+            },
             formUrl
           );
 
-          // Update process status
-          await onboardingProcess.update({
-            process_status: 'sent',
-            sent_time: new Date(),
-            notification_method: result.channel
-          });
+          await onboardingProcess.markAsSent(
+            result.channel || 'manual',
+            result.success,
+            result.error
+          );
 
-          logger.info(`Onboarding notification sent to ${employee.name} via ${result.channel}`);
+          logger.info('Onboarding notification processed', {
+            employeeId: employee.employee_id,
+            success: result.success,
+            channel: result.channel
+          });
         } catch (error) {
-          logger.error(`Failed to send onboarding notification to ${employee.name}:`, error.message);
+          logger.error('Failed to send onboarding notification', {
+            employeeId: employee.employee_id,
+            error: error.message
+          });
         }
       }
 
@@ -395,17 +402,6 @@ class SchedulerService {
     } catch (error) {
       logger.error('Error in business trip lifecycle task:', error.message);
     }
-  }
-
-  /**
-   * Generate a unique form token
-   *
-   * @private
-   * @returns {string} Form token
-   */
-  _generateFormToken() {
-    const crypto = require('crypto');
-    return crypto.randomBytes(32).toString('hex');
   }
 
   /**

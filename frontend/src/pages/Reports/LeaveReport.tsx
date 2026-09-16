@@ -86,6 +86,8 @@ const LeaveReport: React.FC = () => {
       end_date: dayjs().format('YYYY-MM-DD'),
       status: 'approved'
     });
+    // The initial report should run once with the default period.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchDepartments = async () => {

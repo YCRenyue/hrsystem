@@ -17,7 +17,8 @@ const generateToken = (user) => jwt.sign(
     role: user.role,
     employee_id: user.employee_id,
     data_scope: user.data_scope,
-    department_id: user.department_id
+    department_id: user.department_id,
+    must_change_password: user.must_change_password
   },
   JWT_SECRET,
   { expiresIn: JWT_EXPIRES_IN }
@@ -59,26 +60,22 @@ const login = async (req, res) => {
     throw new UnauthorizedError('用户名或密码错误');
   }
 
-  // Check if password is expired
-  if (user.isPasswordExpired()) {
-    return res.json({
-      success: false,
-      must_change_password: true,
-      message: '密码已过期，请修改密码'
-    });
-  }
+  const safeUser = user.toSafeObject();
+  safeUser.must_change_password = Boolean(
+    user.must_change_password || user.isPasswordExpired()
+  );
 
   // Record successful login
   const ipAddress = req.ip || req.connection.remoteAddress;
   await user.recordSuccessfulLogin(ipAddress);
 
-  const token = generateToken(user.toSafeObject());
+  const token = generateToken(safeUser);
 
   return res.json({
     success: true,
     data: {
       token,
-      user: user.toSafeObject()
+      user: safeUser
     }
   });
 };
@@ -94,9 +91,14 @@ const getCurrentUser = async (req, res) => {
     throw new NotFoundError('User', req.user.user_id);
   }
 
+  const safeUser = user.toSafeObject();
+  safeUser.must_change_password = Boolean(
+    user.must_change_password || user.isPasswordExpired()
+  );
+
   res.json({
     success: true,
-    data: user.toSafeObject()
+    data: safeUser
   });
 };
 
