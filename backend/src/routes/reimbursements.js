@@ -21,12 +21,12 @@ router.put('/:id', asyncHandler(reimbursementController.update));
 router.post('/:id/submit', asyncHandler(reimbursementController.submit));
 router.post(
   '/:id/approve',
-  requireRole('admin'),
+  requireRole('admin', 'hr_admin'),
   asyncHandler(reimbursementController.approve)
 );
 router.post(
   '/:id/pay',
-  requireRole('admin'),
+  requireRole('admin', 'finance'),
   asyncHandler(reimbursementController.markPaid)
 );
 router.post('/:id/cancel', asyncHandler(reimbursementController.cancel));

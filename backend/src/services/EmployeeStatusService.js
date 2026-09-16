@@ -4,6 +4,7 @@
  */
 
 const Employee = require('../models/Employee');
+const annualLeaveService = require('./AnnualLeaveService');
 const logger = require('../utils/logger');
 
 /**
@@ -88,9 +89,11 @@ class EmployeeStatusService {
       throw new Error(`Invalid status transition from ${employee.status} to ${EmployeeStatus.INACTIVE}`);
     }
 
-    return this._updateStatus(employee, EmployeeStatus.INACTIVE, {
+    const result = await this._updateStatus(employee, EmployeeStatus.INACTIVE, {
       leaveDate: leaveDate || new Date()
     });
+    await annualLeaveService.settleOnOffboarding(employee, leaveDate || new Date());
+    return result;
   }
 
   /**

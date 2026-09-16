@@ -11,7 +11,7 @@ import { useAuth } from './AuthContext';
 /**
  * 用户角色类型
  */
-export type UserRole = 'admin' | 'hr_admin' | 'department_manager' | 'employee';
+export type UserRole = 'admin' | 'hr_admin' | 'department_manager' | 'finance' | 'employee';
 
 /**
  * 数据范围类型

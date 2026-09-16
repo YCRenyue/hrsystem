@@ -202,6 +202,10 @@ const createCanteenMeal = async (req, res) => {
     );
   }
 
+  if (!(await canteenImportService.isMealEligible(employee_id, meal_date))) {
+    throw new ValidationError('非工作日、请假或出差期间不能计入食堂用餐');
+  }
+
   // Check if employee exists
   const employee = await Employee.findByPk(employee_id);
   if (!employee) {

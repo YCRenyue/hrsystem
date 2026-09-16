@@ -7,6 +7,7 @@
  * 与 NotificationService（钉钉/邮件）解耦：本服务只写数据库，前端轮询读取。
  */
 
+const { Op } = require('sequelize');
 const {
   Notification,
   User
@@ -105,18 +106,24 @@ const sendToMany = async (recipientUserIds, payload, options = {}) => {
 
 /**
  * 查询所有审批人用户ID。
- * 当前阶段：审批工作流统一为 admin 审批；之后再扩展为多级（员工-经理-admin）。
- *
- * @param {Object} [filters] - 预留扩展（departmentId 等），目前忽略
+ * @param {Object} [filters] Optional department filter
  * @returns {Promise<string[]>}
  */
-// eslint-disable-next-line no-unused-vars
 const getApproverUserIds = async (filters = {}) => {
+  const roleConditions = [
+    { role: { [Op.in]: ['admin', 'hr_admin'] } }
+  ];
+  if (filters.departmentId) {
+    roleConditions.push({
+      role: 'department_manager',
+      department_id: filters.departmentId
+    });
+  }
   const all = await User.findAll({
     where: {
       is_active: true,
       status: 'active',
-      role: 'admin'
+      [Op.or]: roleConditions
     },
     attributes: ['user_id']
   });
@@ -125,8 +132,6 @@ const getApproverUserIds = async (filters = {}) => {
 
 /**
  * 查询所有"财务/报销审核人"的用户ID列表。
- * 当前阶段：财务角色复用 admin。
- *
  * @returns {Promise<string[]>}
  */
 const getFinanceUserIds = async () => {
@@ -134,11 +139,23 @@ const getFinanceUserIds = async () => {
     where: {
       is_active: true,
       status: 'active',
-      role: 'admin'
+      role: { [Op.in]: ['admin', 'finance'] }
     },
     attributes: ['user_id']
   });
   return users.map((u) => u.user_id);
+};
+
+const getHrApproverUserIds = async () => {
+  const users = await User.findAll({
+    where: {
+      is_active: true,
+      status: 'active',
+      role: { [Op.in]: ['admin', 'hr_admin'] }
+    },
+    attributes: ['user_id']
+  });
+  return users.map((user) => user.user_id);
 };
 
 /**
@@ -215,6 +232,7 @@ module.exports = {
   send,
   sendToMany,
   getApproverUserIds,
+  getHrApproverUserIds,
   getFinanceUserIds,
   list,
   unreadCount,

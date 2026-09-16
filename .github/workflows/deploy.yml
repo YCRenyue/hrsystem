@@ -53,6 +53,32 @@ env:
   DOCKER_NETWORK: hrsystem-network
 
 jobs:
+  quality-gate:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+      - name: Check backend
+        run: |
+          cd backend
+          npm ci
+          npm run lint
+          npm test -- --runInBand
+      - name: Check frontend
+        run: |
+          cd frontend
+          npm ci
+          npx tsc --noEmit
+          npx eslint src/ --max-warnings=0
+          npm test -- --watchAll=false --runInBand
+        env:
+          CI: true
+
   # 1. 检测变更和配置
   prepare:
     name: 📋 准备和检测
@@ -135,7 +161,7 @@ jobs:
   build-and-push:
     name: 🏗️ 构建和推送镜像
     runs-on: ubuntu-latest
-    needs: prepare
+    needs: [prepare, quality-gate]
     if: ${{ needs.prepare.outputs.should_deploy_backend == 'true' || needs.prepare.outputs.should_deploy_frontend == 'true' }}
     permissions:
       contents: read
@@ -466,8 +492,11 @@ jobs:
                 ${BACKEND_IMAGE} \
                 node src/db/seed.js
 
-              docker stop hrsystem-backend 2>/dev/null || true
-              docker rm hrsystem-backend 2>/dev/null || true
+              docker rm -f hrsystem-backend-previous 2>/dev/null || true
+              if docker ps -a --format '{{.Names}}' | grep -q '^hrsystem-backend$'; then
+                docker stop hrsystem-backend
+                docker rename hrsystem-backend hrsystem-backend-previous
+              fi
 
               docker run -d \
                 --name hrsystem-backend \
@@ -497,9 +526,16 @@ jobs:
               sleep 10
               if curl -sf http://localhost:${{ env.BACKEND_PORT }}/health > /dev/null; then
                 echo "✅ 后端服务部署成功"
+                docker rm hrsystem-backend-previous 2>/dev/null || true
               else
-                echo "⚠️ 后端健康检查失败，查看日志："
+                echo "后端健康检查失败，开始回滚："
                 docker logs hrsystem-backend --tail 30
+                docker rm -f hrsystem-backend
+                if docker ps -a --format '{{.Names}}' | grep -q '^hrsystem-backend-previous$'; then
+                  docker rename hrsystem-backend-previous hrsystem-backend
+                  docker start hrsystem-backend
+                fi
+                exit 1
               fi
             fi
 
@@ -511,8 +547,11 @@ jobs:
 
               docker pull ${FRONTEND_IMAGE}
 
-              docker stop hrsystem-frontend 2>/dev/null || true
-              docker rm hrsystem-frontend 2>/dev/null || true
+              docker rm -f hrsystem-frontend-previous 2>/dev/null || true
+              if docker ps -a --format '{{.Names}}' | grep -q '^hrsystem-frontend$'; then
+                docker stop hrsystem-frontend
+                docker rename hrsystem-frontend hrsystem-frontend-previous
+              fi
 
               CONTAINER_ON_PORT=\$(docker ps -q --filter "publish=${{ env.FRONTEND_PORT }}")
               if [ -n "\$CONTAINER_ON_PORT" ]; then
@@ -539,9 +578,16 @@ jobs:
               sleep 5
               if curl -sf http://localhost:${{ env.FRONTEND_PORT }}/ > /dev/null; then
                 echo "✅ 前端服务部署成功"
+                docker rm hrsystem-frontend-previous 2>/dev/null || true
               else
-                echo "⚠️ 前端健康检查失败，查看日志："
+                echo "前端健康检查失败，开始回滚："
                 docker logs hrsystem-frontend --tail 30
+                docker rm -f hrsystem-frontend
+                if docker ps -a --format '{{.Names}}' | grep -q '^hrsystem-frontend-previous$'; then
+                  docker rename hrsystem-frontend-previous hrsystem-frontend
+                  docker start hrsystem-frontend
+                fi
+                exit 1
               fi
             fi
 

@@ -56,7 +56,7 @@ export interface ChangePasswordData {
 }
 
 export interface UpdateUserRoleData {
-  role?: 'admin' | 'hr_admin' | 'department_manager' | 'employee';
+  role?: 'admin' | 'hr_admin' | 'department_manager' | 'finance' | 'employee';
   data_scope?: 'all' | 'department' | 'self';
   can_view_sensitive?: boolean;
   status?: 'active' | 'inactive' | 'locked';

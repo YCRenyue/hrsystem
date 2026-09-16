@@ -318,8 +318,8 @@ User.init(
       comment: '角色',
       validate: {
         isIn: {
-          args: [['admin', 'hr_admin', 'department_manager', 'employee']],
-          msg: '无效的角色，必须是以下之一：admin, hr_admin, department_manager, employee'
+          args: [['admin', 'hr_admin', 'department_manager', 'finance', 'employee']],
+          msg: '无效的角色'
         }
       }
     },

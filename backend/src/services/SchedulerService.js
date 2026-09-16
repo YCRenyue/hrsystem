@@ -11,8 +11,16 @@
 
 const cron = require('node-cron');
 const { Op } = require('sequelize');
-const { Employee, OnboardingProcess, BusinessTrip } = require('../models');
+const {
+  Employee,
+  OnboardingProcess,
+  BusinessTrip,
+  Reimbursement,
+  CanteenMeal,
+  Attendance
+} = require('../models');
 const notificationService = require('./NotificationService');
+const annualLeaveService = require('./AnnualLeaveService');
 const logger = require('../utils/logger');
 
 class SchedulerService {
@@ -71,6 +79,12 @@ class SchedulerService {
     this.jobs.push(
       cron.schedule('0 10 1 * *', () => {
         this.runMonthlyStatistics();
+      })
+    );
+
+    this.jobs.push(
+      cron.schedule('0 1 * * *', () => {
+        this.runAnnualLeaveAccrual();
       })
     );
 
@@ -329,6 +343,8 @@ class SchedulerService {
       const lastMonth = new Date();
       lastMonth.setMonth(lastMonth.getMonth() - 1);
       const monthName = lastMonth.toLocaleString('zh-CN', { year: 'numeric', month: 'long' });
+      const periodStart = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
+      const periodEnd = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 1);
 
       const employees = await Employee.findAll({
         where: {
@@ -340,14 +356,31 @@ class SchedulerService {
 
       for (const employee of employees) {
         try {
-          // TODO: Calculate actual statistics from database
-          // For now, sending placeholder data
+          const dateRange = { [Op.gte]: periodStart, [Op.lt]: periodEnd };
+          const mealDateRange = {
+            [Op.gte]: periodStart.toISOString().slice(0, 10),
+            [Op.lt]: periodEnd.toISOString().slice(0, 10)
+          };
+          const [travelAllowance, canteenExpense, attendance, overtime] = await Promise.all([
+            Reimbursement.sum('total_amount', {
+              where: { employee_id: employee.employee_id, status: 'paid', paid_at: dateRange }
+            }),
+            CanteenMeal.sum('subsidy_amount', {
+              where: { employee_id: employee.employee_id, meal_date: mealDateRange }
+            }),
+            Attendance.count({
+              where: { employee_id: employee.employee_id, date: mealDateRange }
+            }),
+            Attendance.sum('overtime_hours', {
+              where: { employee_id: employee.employee_id, date: mealDateRange }
+            })
+          ]);
           const statistics = {
             month: monthName,
-            travelAllowance: 0, // TODO: Calculate from travel records
-            canteenExpense: 0, // TODO: Calculate from canteen records
-            attendance: 0, // TODO: Calculate from attendance records
-            overtime: 0 // TODO: Calculate from overtime records
+            travelAllowance: Number(travelAllowance || 0),
+            canteenExpense: Number(canteenExpense || 0),
+            attendance: Number(attendance || 0),
+            overtime: Number(overtime || 0)
           };
 
           await notificationService.sendMonthlyStatistics(employee, statistics);
@@ -360,6 +393,24 @@ class SchedulerService {
       logger.info('Monthly statistics completed');
     } catch (error) {
       logger.error('Error in monthly statistics:', error.message);
+    }
+  }
+
+  /**
+   * Ensure active employees have the current year's calculated annual leave balance.
+   */
+  async runAnnualLeaveAccrual() {
+    const year = new Date().getFullYear();
+    try {
+      const employees = await Employee.findAll({ where: { status: 'active' } });
+      for (const employee of employees) {
+        // Serial writes keep the unique employee/year constraint deterministic.
+        // eslint-disable-next-line no-await-in-loop
+        await annualLeaveService.ensureBalance(employee, year);
+      }
+      logger.info(`Annual leave balances ensured for ${employees.length} employees`);
+    } catch (error) {
+      logger.error('Error in annual leave accrual task:', error.message);
     }
   }
 
@@ -417,6 +468,7 @@ class SchedulerService {
       training: () => this.runTrainingReminders(),
       'contract-expiry': () => this.runContractExpiryReminders(),
       statistics: () => this.runMonthlyStatistics(),
+      'annual-leave-accrual': () => this.runAnnualLeaveAccrual(),
       'business-trip-lifecycle': () => this.runBusinessTripLifecycle()
     };
 

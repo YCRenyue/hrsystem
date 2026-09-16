@@ -6,9 +6,11 @@ const { Op } = require('sequelize');
 const AnnualLeave = require('../models/AnnualLeave');
 const Employee = require('../models/Employee');
 const ExcelService = require('../services/ExcelService');
+const dataScopeService = require('../services/DataScopeService');
 const {
   ValidationError,
-  NotFoundError
+  NotFoundError,
+  ForbiddenError
 } = require('../middleware/errorHandler');
 
 /**
@@ -54,6 +56,18 @@ const getAnnualLeaves = async (req, res) => {
       ]
     };
   }
+  if (!dataScopeService.applyResourceScope(where, queryOptions.include[0], req.user)) {
+    return res.json({
+      success: true,
+      data: [],
+      pagination: {
+        total: 0,
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
+        totalPages: 0
+      }
+    });
+  }
 
   const { count, rows } = await AnnualLeave.findAndCountAll(queryOptions);
 
@@ -97,6 +111,9 @@ const getAnnualLeaveById = async (req, res) => {
 
   if (!record) {
     throw new NotFoundError('Annual leave record', id);
+  }
+  if (!(await dataScopeService.canAccessEmployee(req.user, record.employee_id))) {
+    throw new ForbiddenError('无权查看该年假记录');
   }
 
   const data = record.toJSON();
@@ -371,6 +388,7 @@ const exportToExcel = async (req, res) => {
       ]
     };
   }
+  dataScopeService.applyResourceScope(where, queryOptions.include[0], req.user);
 
   const records = await AnnualLeave.findAll(queryOptions);
 

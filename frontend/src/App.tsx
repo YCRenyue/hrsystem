@@ -36,6 +36,8 @@ import ReimbursementList from './pages/Reimbursement/ReimbursementList';
 import ReimbursementForm from './pages/Reimbursement/ReimbursementForm';
 import ReimbursementDetail from './pages/Reimbursement/ReimbursementDetail';
 import ForcedPasswordChange from './pages/Login/ForcedPasswordChange';
+import Reports from './pages/Reports';
+import SelfService from './pages/SelfService/SelfService';
 import './App.css';
 
 function App() {
@@ -70,8 +72,17 @@ function App() {
                     </ProtectedRoute>
                   }
                 >
-                  <Route index element={<Navigate to="/dashboard" replace />} />
+                  <Route index element={<Navigate to="/self-service" replace />} />
                   <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="self-service" element={<SelfService />} />
+                  <Route
+                    path="reports"
+                    element={
+                      <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager', 'finance']}>
+                        <Reports />
+                      </RoleGuard>
+                    }
+                  />
 
                   {/* Employee management - accessible to admin, hr_admin, and department_manager */}
                   <Route
@@ -147,9 +158,7 @@ function App() {
                   <Route
                     path="annual-leave"
                     element={
-                      <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
-                        <AnnualLeaveList />
-                      </RoleGuard>
+                      <AnnualLeaveList />
                     }
                   />
 

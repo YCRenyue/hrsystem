@@ -60,7 +60,7 @@ app.use(sensitiveDataHandler({
 }));
 
 // Database connection
-const { testConnection } = require('./config/database');
+const { sequelize, testConnection } = require('./config/database');
 
 // Test database connection on startup
 testConnection();
@@ -75,8 +75,17 @@ if (process.env.NODE_ENV === 'production' || process.env.ENABLE_SCHEDULER === 't
 }
 
 // Routes
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+  try {
+    await sequelize.authenticate();
+    res.json({ status: 'OK', database: 'connected', timestamp: new Date().toISOString() });
+  } catch (error) {
+    res.status(503).json({
+      status: 'UNAVAILABLE',
+      database: 'disconnected',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // API routes

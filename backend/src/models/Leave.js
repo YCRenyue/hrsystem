@@ -52,6 +52,24 @@ const Leave = sequelize.define('Leave', {
     defaultValue: 'pending',
     comment: '状态：pending-待审批, approved-已批准, rejected-已拒绝, cancelled-已取消'
   },
+  approval_stage: {
+    type: DataTypes.ENUM('department', 'hr'),
+    allowNull: false,
+    defaultValue: 'hr',
+    comment: '当前审批阶段'
+  },
+  manager_approver_id: {
+    type: DataTypes.UUID,
+    comment: '部门审批人ID'
+  },
+  manager_approved_at: {
+    type: DataTypes.DATE,
+    comment: '部门审批时间'
+  },
+  manager_approval_notes: {
+    type: DataTypes.TEXT,
+    comment: '部门审批意见'
+  },
   approver_id: {
     type: DataTypes.UUID,
     comment: '审批人ID',

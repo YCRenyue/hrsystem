@@ -17,7 +17,7 @@ env:
 
 jobs:
   backend-lint:
-    name: Backend Linting
+    name: Backend Checks
     runs-on: ubuntu-latest
 
     steps:
@@ -41,6 +41,11 @@ jobs:
           cd backend
           npm run lint
 
+      - name: Run backend tests
+        run: |
+          cd backend
+          npm test -- --runInBand
+
   frontend-build:
     name: Frontend Build
     runs-on: ubuntu-latest
@@ -61,12 +66,25 @@ jobs:
           cd frontend
           npm ci
 
+      - name: Run frontend type and lint checks
+        run: |
+          cd frontend
+          npx tsc --noEmit
+          npx eslint src/ --max-warnings=0
+
+      - name: Run frontend tests
+        run: |
+          cd frontend
+          npm test -- --watchAll=false --runInBand
+        env:
+          CI: true
+
       - name: Build frontend
         run: |
           cd frontend
           npm run build
         env:
-          CI: false
+          CI: true
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

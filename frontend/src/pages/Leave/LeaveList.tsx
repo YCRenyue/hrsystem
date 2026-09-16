@@ -38,6 +38,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import { leaveService, Leave, LeaveStats } from '../../services/leaveService';
 import { usePermission } from '../../hooks/usePermission';
 import { useAuth } from '../../contexts/AuthContext';
+import { canApproveStage } from '../../utils/approvalWorkflow';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
@@ -86,7 +87,9 @@ const LeaveList: React.FC = () => {
   const { hasPermission } = usePermission();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
-  const isAdmin = user?.role === 'admin';
+  const canApprove = (leave: Leave): boolean => (
+    canApproveStage(user?.role, leave.approval_stage)
+  );
   const [loading, setLoading] = useState(false);
   const [dataSource, setDataSource] = useState<Leave[]>([]);
   const [stats, setStats] = useState<LeaveStats | null>(null);
@@ -435,7 +438,7 @@ const LeaveList: React.FC = () => {
       title: '操作',
       key: 'action',
       render: (_: any, record: Leave) => (
-        record.status === 'pending' && isAdmin ? (
+        record.status === 'pending' && canApprove(record) ? (
           <Space size="small">
             <Button
               type="link"

@@ -87,6 +87,15 @@ const Attendance = sequelize.define('Attendance', {
       key: 'trip_id'
     }
   },
+  leave_id: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    comment: '关联的请假申请ID',
+    references: {
+      model: 'leaves',
+      key: 'leave_id'
+    }
+  },
   previous_status: {
     type: DataTypes.STRING(20),
     allowNull: true,

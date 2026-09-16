@@ -18,6 +18,7 @@ const {
   User
 } = require('../models');
 const reimbursementService = require('../services/ReimbursementService');
+const dataScopeService = require('../services/DataScopeService');
 const inAppNotification = require('../services/InAppNotificationService');
 const { findEmployeeIdsByName } = require('../utils/employeeSearch');
 const {
@@ -28,10 +29,13 @@ const {
 
 // 财务审核/发放角色（对应需求：HR/管理员承担费用审核与发放）
 const APPROVER_ROLES = ['admin', 'hr_admin'];
+const PAYMENT_ROLES = ['admin', 'finance'];
 // 仅 admin 可物理删除报销单（保留审计边界）
 const DELETABLE_ROLES = ['admin'];
-// 用于"可见所有员工记录"的角色集合（HR/部门经理保留查询能力）
-const VIEW_ALL_ROLES = ['admin', 'hr_admin', 'department_manager'];
+const MANAGEMENT_ROLES = ['admin', 'hr_admin', 'department_manager', 'finance'];
+const reimbursementScopeUser = (user) => (
+  user?.role === 'finance' ? { ...user, data_scope: 'all' } : user
+);
 
 const serializeReimbursement = (record) => {
   const obj = record.toJSON();
@@ -45,10 +49,13 @@ const serializeReimbursement = (record) => {
 /**
  * 是否可查看该报销单（员工本人；admin/hr_admin/department_manager 可查看全部）
  */
-const canAccessRecord = (user, record) => {
-  if (!user) return false;
-  if (VIEW_ALL_ROLES.includes(user.role)) return true;
-  return user.employee_id && user.employee_id === record.employee_id;
+const canAccessRecord = (user, record) => (
+  dataScopeService.canAccessEmployee(reimbursementScopeUser(user), record.employee_id)
+);
+
+const canModifyRecord = (user, record) => {
+  if (user?.role === 'finance') return user.employee_id === record.employee_id;
+  return canAccessRecord(user, record);
 };
 
 const findUserIdForEmployee = async (employeeId) => {
@@ -143,14 +150,6 @@ const list = async (req, res) => {
   if (tripId) where.trip_id = tripId;
   if (employeeIdFilter) where.employee_id = employeeIdFilter;
 
-  // 普通员工只能看自己；admin/hr_admin/department_manager 可看全部
-  if (!VIEW_ALL_ROLES.includes(req.user.role)) {
-    if (!req.user.employee_id) {
-      return res.json({ success: true, data: [], pagination: { total: 0, page: 1, size: limit } });
-    }
-    where.employee_id = req.user.employee_id;
-  }
-
   // 按姓名搜索（密文存储 → 内存解密匹配）
   if (employeeName && employeeName.trim()) {
     const matchedIds = await findEmployeeIdsByName(employeeName);
@@ -183,7 +182,7 @@ const list = async (req, res) => {
     {
       model: Employee,
       as: 'employee',
-      attributes: ['employee_id', 'employee_number', 'name_encrypted'],
+      attributes: ['employee_id', 'employee_number', 'name_encrypted', 'department_id'],
       required: true
     },
     {
@@ -199,8 +198,25 @@ const list = async (req, res) => {
     }
   ];
 
+  if (!dataScopeService.applyResourceScope(
+    where,
+    include[0],
+    reimbursementScopeUser(req.user)
+  )) {
+    return res.json({
+      success: true,
+      data: [],
+      pagination: {
+        total: 0, page: parseInt(page, 10), size: limit, totalPages: 0
+      }
+    });
+  }
+
   if (keyword) {
-    include[0].where = { employee_number: { [Op.like]: `%${keyword}%` } };
+    include[0].where = {
+      ...(include[0].where || {}),
+      employee_number: { [Op.like]: `%${keyword}%` }
+    };
   }
 
   const { count, rows } = await Reimbursement.findAndCountAll({
@@ -240,7 +256,7 @@ const getById = async (req, res) => {
   });
 
   if (!record) throw new NotFoundError('报销单', req.params.id);
-  if (!canAccessRecord(req.user, record)) throw new ForbiddenError('无权查看该报销单');
+  if (!(await canAccessRecord(req.user, record))) throw new ForbiddenError('无权查看该报销单');
 
   return res.json({ success: true, data: serializeReimbursement(record) });
 };
@@ -264,8 +280,8 @@ const create = async (req, res) => {
 
   // 决定报销人：
   //  - 普通员工只能给自己提交
-  //  - 管理者（VIEW_ALL_ROLES）可代为提交，未指定 employee_id 时默认取出差单所属员工
-  const canActOnBehalf = VIEW_ALL_ROLES.includes(req.user.role);
+  //  - 管理者可在数据范围内代为提交，未指定 employee_id 时默认取出差单所属员工
+  const canActOnBehalf = req.user.data_scope !== 'self' && req.user.role !== 'employee';
   let employeeId = bodyEmployeeId;
   if (!canActOnBehalf) {
     if (!req.user.employee_id) {
@@ -276,6 +292,10 @@ const create = async (req, res) => {
     const tripForEmp = await BusinessTrip.findByPk(tripId);
     if (!tripForEmp) throw new ValidationError('关联的出差单不存在');
     employeeId = tripForEmp.employee_id;
+  }
+
+  if (!(await dataScopeService.canAccessEmployee(req.user, employeeId))) {
+    throw new ForbiddenError('无权为该员工创建报销单');
   }
 
   const trip = await reimbursementService.ensureTripReimbursable(tripId, employeeId);
@@ -322,7 +342,7 @@ const create = async (req, res) => {
 const update = async (req, res) => {
   const record = await Reimbursement.findByPk(req.params.id);
   if (!record) throw new NotFoundError('报销单', req.params.id);
-  if (!canAccessRecord(req.user, record)) throw new ForbiddenError('无权修改该报销单');
+  if (!(await canModifyRecord(req.user, record))) throw new ForbiddenError('无权修改该报销单');
   if (!['draft', 'rejected'].includes(record.status)) {
     throw new ValidationError(`当前状态(${record.status})不可编辑`);
   }
@@ -359,7 +379,7 @@ const submit = async (req, res) => {
     include: [{ model: ReimbursementItem, as: 'items' }]
   });
   if (!record) throw new NotFoundError('报销单', req.params.id);
-  if (!canAccessRecord(req.user, record)) throw new ForbiddenError('无权提交该报销单');
+  if (!(await canModifyRecord(req.user, record))) throw new ForbiddenError('无权提交该报销单');
   if (!['draft', 'rejected'].includes(record.status)) {
     throw new ValidationError(`当前状态(${record.status})不可提交`);
   }
@@ -424,7 +444,7 @@ const approve = async (req, res) => {
  *  仅 approved → paid
  */
 const markPaid = async (req, res) => {
-  if (!APPROVER_ROLES.includes(req.user.role)) throw new ForbiddenError('无发放权限');
+  if (!PAYMENT_ROLES.includes(req.user.role)) throw new ForbiddenError('无发放权限');
 
   const { payment_reference: paymentReference } = req.body;
   const record = await Reimbursement.findByPk(req.params.id);
@@ -454,7 +474,7 @@ const cancel = async (req, res) => {
   const { reason } = req.body;
   const record = await Reimbursement.findByPk(req.params.id);
   if (!record) throw new NotFoundError('报销单', req.params.id);
-  if (!canAccessRecord(req.user, record)) throw new ForbiddenError('无权撤销该报销单');
+  if (!(await canModifyRecord(req.user, record))) throw new ForbiddenError('无权撤销该报销单');
   if (!record.isCancellable()) {
     throw new ValidationError(`当前状态(${record.status})不可撤销`);
   }
@@ -470,7 +490,7 @@ const cancel = async (req, res) => {
 
   // 通知对方
   try {
-    if (VIEW_ALL_ROLES.includes(req.user.role)) {
+    if (MANAGEMENT_ROLES.includes(req.user.role)) {
       const recipientUserId = await findUserIdForEmployee(record.employee_id);
       if (recipientUserId) {
         await inAppNotification.send({

@@ -33,7 +33,8 @@ const ReimbursementList: React.FC = () => {
   const [employeeName, setEmployeeName] = useState('');
   const [status, setStatus] = useState<string | undefined>();
 
-  const isManager = ['admin', 'hr_admin'].includes(user?.role || '');
+  const canViewAll = ['admin', 'hr_admin', 'finance'].includes(user?.role || '');
+  const canManage = ['admin', 'hr_admin'].includes(user?.role || '');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -79,7 +80,7 @@ const ReimbursementList: React.FC = () => {
 
   const columns = [
     { title: '报销单号', dataIndex: 'reimbursement_number', width: 180 },
-    ...(isManager
+    ...(canViewAll
       ? [{
         title: '员工',
         key: 'employee',
@@ -136,8 +137,8 @@ const ReimbursementList: React.FC = () => {
       width: 220,
       render: (_: any, r: ReimbursementSummary) => {
         const isOwn = r.employee_id && user?.employee_id && r.employee_id === user.employee_id;
-        const canEdit = ['draft', 'rejected'].includes(r.status) && (isOwn || isManager);
-        const canCancel = ['pending', 'approved'].includes(r.status) && (isOwn || isManager);
+        const canEdit = ['draft', 'rejected'].includes(r.status) && (isOwn || canManage);
+        const canCancel = ['pending', 'approved'].includes(r.status) && (isOwn || canManage);
         return (
           <Space>
             <Button
@@ -189,7 +190,7 @@ const ReimbursementList: React.FC = () => {
       )}
     >
       <Space style={{ marginBottom: 16 }} wrap>
-        {isManager && (
+        {canViewAll && (
           <Input.Search
             placeholder="按工号搜索"
             allowClear
@@ -200,7 +201,7 @@ const ReimbursementList: React.FC = () => {
             }}
           />
         )}
-        {isManager && (
+        {canViewAll && (
           <Input.Search
             placeholder="按员工姓名搜索"
             allowClear

@@ -25,7 +25,7 @@ const Login: React.FC = () => {
       }
       const isManager = ['admin', 'hr_admin', 'department_manager']
         .includes(loggedInUser?.role);
-      navigate(isManager ? '/dashboard' : '/document-confirmations/my');
+      navigate(isManager ? '/dashboard' : '/self-service');
     } catch (error: any) {
       message.error(error.response?.data?.message || '登录失败，请重试。');
     } finally {

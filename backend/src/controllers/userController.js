@@ -503,7 +503,7 @@ const updateUserRole = async (req, res) => {
   }
 
   // Validate role
-  const validRoles = ['admin', 'hr_admin', 'department_manager', 'employee'];
+  const validRoles = ['admin', 'hr_admin', 'department_manager', 'finance', 'employee'];
   if (role && !validRoles.includes(role)) {
     return res.status(400).json({
       success: false,
@@ -529,6 +529,7 @@ const updateUserRole = async (req, res) => {
 
   // Update user fields
   if (role !== undefined) user.role = role;
+  if (role === 'finance' && data_scope === undefined) user.data_scope = 'all';
   if (data_scope !== undefined) user.data_scope = data_scope;
   if (can_view_sensitive !== undefined) user.can_view_sensitive = can_view_sensitive;
   if (status !== undefined) user.status = status;
