@@ -187,6 +187,64 @@ export const TRAINING_COMMITMENT_TEMPLATE: DocumentTemplate = {
 };
 
 // ---------------------------------------------------------------------------
+// Employment Contract Template  (劳动合同 - 占位条款)
+//
+// NOTE: This is a placeholder skeleton so the sign/store-to-OSS flow can be
+// built and tested end-to-end before the official contract text is
+// available. HR should replace the section content below with the real
+// contract clauses once that document is provided; the variable
+// placeholders ({party_a_name} etc.) and signing flow will keep working
+// unchanged as long as the {variable} tokens are preserved.
+// ---------------------------------------------------------------------------
+
+export const EMPLOYMENT_CONTRACT_TEMPLATE: DocumentTemplate = {
+  title: "劳动合同",
+  version: "0.1-占位版",
+  preamble:
+    "根据《中华人民共和国劳动合同法》及相关法律法规规定，甲乙双方本着平等自愿、协商一致的原则，" +
+    "就下列事项订立本合同，共同遵守。",
+  sections: [
+    {
+      heading: "一、双方主体信息",
+      content:
+        "甲方（用人单位）：\n" +
+        "名称：{party_a_name}\n" +
+        "住所地：{party_a_address}\n\n" +
+        "乙方（劳动者）：\n" +
+        "姓名：{employee_name}\n" +
+        "性别：{employee_gender}\n" +
+        "身份证号：{employee_id_card}\n" +
+        "户籍地址：{employee_household_address}\n" +
+        "现住址：{employee_current_address}",
+    },
+    {
+      heading: "二、合同期限",
+      content:
+        "本合同类型为：{contract_type}。\n" +
+        "合同期限自 {contract_start_date} 起至 {contract_end_date} 止。",
+    },
+    {
+      heading: "三、工作内容和工作地点",
+      content: "乙方担任岗位：{position}。\n工作地点：{work_location}。",
+    },
+    {
+      heading: "四、劳动报酬",
+      content:
+        "甲方按月支付乙方工资，税前月工资为人民币 {monthly_salary} 元" +
+        "（大写：{monthly_salary_text}），具体发放方式、社会保险及公积金缴纳按国家和公司相关规定执行。",
+    },
+    {
+      heading: "五、其他条款（待正式合同文本替换）",
+      content:
+        "本条款为占位内容，用于验证签署流程，正式合同条款（工作时间与休息休假、劳动保护、" +
+        "合同变更解除终止、违约责任、争议解决等）将在 HR 上传正式合同文件后替换本部分内容。",
+    },
+  ],
+  closingStatement:
+    "本人已认真阅读并充分理解上述全部条款，自愿签署本劳动合同。",
+};
+
+// ---------------------------------------------------------------------------
 // Policy Confirmation Template  (管理规章制度 - 分页阅读)
 // ---------------------------------------------------------------------------
 
@@ -430,4 +488,5 @@ export const POLICY_CONFIRMATION_TEMPLATE: DocumentTemplate = {
 export const DOCUMENT_TEMPLATES: Record<string, DocumentTemplate> = {
   policy_ack: POLICY_CONFIRMATION_TEMPLATE,
   training_pledge: TRAINING_COMMITMENT_TEMPLATE,
+  employment_contract: EMPLOYMENT_CONTRACT_TEMPLATE,
 };

@@ -1,12 +1,37 @@
 const { DataTypes, Model } = require('sequelize');
 const { sequelize } = require('../config/database');
+const { encryptionService } = require('../utils/encryption');
 
 /**
  * TrainingPledge Model
  * Stores per-employee training commitment details set by HR.
  * One record per employee (UNIQUE constraint on employee_id).
  */
-class TrainingPledge extends Model {}
+class TrainingPledge extends Model {
+  /**
+   * Set encrypted employee ID card number
+   * @param {string} idCard - Plain text ID card number
+   */
+  setEmployeeIdCard(idCard) {
+    this.setDataValue('employee_id_card_encrypted', idCard ? encryptionService.encrypt(idCard) : null);
+  }
+
+  /**
+   * Get decrypted employee ID card number
+   * @returns {string|null} Decrypted ID card number
+   */
+  getEmployeeIdCard() {
+    const encrypted = this.getDataValue('employee_id_card_encrypted');
+    if (!encrypted) return null;
+
+    try {
+      return encryptionService.decrypt(encrypted.toString('utf8'));
+    } catch (error) {
+      console.error('Error decrypting training pledge ID card:', error);
+      return null;
+    }
+  }
+}
 
 TrainingPledge.init(
   {
@@ -51,10 +76,10 @@ TrainingPledge.init(
       allowNull: true,
       comment: 'Employee gender captured at signing time'
     },
-    employee_id_card: {
-      type: DataTypes.STRING(100),
+    employee_id_card_encrypted: {
+      type: DataTypes.BLOB,
       allowNull: true,
-      comment: 'Employee ID card number captured at signing time'
+      comment: 'Employee ID card number captured at signing time (AES-256 encrypted)'
     },
     employee_household_address: {
       type: DataTypes.STRING(500),

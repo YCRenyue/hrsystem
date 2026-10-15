@@ -1,6 +1,7 @@
 /**
  * Document Signing Page
- * Supports variable-interpolated training pledge and paginated policy reading.
+ * Supports variable-interpolated training pledge / employment contract and
+ * paginated policy reading.
  */
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
@@ -35,92 +36,25 @@ import dayjs from "dayjs";
 import html2canvas from "html2canvas";
 import { Employee } from "../../types";
 import { employeeService } from "../../services/employeeService";
-import { uploadService } from "../../services/uploadService";
 import {
   DOCUMENT_TEMPLATES,
   renderTemplate,
-  numberToChinese,
 } from "./documentTemplates";
 import type { DocumentTemplate, DocumentSection } from "./documentTemplates";
+import {
+  DocumentType,
+  PartyInfo,
+  ContractTerms,
+  DOCUMENT_LABELS,
+  buildDefaultPartyInfo,
+  buildVars,
+  renderDisplayValue,
+  isDocumentSigned,
+  getDocumentSignedAt,
+  getHrRecord,
+} from "./partyInfoHelpers";
 
 const { Title, Paragraph, Text } = Typography;
-
-type DocumentType = "policy_ack" | "training_pledge";
-
-// ---------------------------------------------------------------------------
-// Party info type for training pledge editable fields
-// ---------------------------------------------------------------------------
-interface PartyInfo {
-  party_a_name: string;
-  party_a_address: string;
-  employee_name: string;
-  employee_gender: string;
-  employee_id_card: string;
-  employee_household_address: string;
-  employee_current_address: string;
-  contract_sign_date: string;
-  contract_start_date: string;
-  contract_end_date: string;
-}
-
-function genderToText(gender?: string): string {
-  if (gender === "male") return "男";
-  if (gender === "female") return "女";
-  return gender || "";
-}
-
-function buildDefaultPartyInfo(emp: Employee): PartyInfo {
-  return {
-    party_a_name: "",
-    party_a_address: "",
-    employee_name: emp.name || "",
-    employee_gender: genderToText(emp.gender as string | undefined),
-    employee_id_card: emp.id_card || "",
-    employee_household_address: "",
-    employee_current_address: "",
-    contract_sign_date: emp.entry_date
-      ? dayjs(emp.entry_date).format("YYYY年MM月DD日")
-      : "",
-    contract_start_date: "",
-    contract_end_date: "",
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Helper: build variable map from employee + trainingPledge data + partyInfo
-// ---------------------------------------------------------------------------
-function buildVars(emp: Employee, partyInfo?: PartyInfo): Record<string, string> {
-  const pledge = (emp as any).trainingPledge;
-  const cost = pledge ? Number(pledge.training_cost) : 0;
-  const years = pledge ? Number(pledge.service_years) : 0;
-
-  const serviceStart = years > 0
-    ? dayjs("2026-03-20").add(1, "day").format("YYYY年MM月DD日")
-    : "[待填写]";
-  const serviceEnd = years > 0
-    ? dayjs("2026-03-20").add(1, "day").add(years, "year").format("YYYY年MM月DD日")
-    : "[待填写]";
-
-  const info = partyInfo ?? buildDefaultPartyInfo(emp);
-
-  return {
-    party_a_name: info.party_a_name,
-    party_a_address: info.party_a_address,
-    employee_name: info.employee_name,
-    employee_gender: info.employee_gender,
-    employee_id_card: info.employee_id_card,
-    employee_household_address: info.employee_household_address,
-    employee_current_address: info.employee_current_address,
-    contract_sign_date: info.contract_sign_date,
-    contract_start_date: info.contract_start_date,
-    contract_end_date: info.contract_end_date,
-    training_cost: cost > 0 ? String(cost) : "[待填写]",
-    training_cost_text: cost > 0 ? numberToChinese(cost) : "[待填写]",
-    service_years: years > 0 ? String(years) : "[待填写]",
-    service_start_date: serviceStart,
-    service_end_date: serviceEnd,
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Render a single section
@@ -143,10 +77,6 @@ function SectionBlock({ section }: { section: DocumentSection }) {
   );
 }
 
-function renderDisplayValue(value?: string) {
-  return value?.trim() || "___________";
-}
-
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
@@ -163,6 +93,7 @@ const DocumentSigningPage: React.FC = () => {
   const [signing, setSigning] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [signatureName, setSignatureName] = useState("");
+  const [password, setPassword] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   const [maxPageReached, setMaxPageReached] = useState(0);
   const [partyInfo, setPartyInfo] = useState<PartyInfo | null>(null);
@@ -170,20 +101,18 @@ const DocumentSigningPage: React.FC = () => {
 
   const docType = documentType as DocumentType;
   const baseTemplate: DocumentTemplate | undefined = DOCUMENT_TEMPLATES[docType];
+  const hasPartyInfoPanel = docType === "training_pledge" || docType === "employment_contract";
 
-  const isSigned = docType === "policy_ack"
-    ? employee?.policy_ack_status
-    : employee?.training_pledge_status;
-
-  const signedAt = docType === "policy_ack"
-    ? employee?.policy_ack_signed_at
-    : employee?.training_pledge_signed_at;
+  const isSigned = employee ? isDocumentSigned(employee, docType) : false;
+  const signedAt = employee ? getDocumentSignedAt(employee, docType) : undefined;
+  const hrRecord = employee ? getHrRecord(employee, docType) : undefined;
+  const contractTerms: ContractTerms | undefined = docType === "employment_contract" ? hrRecord : undefined;
 
   // Rendered template with variables substituted
   const renderedTemplate = useMemo(() => {
     if (!baseTemplate || !employee) return baseTemplate;
-    return renderTemplate(baseTemplate, buildVars(employee, partyInfo ?? undefined));
-  }, [baseTemplate, employee, partyInfo]);
+    return renderTemplate(baseTemplate, buildVars(employee, docType, partyInfo ?? undefined));
+  }, [baseTemplate, employee, docType, partyInfo]);
 
   // Pagination derived values
   const isPaginated = !!baseTemplate?.paginated;
@@ -199,9 +128,9 @@ const DocumentSigningPage: React.FC = () => {
     ? renderedTemplate.pages[currentPage].pageTitle
     : null;
 
-  // Training pledge guard
-  const hasPledgeData = !!(employee && (employee as any).trainingPledge);
-  const pledgeMissing = docType === "training_pledge" && !isSigned && !hasPledgeData;
+  // HR must configure training pledge cost/years or contract terms before the
+  // employee can see and sign the document.
+  const hrDataMissing = hasPartyInfoPanel && !isSigned && !hrRecord;
 
   useEffect(() => {
     if (!employeeId || !baseTemplate) return;
@@ -215,29 +144,30 @@ const DocumentSigningPage: React.FC = () => {
     try {
       const data = await employeeService.getEmployeeById(employeeId);
       setEmployee(data);
-      if (docType === "training_pledge" && !preservePartyInfo) {
-        const pledge = (data as any).trainingPledge;
-        // Party A info is HR-configured on the pledge; employee-fillable fields
-        // come from the saved snapshot (after signing) or sensible defaults.
-        if (data.training_pledge_status) {
+      if (hasPartyInfoPanel && !preservePartyInfo) {
+        const source = getHrRecord(data, docType);
+        // Party A / contract-term info is HR-configured on the pledge/contract
+        // record; employee-fillable fields come from the saved snapshot
+        // (after signing) or sensible defaults.
+        if (isDocumentSigned(data, docType)) {
           setPartyInfo({
-            party_a_name: pledge?.party_a_name || "",
-            party_a_address: pledge?.party_a_address || "",
+            party_a_name: source?.party_a_name || "",
+            party_a_address: source?.party_a_address || "",
             employee_name: data.name || "",
-            employee_gender: pledge?.employee_gender || "",
-            employee_id_card: pledge?.employee_id_card || "",
-            employee_household_address: pledge?.employee_household_address || "",
-            employee_current_address: pledge?.employee_current_address || "",
-            contract_sign_date: pledge?.contract_sign_date || "",
-            contract_start_date: pledge?.contract_start_date || "",
-            contract_end_date: pledge?.contract_end_date || "",
+            employee_gender: source?.employee_gender || "",
+            employee_id_card: source?.employee_id_card || "",
+            employee_household_address: source?.employee_household_address || "",
+            employee_current_address: source?.employee_current_address || "",
+            contract_sign_date: docType === "training_pledge" ? (source?.contract_sign_date || "") : "",
+            contract_start_date: docType === "training_pledge" ? (source?.contract_start_date || "") : "",
+            contract_end_date: docType === "training_pledge" ? (source?.contract_end_date || "") : "",
           });
         } else {
-          const defaults = buildDefaultPartyInfo(data);
+          const defaults = buildDefaultPartyInfo(data, docType);
           setPartyInfo({
             ...defaults,
-            party_a_name: pledge?.party_a_name || "",
-            party_a_address: pledge?.party_a_address || "",
+            party_a_name: source?.party_a_name || "",
+            party_a_address: source?.party_a_address || "",
           });
         }
       }
@@ -254,62 +184,62 @@ const DocumentSigningPage: React.FC = () => {
     setMaxPageReached((prev) => Math.max(prev, page));
   };
 
+  const expectedSignatureName = hasPartyInfoPanel && partyInfo
+    ? partyInfo.employee_name
+    : employee?.name;
+
   const handleSign = async () => {
     if (!employeeId || !employee) return;
     if (!agreed) { message.warning("请勾选已阅读确认"); return; }
     if (!signatureName.trim()) { message.warning("请输入姓名作为电子签名"); return; }
-    const expectedName = (docType === "training_pledge" && partyInfo)
-      ? partyInfo.employee_name
-      : employee.name;
-    if (signatureName.trim() !== expectedName) {
+    if (signatureName.trim() !== expectedSignatureName) {
       message.warning("签名姓名与乙方姓名不一致");
       return;
     }
+    if (!password) { message.warning("请输入登录密码以完成签署验证"); return; }
 
     setSigning(true);
     try {
-      // Capture document snapshot before API call so DOM reflects current partyInfo state
-      let signedFile: File | null = null;
-      if (documentRef.current) {
-        try {
-          // Wait for React to flush pending DOM updates
-          await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-          const canvas = await html2canvas(documentRef.current, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: "#ffffff",
-          });
-          const blob: Blob = await new Promise((resolve, reject) => {
-            canvas.toBlob(
-              (b: Blob | null) => { if (b) resolve(b); else reject(new Error("blob failed")); },
-              "image/png"
-            );
-          });
-          signedFile = new File([blob], `${docType}_${employeeId}.png`, { type: "image/png" });
-        } catch (captureErr) {
-          console.error("Failed to capture document:", captureErr);
-        }
+      // Capture document snapshot before the API call so the image reflects
+      // the current partyInfo state.
+      if (!documentRef.current) {
+        message.error("无法生成签署截图，请刷新后重试");
+        return;
       }
+      // Wait for React to flush pending DOM updates
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      const canvas = await html2canvas(documentRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+      const blob: Blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (b: Blob | null) => { if (b) resolve(b); else reject(new Error("blob failed")); },
+          "image/png"
+        );
+      });
+      const signedFile = new File([blob], `${docType}_${employeeId}.png`, { type: "image/png" });
 
+      // Single atomic request: backend uploads the screenshot to OSS and only
+      // flips the signed status if that upload succeeds (see
+      // employeeController.signDocument). On failure nothing is written, so
+      // retrying is simply submitting the sign action again.
       await employeeService.signDocument(
         employeeId,
         docType,
-        docType === "training_pledge" && partyInfo ? { ...partyInfo } : undefined
+        signedFile,
+        password,
+        hasPartyInfoPanel && partyInfo ? { ...partyInfo } : undefined
       );
 
-      if (signedFile) {
-        try {
-          await uploadService.uploadEmployeeFile(employeeId, signedFile, docType);
-        } catch (uploadErr) {
-          console.error("Failed to upload signed document:", uploadErr);
-        }
-      }
-
       message.success("签署成功");
+      setPassword("");
       // Preserve partyInfo so the signed view shows the exact values used during signing
       await fetchEmployee(true);
     } catch (error: any) {
-      message.error(error.response?.data?.message || "签署失败");
+      message.error(error.response?.data?.message || "签署失败，请重试");
+      setPassword("");
     } finally {
       setSigning(false);
     }
@@ -346,12 +276,12 @@ const DocumentSigningPage: React.FC = () => {
         返回
       </Button>
 
-      {pledgeMissing && (
+      {hrDataMissing && (
         <Alert
           type="warning"
           showIcon
-          message="HR 尚未配置该员工的培训服务承诺函信息"
-          description="请联系HR管理员填写培训总费用和服务年限后再进行签署。"
+          message={`HR 尚未配置该员工的${DOCUMENT_LABELS[docType]}信息`}
+          description="请联系HR管理员完成配置后再进行签署。"
           style={{ marginBottom: 16 }}
         />
       )}
@@ -401,7 +331,7 @@ const DocumentSigningPage: React.FC = () => {
             </>
           )}
 
-          {docType === "training_pledge" && partyInfo && (
+          {hasPartyInfoPanel && partyInfo && (
             <>
               <Descriptions
                 bordered
@@ -429,15 +359,39 @@ const DocumentSigningPage: React.FC = () => {
                 <Descriptions.Item label="现住址">
                   {renderDisplayValue(partyInfo.employee_current_address)}
                 </Descriptions.Item>
-                <Descriptions.Item label="劳动合同签订日期">
-                  {renderDisplayValue(partyInfo.contract_sign_date)}
-                </Descriptions.Item>
-                <Descriptions.Item label="合同开始日期">
-                  {renderDisplayValue(partyInfo.contract_start_date)}
-                </Descriptions.Item>
-                <Descriptions.Item label="合同结束日期">
-                  {renderDisplayValue(partyInfo.contract_end_date)}
-                </Descriptions.Item>
+                {docType === "training_pledge" && (
+                  <>
+                    <Descriptions.Item label="劳动合同签订日期">
+                      {renderDisplayValue(partyInfo.contract_sign_date)}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="合同开始日期">
+                      {renderDisplayValue(partyInfo.contract_start_date)}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="合同结束日期">
+                      {renderDisplayValue(partyInfo.contract_end_date)}
+                    </Descriptions.Item>
+                  </>
+                )}
+                {docType === "employment_contract" && contractTerms && (
+                  <>
+                    <Descriptions.Item label="合同类型">
+                      {renderDisplayValue(contractTerms.contract_type)}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="岗位">
+                      {renderDisplayValue(contractTerms.position)}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="工作地点">
+                      {renderDisplayValue(contractTerms.work_location)}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="合同期限">
+                      {renderDisplayValue(contractTerms.contract_start_date)} 至{" "}
+                      {renderDisplayValue(contractTerms.contract_end_date)}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="月工资">
+                      {contractTerms.monthly_salary ? `${contractTerms.monthly_salary} 元` : "___________"}
+                    </Descriptions.Item>
+                  </>
+                )}
               </Descriptions>
               <Divider />
             </>
@@ -479,7 +433,7 @@ const DocumentSigningPage: React.FC = () => {
                 </Text>
               </div>
             </div>
-          ) : isLastPage && !pledgeMissing ? (
+          ) : isLastPage && !hrDataMissing ? (
             <div style={{ textAlign: "right", marginTop: 16 }}>
               <Descriptions
                 column={1}
@@ -529,8 +483,8 @@ const DocumentSigningPage: React.FC = () => {
         </Card>
       )}
 
-      {/* Party info editing panel - only for training_pledge, not yet signed */}
-      {docType === "training_pledge" && !isSigned && partyInfo && (
+      {/* Party info editing panel - training_pledge / employment_contract, not yet signed */}
+      {hasPartyInfoPanel && !isSigned && partyInfo && (
         <Card
           title="填写甲乙方信息"
           style={{ marginTop: 16 }}
@@ -552,6 +506,38 @@ const DocumentSigningPage: React.FC = () => {
                 </Form.Item>
               </Col>
             </Row>
+            {docType === "employment_contract" && contractTerms && (
+              <Row gutter={16}>
+                <Col xs={24} sm={8}>
+                  <Form.Item label="合同类型">
+                    <Input value={contractTerms.contract_type} disabled />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={8}>
+                  <Form.Item label="岗位">
+                    <Input value={contractTerms.position} disabled />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={8}>
+                  <Form.Item label="工作地点">
+                    <Input value={contractTerms.work_location} disabled />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={8}>
+                  <Form.Item label="合同期限">
+                    <Input
+                      value={`${contractTerms.contract_start_date} 至 ${contractTerms.contract_end_date}`}
+                      disabled
+                    />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={8}>
+                  <Form.Item label="月工资（元）">
+                    <Input value={contractTerms.monthly_salary} disabled />
+                  </Form.Item>
+                </Col>
+              </Row>
+            )}
             <Divider orientation="left" orientationMargin={0}>乙方信息</Divider>
             <Row gutter={16}>
               <Col xs={24} sm={8}>
@@ -610,70 +596,74 @@ const DocumentSigningPage: React.FC = () => {
                   />
                 </Form.Item>
               </Col>
-              <Col xs={24} sm={8}>
-                <Form.Item label="劳动合同签订日期">
-                  <DatePicker
-                    style={{ width: "100%" }}
-                    format="YYYY年MM月DD日"
-                    value={
-                      partyInfo.contract_sign_date
-                        ? dayjs(partyInfo.contract_sign_date, "YYYY年MM月DD日")
-                        : null
-                    }
-                    onChange={(date) =>
-                      setPartyInfo({
-                        ...partyInfo,
-                        contract_sign_date: date ? date.format("YYYY年MM月DD日") : "",
-                      })
-                    }
-                  />
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={8}>
-                <Form.Item label="合同开始日期">
-                  <DatePicker
-                    style={{ width: "100%" }}
-                    format="YYYY年MM月DD日"
-                    value={
-                      partyInfo.contract_start_date
-                        ? dayjs(partyInfo.contract_start_date, "YYYY年MM月DD日")
-                        : null
-                    }
-                    onChange={(date) =>
-                      setPartyInfo({
-                        ...partyInfo,
-                        contract_start_date: date ? date.format("YYYY年MM月DD日") : "",
-                      })
-                    }
-                  />
-                </Form.Item>
-              </Col>
-              <Col xs={24} sm={8}>
-                <Form.Item label="合同结束日期">
-                  <DatePicker
-                    style={{ width: "100%" }}
-                    format="YYYY年MM月DD日"
-                    value={
-                      partyInfo.contract_end_date
-                        ? dayjs(partyInfo.contract_end_date, "YYYY年MM月DD日")
-                        : null
-                    }
-                    onChange={(date) =>
-                      setPartyInfo({
-                        ...partyInfo,
-                        contract_end_date: date ? date.format("YYYY年MM月DD日") : "",
-                      })
-                    }
-                  />
-                </Form.Item>
-              </Col>
+              {docType === "training_pledge" && (
+                <>
+                  <Col xs={24} sm={8}>
+                    <Form.Item label="劳动合同签订日期">
+                      <DatePicker
+                        style={{ width: "100%" }}
+                        format="YYYY年MM月DD日"
+                        value={
+                          partyInfo.contract_sign_date
+                            ? dayjs(partyInfo.contract_sign_date, "YYYY年MM月DD日")
+                            : null
+                        }
+                        onChange={(date) =>
+                          setPartyInfo({
+                            ...partyInfo,
+                            contract_sign_date: date ? date.format("YYYY年MM月DD日") : "",
+                          })
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={8}>
+                    <Form.Item label="合同开始日期">
+                      <DatePicker
+                        style={{ width: "100%" }}
+                        format="YYYY年MM月DD日"
+                        value={
+                          partyInfo.contract_start_date
+                            ? dayjs(partyInfo.contract_start_date, "YYYY年MM月DD日")
+                            : null
+                        }
+                        onChange={(date) =>
+                          setPartyInfo({
+                            ...partyInfo,
+                            contract_start_date: date ? date.format("YYYY年MM月DD日") : "",
+                          })
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={8}>
+                    <Form.Item label="合同结束日期">
+                      <DatePicker
+                        style={{ width: "100%" }}
+                        format="YYYY年MM月DD日"
+                        value={
+                          partyInfo.contract_end_date
+                            ? dayjs(partyInfo.contract_end_date, "YYYY年MM月DD日")
+                            : null
+                        }
+                        onChange={(date) =>
+                          setPartyInfo({
+                            ...partyInfo,
+                            contract_end_date: date ? date.format("YYYY年MM月DD日") : "",
+                          })
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                </>
+              )}
             </Row>
           </Form>
         </Card>
       )}
 
       {/* Signature panel - only on last page when not signed */}
-      {!isSigned && isLastPage && !pledgeMissing && (
+      {!isSigned && isLastPage && !hrDataMissing && (
         <Card style={{ marginTop: 16 }}>
           <Space direction="vertical" style={{ width: "100%" }} size="middle">
             {isPaginated && maxPageReached < totalPages - 1 && (
@@ -704,6 +694,20 @@ const DocumentSigningPage: React.FC = () => {
               />
             </div>
 
+            <div>
+              <Text strong style={{ display: "block", marginBottom: 8 }}>
+                登录密码（签署身份验证）：
+              </Text>
+              <Input.Password
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="请输入您的登录密码以确认签署"
+                style={{ maxWidth: 300 }}
+                disabled={isPaginated && maxPageReached < totalPages - 1}
+                autoComplete="current-password"
+              />
+            </div>
+
             <Button
               type="primary"
               icon={<EditOutlined />}
@@ -711,11 +715,8 @@ const DocumentSigningPage: React.FC = () => {
               loading={signing}
               disabled={
                 !agreed ||
-                signatureName.trim() !== (
-                  docType === "training_pledge" && partyInfo
-                    ? partyInfo.employee_name
-                    : employee?.name
-                ) ||
+                !password ||
+                signatureName.trim() !== expectedSignatureName ||
                 (isPaginated && maxPageReached < totalPages - 1)
               }
               size="large"

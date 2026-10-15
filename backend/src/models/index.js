@@ -11,6 +11,7 @@ const SocialSecurity = require('./SocialSecurity');
 const BusinessTrip = require('./BusinessTrip');
 const CanteenMeal = require('./CanteenMeal');
 const TrainingPledge = require('./TrainingPledge');
+const EmploymentContract = require('./EmploymentContract');
 const Notification = require('./Notification');
 const Reimbursement = require('./Reimbursement');
 const ReimbursementItem = require('./ReimbursementItem');
@@ -189,6 +190,17 @@ Employee.hasOne(TrainingPledge, {
   as: 'trainingPledge'
 });
 
+// EmploymentContract associations
+EmploymentContract.belongsTo(Employee, {
+  foreignKey: 'employee_id',
+  as: 'employee'
+});
+
+Employee.hasOne(EmploymentContract, {
+  foreignKey: 'employee_id',
+  as: 'employmentContract'
+});
+
 // Notification associations
 Notification.belongsTo(User, {
   foreignKey: 'recipient_user_id',
@@ -281,6 +293,7 @@ const initModels = () => ({
   BusinessTrip,
   CanteenMeal,
   TrainingPledge,
+  EmploymentContract,
   Notification,
   Reimbursement,
   ReimbursementItem,
@@ -301,6 +314,7 @@ module.exports = {
   BusinessTrip,
   CanteenMeal,
   TrainingPledge,
+  EmploymentContract,
   Notification,
   Reimbursement,
   ReimbursementItem,

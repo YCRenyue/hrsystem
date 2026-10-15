@@ -3,7 +3,7 @@
  */
 const { Op } = require('sequelize');
 const {
-  Employee, Department, User, TrainingPledge
+  Employee, Department, User, TrainingPledge, EmploymentContract
 } = require('../models');
 const employeeImportService = require('../services/employeeImportService');
 const {
@@ -81,6 +81,7 @@ const getEmployees = async (req, res) => {
     employment_type,
     policy_ack_status,
     training_pledge_status,
+    employment_contract_status,
     sort_by = 'employee_number',
     sort_order = 'ASC'
   } = req.query;
@@ -121,6 +122,11 @@ const getEmployees = async (req, res) => {
     where.training_pledge_status = parsedTrainingPledgeStatus;
   }
 
+  const parsedEmploymentContractStatus = parseBooleanQuery(employment_contract_status);
+  if (parsedEmploymentContractStatus !== undefined) {
+    where.employment_contract_status = parsedEmploymentContractStatus;
+  }
+
   // 行级数据范围过滤（覆盖前面按 query 传入的 department_id）
   applyEmployeeScope(where, req.user);
 
@@ -158,6 +164,12 @@ const getEmployees = async (req, res) => {
         model: TrainingPledge,
         as: 'trainingPledge',
         attributes: ['pledge_id', 'training_cost', 'service_years'],
+        required: false
+      },
+      {
+        model: EmploymentContract,
+        as: 'employmentContract',
+        attributes: ['contract_id', 'contract_type', 'position'],
         required: false
       }
     ],
@@ -215,9 +227,21 @@ const getEmployeeById = async (req, res) => {
         attributes: [
           'pledge_id', 'training_cost', 'service_years',
           'party_a_name', 'party_a_address',
-          'employee_gender', 'employee_id_card',
+          'employee_gender', 'employee_id_card_encrypted',
           'employee_household_address', 'employee_current_address',
           'contract_sign_date', 'contract_start_date', 'contract_end_date',
+          'created_at', 'updated_at'
+        ]
+      },
+      {
+        model: EmploymentContract,
+        as: 'employmentContract',
+        attributes: [
+          'contract_id', 'party_a_name', 'party_a_address',
+          'contract_type', 'position', 'work_location',
+          'contract_start_date', 'contract_end_date', 'monthly_salary',
+          'employee_gender', 'employee_id_card_encrypted',
+          'employee_household_address', 'employee_current_address',
           'created_at', 'updated_at'
         ]
       }
@@ -635,150 +659,6 @@ const exportToExcel = async (req, res) => {
   res.end();
 };
 
-/**
- * Sign a document confirmation (policy or training)
- * PUT /api/employees/:id/sign-document
- */
-const signDocument = async (req, res) => {
-  const { id } = req.params;
-  const { documentType, partyInfo } = req.body;
-
-  const validTypes = ['policy_ack', 'training_pledge'];
-  if (!validTypes.includes(documentType)) {
-    throw new ValidationError(
-      `Invalid document type. Must be one of: ${validTypes.join(', ')}`
-    );
-  }
-
-  const employee = await Employee.findByPk(id);
-  if (!employee) {
-    throw new NotFoundError('Employee', id);
-  }
-
-  // Verify the user owns this employee record or is HR/admin
-  const userRole = req.user?.role;
-  const userEmployeeId = req.user?.employee_id;
-  const isOwner = userEmployeeId === id;
-  const isHrOrAdmin = ['admin', 'hr_admin'].includes(userRole);
-
-  if (!isOwner && !isHrOrAdmin) {
-    throw new ValidationError('You do not have permission to sign this document');
-  }
-
-  const statusField = `${documentType}_status`;
-  const signedAtField = `${documentType}_signed_at`;
-
-  if (employee[statusField]) {
-    throw new ValidationError('This document has already been signed');
-  }
-
-  await employee.update({
-    [statusField]: true,
-    [signedAtField]: new Date()
-  });
-
-  // Save party info snapshot to TrainingPledge record when signing training_pledge.
-  // Party A fields (party_a_name, party_a_address) are HR-controlled and intentionally
-  // excluded here so that employee submissions cannot overwrite them.
-  if (documentType === 'training_pledge' && partyInfo && typeof partyInfo === 'object') {
-    const allowedFields = [
-      'employee_gender', 'employee_id_card',
-      'employee_household_address', 'employee_current_address',
-      'contract_sign_date', 'contract_start_date', 'contract_end_date'
-    ];
-    const partyInfoUpdate = {};
-    for (const field of allowedFields) {
-      if (typeof partyInfo[field] === 'string') {
-        partyInfoUpdate[field] = partyInfo[field];
-      }
-    }
-    if (Object.keys(partyInfoUpdate).length > 0) {
-      await TrainingPledge.update(partyInfoUpdate, { where: { employee_id: id } });
-    }
-  }
-
-  res.json({
-    success: true,
-    message: 'Document signed successfully',
-    data: {
-      documentType,
-      signedAt: employee[signedAtField]
-    }
-  });
-};
-
-/**
- * Save or update training pledge details for an employee (HR only)
- * PUT /api/employees/:id/training-pledge
- */
-const saveTrainingPledge = async (req, res) => {
-  const { id } = req.params;
-  const {
-    training_cost,
-    service_years,
-    party_a_name,
-    party_a_address
-  } = req.body;
-
-  const userRole = req.user?.role;
-  if (!['admin', 'hr_admin'].includes(userRole)) {
-    throw new ValidationError('Only HR administrators can configure training pledge details');
-  }
-
-  if (training_cost === undefined || training_cost === null || Number(training_cost) <= 0) {
-    throw new ValidationError('training_cost must be a positive number');
-  }
-
-  if (!Number.isInteger(Number(service_years)) || Number(service_years) < 1 || Number(service_years) > 10) {
-    throw new ValidationError('service_years must be an integer between 1 and 10');
-  }
-
-  if (typeof party_a_name !== 'string' || party_a_name.trim().length === 0) {
-    throw new ValidationError('party_a_name is required');
-  }
-  if (party_a_name.trim().length > 200) {
-    throw new ValidationError('party_a_name must be 200 characters or fewer');
-  }
-  if (typeof party_a_address !== 'string' || party_a_address.trim().length === 0) {
-    throw new ValidationError('party_a_address is required');
-  }
-  if (party_a_address.trim().length > 500) {
-    throw new ValidationError('party_a_address must be 500 characters or fewer');
-  }
-
-  const employee = await Employee.findByPk(id);
-  if (!employee) {
-    throw new NotFoundError('Employee', id);
-  }
-
-  const { v4: uuidv4 } = require('uuid');
-
-  const [pledge, created] = await TrainingPledge.upsert(
-    {
-      pledge_id: uuidv4(),
-      employee_id: id,
-      training_cost: Number(training_cost),
-      service_years: Number(service_years),
-      party_a_name: party_a_name.trim(),
-      party_a_address: party_a_address.trim()
-    },
-    { conflictFields: ['employee_id'] }
-  );
-
-  res.json({
-    success: true,
-    message: created ? 'Training pledge created' : 'Training pledge updated',
-    data: {
-      pledge_id: pledge.pledge_id,
-      employee_id: pledge.employee_id,
-      training_cost: pledge.training_cost,
-      service_years: pledge.service_years,
-      party_a_name: pledge.party_a_name,
-      party_a_address: pledge.party_a_address
-    }
-  });
-};
-
 module.exports = {
   getEmployees,
   getEmployeeById,
@@ -787,7 +667,5 @@ module.exports = {
   deleteEmployee,
   previewImport,
   confirmImport,
-  exportToExcel,
-  signDocument,
-  saveTrainingPledge
+  exportToExcel
 };

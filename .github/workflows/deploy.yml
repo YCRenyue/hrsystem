@@ -469,6 +469,7 @@ jobs:
                 -e DB_USER="${{ vars.DB_USER }}" \
                 -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
                 -e DB_TIMEZONE="${{ vars.DB_TIMEZONE }}" \
+                -e ENCRYPTION_KEY="${{ secrets.ENCRYPTION_KEY }}" \
                 ${BACKEND_IMAGE} \
                 node src/db/migrate.js
 
@@ -513,7 +514,18 @@ jobs:
                 -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
                 -e DB_TIMEZONE="${{ vars.DB_TIMEZONE }}" \
                 -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+                -e JWT_EXPIRES_IN="${{ vars.JWT_EXPIRES_IN }}" \
                 -e ENCRYPTION_KEY="${{ secrets.ENCRYPTION_KEY }}" \
+                -e LOG_LEVEL="${{ vars.LOG_LEVEL }}" \
+                -e OSS_REGION="${{ vars.OSS_REGION }}" \
+                -e OSS_BUCKET="${{ vars.OSS_BUCKET }}" \
+                -e OSS_INTERNAL="${{ vars.OSS_INTERNAL }}" \
+                -e ALICLOUD_ACCESS_KEY="${{ secrets.ALICLOUD_ACCESS_KEY }}" \
+                -e ALICLOUD_SECRET_KEY="${{ secrets.ALICLOUD_SECRET_KEY }}" \
+                -e DINGTALK_APP_KEY="${{ vars.DINGTALK_APP_KEY }}" \
+                -e DINGTALK_AGENT_ID="${{ vars.DINGTALK_AGENT_ID }}" \
+                -e DINGTALK_CORP_ID="${{ vars.DINGTALK_CORP_ID }}" \
+                -e DINGTALK_APP_SECRET="${{ secrets.DINGTALK_APP_SECRET }}" \
                 -e SMTP_HOST="${{ vars.SMTP_HOST }}" \
                 -e SMTP_PORT="${{ vars.SMTP_PORT }}" \
                 -e SMTP_SECURE="${{ vars.SMTP_SECURE }}" \

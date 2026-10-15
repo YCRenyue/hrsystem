@@ -11,6 +11,7 @@ export interface FileUrls {
   diploma_url: string | null;
   policy_ack_url: string | null;
   training_pledge_url: string | null;
+  employment_contract_url: string | null;
 }
 
 export interface UploadResult {
@@ -24,7 +25,8 @@ export type FileType =
   | "bank_card"
   | "diploma"
   | "policy_ack"
-  | "training_pledge";
+  | "training_pledge"
+  | "employment_contract";
 
 export const uploadService = {
   /**

@@ -82,6 +82,9 @@ export interface Employee {
   training_pledge_status?: boolean;
   training_pledge_signed_at?: string;
   has_training_pledge_file?: boolean;
+  employment_contract_status?: boolean;
+  employment_contract_signed_at?: string;
+  has_employment_contract_file?: boolean;
   dingtalk_user_id?: string;
   data_complete?: boolean;
   remarks?: string;
@@ -228,6 +231,7 @@ export interface EmployeeQueryParams {
   employment_type?: EmploymentType;
   policy_ack_status?: boolean;
   training_pledge_status?: boolean;
+  employment_contract_status?: boolean;
   hire_date_from?: string;
   hire_date_to?: string;
   entry_date_start?: string; // For date range filtering

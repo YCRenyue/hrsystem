@@ -36,8 +36,14 @@ import {
   uploadService,
   FileUrls,
 } from "../../services/uploadService";
+import {
+  DocumentType,
+  DOCUMENT_LABELS,
+  isDocumentSigned,
+  getDocumentSignedAt,
+  getHrRecord,
+} from "./partyInfoHelpers";
 
-type DocumentType = "policy_ack" | "training_pledge";
 type StatusFilter = "signed" | "pending" | undefined;
 
 const PAGE_SIZE = 10;
@@ -60,13 +66,20 @@ const DocumentConfirmationList: React.FC = () => {
   const [pledgeModalLoading, setPledgeModalLoading] = useState(false);
   const [pledgeTargetId, setPledgeTargetId] = useState<string>("");
   const [pledgeForm] = Form.useForm();
+  const [contractModalVisible, setContractModalVisible] = useState(false);
+  const [contractModalLoading, setContractModalLoading] = useState(false);
+  const [contractTargetId, setContractTargetId] = useState<string>("");
+  const [contractForm] = Form.useForm();
 
   const getDocumentStatusParams = useCallback(
-    (filter?: Exclude<StatusFilter, undefined>): Pick<EmployeeQueryParams, "policy_ack_status" | "training_pledge_status"> => {
+    (filter?: Exclude<StatusFilter, undefined>): Pick<
+      EmployeeQueryParams,
+      "policy_ack_status" | "training_pledge_status" | "employment_contract_status"
+    > => {
       const statusValue = filter === "signed";
-      return activeTab === "policy_ack"
-        ? { policy_ack_status: statusValue }
-        : { training_pledge_status: statusValue };
+      if (activeTab === "policy_ack") return { policy_ack_status: statusValue };
+      if (activeTab === "training_pledge") return { training_pledge_status: statusValue };
+      return { employment_contract_status: statusValue };
     },
     [activeTab]
   );
@@ -135,7 +148,9 @@ const DocumentConfirmationList: React.FC = () => {
       const url =
         activeTab === "policy_ack"
           ? urls.policy_ack_url
-          : urls.training_pledge_url;
+          : activeTab === "training_pledge"
+            ? urls.training_pledge_url
+            : urls.employment_contract_url;
       if (url) {
         window.open(url, "_blank");
       } else {
@@ -151,7 +166,7 @@ const DocumentConfirmationList: React.FC = () => {
     pledgeForm.resetFields();
     try {
       const emp = await employeeService.getEmployeeById(employeeId);
-      const pledge = (emp as any).trainingPledge;
+      const pledge = getHrRecord(emp, "training_pledge");
       if (pledge) {
         pledgeForm.setFieldsValue({
           training_cost: Number(pledge.training_cost),
@@ -179,6 +194,46 @@ const DocumentConfirmationList: React.FC = () => {
       message.error(error.response?.data?.message || "保存失败");
     } finally {
       setPledgeModalLoading(false);
+    }
+  };
+
+  const handleOpenContractModal = async (employeeId: string) => {
+    setContractTargetId(employeeId);
+    contractForm.resetFields();
+    try {
+      const emp = await employeeService.getEmployeeById(employeeId);
+      const contract = getHrRecord(emp, "employment_contract");
+      if (contract) {
+        contractForm.setFieldsValue({
+          party_a_name: contract.party_a_name || "",
+          party_a_address: contract.party_a_address || "",
+          contract_type: contract.contract_type || "",
+          position: contract.position || "",
+          work_location: contract.work_location || "",
+          contract_start_date: contract.contract_start_date || "",
+          contract_end_date: contract.contract_end_date || "",
+          monthly_salary: Number(contract.monthly_salary),
+        });
+      }
+    } catch {
+      // no pre-fill if fetch fails
+    }
+    setContractModalVisible(true);
+  };
+
+  const handleSaveContract = async () => {
+    try {
+      const values = await contractForm.validateFields();
+      setContractModalLoading(true);
+      await employeeService.saveEmploymentContract(contractTargetId, values);
+      message.success("劳动合同信息已保存");
+      setContractModalVisible(false);
+      await Promise.all([fetchEmployees(), fetchStats()]);
+    } catch (error: any) {
+      if (error?.errorFields) return;
+      message.error(error.response?.data?.message || "保存失败");
+    } finally {
+      setContractModalLoading(false);
     }
   };
 
@@ -211,12 +266,8 @@ const DocumentConfirmationList: React.FC = () => {
       title: "状态",
       key: "status",
       width: 100,
-      render: (_: unknown, record: Employee) => {
-        const isSigned =
-          activeTab === "policy_ack"
-            ? record.policy_ack_status
-            : record.training_pledge_status;
-        return isSigned ? (
+      render: (_: unknown, record: Employee) => (
+        isDocumentSigned(record, activeTab) ? (
           <Tag icon={<CheckCircleOutlined />} color="success">
             已签署
           </Tag>
@@ -224,18 +275,15 @@ const DocumentConfirmationList: React.FC = () => {
           <Tag icon={<ClockCircleOutlined />} color="warning">
             待签署
           </Tag>
-        );
-      },
+        )
+      ),
     },
     {
       title: "签署时间",
       key: "signed_at",
       width: 180,
       render: (_: unknown, record: Employee) => {
-        const signedAt =
-          activeTab === "policy_ack"
-            ? record.policy_ack_signed_at
-            : record.training_pledge_signed_at;
+        const signedAt = getDocumentSignedAt(record, activeTab);
         return signedAt ? dayjs(signedAt).format("YYYY-MM-DD HH:mm") : "-";
       },
     },
@@ -244,15 +292,14 @@ const DocumentConfirmationList: React.FC = () => {
       key: "actions",
       width: 220,
       render: (_: unknown, record: Employee) => {
-        const isSigned =
-          activeTab === "policy_ack"
-            ? record.policy_ack_status
-            : record.training_pledge_status;
+        const isSigned = isDocumentSigned(record, activeTab);
         const hasFile =
           activeTab === "policy_ack"
             ? record.has_policy_ack_file
-            : record.has_training_pledge_file;
-        const hasPledge = !!(record as any).trainingPledge;
+            : activeTab === "training_pledge"
+              ? record.has_training_pledge_file
+              : record.has_employment_contract_file;
+        const hasHrRecord = !!getHrRecord(record, activeTab);
 
         return (
           <Space>
@@ -263,7 +310,17 @@ const DocumentConfirmationList: React.FC = () => {
                 size="small"
                 onClick={() => handleOpenPledgeModal(record.employee_id)}
               >
-                {hasPledge ? "修改信息" : "配置承诺函"}
+                {hasHrRecord ? "修改信息" : "配置承诺函"}
+              </Button>
+            )}
+            {activeTab === "employment_contract" && (
+              <Button
+                type="link"
+                icon={<SettingOutlined />}
+                size="small"
+                onClick={() => handleOpenContractModal(record.employee_id)}
+              >
+                {hasHrRecord ? "修改信息" : "配置合同"}
               </Button>
             )}
             <Button
@@ -295,11 +352,15 @@ const DocumentConfirmationList: React.FC = () => {
   const tabItems = [
     {
       key: "policy_ack",
-      label: "公司制度阅读确认",
+      label: DOCUMENT_LABELS.policy_ack,
     },
     {
       key: "training_pledge",
-      label: "员工培训服务承诺函",
+      label: DOCUMENT_LABELS.training_pledge,
+    },
+    {
+      key: "employment_contract",
+      label: DOCUMENT_LABELS.employment_contract,
     },
   ];
 
@@ -446,6 +507,101 @@ const DocumentConfirmationList: React.FC = () => {
               max={10}
               precision={0}
               addonAfter="年"
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="配置劳动合同信息"
+        open={contractModalVisible}
+        onOk={handleSaveContract}
+        onCancel={() => setContractModalVisible(false)}
+        confirmLoading={contractModalLoading}
+        okText="保存"
+        cancelText="取消"
+        width={600}
+      >
+        <Form form={contractForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item
+            name="party_a_name"
+            label="甲方名称"
+            rules={[
+              { required: true, message: "请输入甲方名称" },
+              { max: 200, message: "甲方名称长度不能超过 200 字符" },
+            ]}
+          >
+            <Input placeholder="请输入甲方名称（公司全称）" maxLength={200} />
+          </Form.Item>
+          <Form.Item
+            name="party_a_address"
+            label="甲方住所地"
+            rules={[
+              { required: true, message: "请输入甲方住所地" },
+              { max: 500, message: "甲方住所地长度不能超过 500 字符" },
+            ]}
+          >
+            <Input.TextArea
+              placeholder="请输入甲方住所地（公司注册地址）"
+              maxLength={500}
+              autoSize={{ minRows: 2, maxRows: 4 }}
+            />
+          </Form.Item>
+          <Form.Item
+            name="contract_type"
+            label="合同类型"
+            rules={[{ required: true, message: "请输入合同类型" }]}
+          >
+            <Input placeholder="如：固定期限劳动合同" maxLength={50} />
+          </Form.Item>
+          <Form.Item
+            name="position"
+            label="岗位"
+            rules={[
+              { required: true, message: "请输入岗位" },
+              { max: 100, message: "岗位长度不能超过 100 字符" },
+            ]}
+          >
+            <Input placeholder="请输入岗位名称" maxLength={100} />
+          </Form.Item>
+          <Form.Item
+            name="work_location"
+            label="工作地点"
+            rules={[
+              { required: true, message: "请输入工作地点" },
+              { max: 200, message: "工作地点长度不能超过 200 字符" },
+            ]}
+          >
+            <Input placeholder="请输入工作地点" maxLength={200} />
+          </Form.Item>
+          <Form.Item
+            name="contract_start_date"
+            label="合同开始日期"
+            rules={[{ required: true, message: "请输入合同开始日期" }]}
+          >
+            <Input placeholder="如：2026年1月1日" maxLength={50} />
+          </Form.Item>
+          <Form.Item
+            name="contract_end_date"
+            label="合同结束日期"
+            rules={[{ required: true, message: "请输入合同结束日期" }]}
+          >
+            <Input placeholder="如：2029年1月1日" maxLength={50} />
+          </Form.Item>
+          <Form.Item
+            name="monthly_salary"
+            label="月工资（元）"
+            rules={[
+              { required: true, message: "请输入月工资" },
+              { type: "number", min: 1, message: "月工资必须大于 0" },
+            ]}
+          >
+            <InputNumber
+              style={{ width: "100%" }}
+              placeholder="请输入税前月工资，如 8000"
+              min={1}
+              precision={2}
+              addonAfter="元"
             />
           </Form.Item>
         </Form>
