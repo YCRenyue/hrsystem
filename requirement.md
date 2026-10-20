@@ -1601,7 +1601,7 @@ const NotificationService = {
 
 1. **前端性能优化**
    - 大列表渲染优化
-   - 懒加载实现
+   - [x] 懒加载实现（路由级代码分割，2026-10-20）
 
 2. **日志系统完善**
    - 操作日志完整性
@@ -2291,6 +2291,12 @@ const NotificationService = {
   - 管理员种子改用环境变量密码，并填充花名册中的 15 个部门
   - 针对 2 GiB 主机配置轻量运行参数和低内存前端构建；Redis 暂不部署（当前代码未使用）
   - 前端编译、前端 ESLint 和后端 ESLint 验证通过
+- [x] 前端打包体积优化 (已完成 - 2026-10-20)
+  - 路由懒加载：全部页面改为 `React.lazy` + `Suspense`，MainLayout 内 Outlet 独立 Suspense 保持布局常驻
+  - 移除 `@ant-design/charts`（会引入完整 lodash 与 G6 图谱库），统一使用 `@ant-design/plots`
+  - `html2canvas` 改为签署时动态 import
+  - antd v5 本身支持 ESM tree-shaking 且已全部按需具名引入，无需 babel-plugin-import；项目未使用 moment/lodash/echarts
+  - 主包由约 3.4 MB 降至约 1.06 MB（未压缩），图表库拆分为独立 chunk 仅在报表页加载
 
 ### 版本 2.3.0 (2026-04-23)
 - **考勤卡表导入功能**（新增）

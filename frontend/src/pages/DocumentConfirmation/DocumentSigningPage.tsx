@@ -33,7 +33,6 @@ import {
 } from "@ant-design/icons";
 import { useNavigate, useParams } from "react-router-dom";
 import dayjs from "dayjs";
-import html2canvas from "html2canvas";
 import { Employee } from "../../types";
 import { employeeService } from "../../services/employeeService";
 import {
@@ -208,6 +207,8 @@ const DocumentSigningPage: React.FC = () => {
       }
       // Wait for React to flush pending DOM updates
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      // Loaded on demand: only needed at signing time
+      const { default: html2canvas } = await import("html2canvas");
       const canvas = await html2canvas(documentRef.current, {
         scale: 2,
         useCORS: true,

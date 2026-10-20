@@ -1,8 +1,8 @@
 /**
  * Main Layout - Layout wrapper with navigation and header
  */
-import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Avatar, Dropdown, Drawer, Grid, Button, theme } from 'antd';
+import React, { useState, useEffect, Suspense } from 'react';
+import { Layout, Menu, Avatar, Dropdown, Drawer, Grid, Button, Spin, theme } from 'antd';
 import {
   UserOutlined,
   TeamOutlined,
@@ -320,7 +320,10 @@ const MainLayout: React.FC = () => {
             borderRadius: borderRadiusLG,
           }}
         >
-          <Outlet />
+          {/* Keep the layout shell visible while a lazy page chunk loads */}
+          <Suspense fallback={<Spin size="large" style={{ display: 'block', margin: '80px auto' }} />}>
+            <Outlet />
+          </Suspense>
         </Content>
       </Layout>
     </Layout>

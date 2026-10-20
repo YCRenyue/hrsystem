@@ -31,7 +31,7 @@ import {
   ExportOutlined,
   PlusOutlined
 } from '@ant-design/icons';
-import { Pie, Column as ColumnChart } from '@ant-design/charts';
+import { Pie, Column as ColumnChart } from '@ant-design/plots';
 import type { ColumnsType } from 'antd/es/table';
 import { useSearchParams } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
