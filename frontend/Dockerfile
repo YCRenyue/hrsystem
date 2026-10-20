@@ -1,5 +1,6 @@
 # Build stage
-FROM node:18-alpine AS build
+ARG DOCKER_REGISTRY=docker.io
+FROM ${DOCKER_REGISTRY}/library/node:18-alpine AS build
 
 WORKDIR /app
 
@@ -18,11 +19,16 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Keep production builds within the memory available on the 2 GiB ECS host.
+ENV GENERATE_SOURCEMAP=false \
+    DISABLE_ESLINT_PLUGIN=true \
+    NODE_OPTIONS=--max-old-space-size=1024
+
 # Build the app (will use REACT_APP_API_URL from ENV)
 RUN npm run build
 
 # Production stage
-FROM nginx:alpine
+FROM ${DOCKER_REGISTRY}/library/nginx:alpine
 
 # Install curl for health check
 RUN apk add --no-cache curl
