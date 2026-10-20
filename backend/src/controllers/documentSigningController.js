@@ -284,9 +284,10 @@ const saveTrainingPledge = async (req, res) => {
 /**
  * Save or update employment contract terms for an employee (HR only)
  * PUT /api/employees/:id/employment-contract
- * The contract text itself is a placeholder pending the official document;
+ * The contract text is a draft template on the frontend (see
+ * employmentContractTemplate.ts) pending the reviewed official wording;
  * this only stores the structured terms HR fills in (party A info, position,
- * work location, term dates, salary) used to render that placeholder.
+ * work location, term dates, salary) used to render that template.
  */
 const saveEmploymentContract = async (req, res) => {
   const { id } = req.params;
