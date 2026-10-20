@@ -36,15 +36,15 @@ on:
 
 env:
   # Aliyun ACR Configuration
-  ACR_REGISTRY: crpi-1f9h7rkbm8zj38tu.cn-zhangjiakou.personal.cr.aliyuncs.com
-  ACR_REGISTRY_VPC: crpi-1f9h7rkbm8zj38tu-vpc.cn-zhangjiakou.personal.cr.aliyuncs.com
-  ACR_NAMESPACE: ycrenyue
+  ACR_REGISTRY: crpi-itz6meqzm8jndmax.cn-shanghai.personal.cr.aliyuncs.com
+  ACR_REGISTRY_VPC: crpi-itz6meqzm8jndmax-vpc.cn-shanghai.personal.cr.aliyuncs.com
+  ACR_NAMESPACE: tonyhuang0908
   ACR_REPOSITORY_BACKEND: hrsystem-backend
   ACR_REPOSITORY_FRONTEND: hrsystem-frontend
   ACR_REPOSITORY_DB: hrsystem-mysql
   BACKEND_PORT: 3001
-  FRONTEND_PORT: 8080
-  DEPLOY_PLATFORM: linux/arm64
+  FRONTEND_PORT: 80
+  DEPLOY_PLATFORM: linux/amd64
   # Database container configuration
   DB_CONTAINER_NAME: hrsystem-db
   DB_VOLUME_NAME: hrsystem-db-data
@@ -306,8 +306,9 @@ jobs:
       - name: 🔐 配置 SSH 密钥
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.ECS_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+          printf '%s\n' "${{ secrets.ECS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.ECS_SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
       - name: SSH preflight check
         run: |
           set -euo pipefail
@@ -318,12 +319,6 @@ jobs:
           echo "Checking TCP connectivity to ${ECS_HOST}:${SSH_PORT}"
           if ! timeout 10 bash -c "cat < /dev/null > /dev/tcp/${ECS_HOST}/${SSH_PORT}"; then
             echo "::error::GitHub Actions runner cannot reach ${ECS_HOST}:${SSH_PORT}. Check that ECS is using a public IP or EIP, the security group allows the port, the OS firewall allows the port, and sshd is listening on that port."
-            exit 1
-          fi
-
-          echo "Checking SSH handshake on ${ECS_HOST}:${SSH_PORT}"
-          if ! ssh-keyscan -T 10 -p "${SSH_PORT}" -H "${ECS_HOST}" >> ~/.ssh/known_hosts 2>/dev/null; then
-            echo "::error::TCP is reachable but the SSH handshake failed. This usually means the configured port is not serving sshd, sshd is unhealthy, or the server is actively resetting the runner connection."
             exit 1
           fi
 
@@ -346,9 +341,8 @@ jobs:
             -o ServerAliveInterval=30 \
             -o ServerAliveCountMax=3 \
             -o StrictHostKeyChecking=yes \
-            -p ${SSH_PORT} root@${ECS_HOST} << ENDSSH
+            -p ${SSH_PORT} deploy@${ECS_HOST} << ENDSSH
             set -e
-            set -x
 
             echo "📦 登录阿里云 ACR..."
             echo "Server architecture: \$(uname -m)"
@@ -359,16 +353,8 @@ jobs:
             fi
 
             if ! docker info >/dev/null 2>&1; then
-              echo "Docker daemon is not running, trying to start it..."
-              if command -v systemctl >/dev/null 2>&1; then
-                systemctl start docker || true
-                sleep 3
-              fi
-
-              if ! docker info >/dev/null 2>&1; then
-                echo "Docker daemon is unavailable on the ECS host."
-                exit 1
-              fi
+              echo "Docker daemon is unavailable to the deploy user."
+              exit 1
             fi
 
             echo "${{ secrets.ACR_PASSWORD }}" | docker login \
@@ -583,7 +569,7 @@ jobs:
                 --name hrsystem-frontend \
                 --restart unless-stopped \
                 --network ${{ env.DOCKER_NETWORK }} \
-                -p 127.0.0.1:${{ env.FRONTEND_PORT }}:80 \
+                -p ${{ env.FRONTEND_PORT }}:80 \
                 ${FRONTEND_IMAGE}
 
               echo "⏳ 等待前端服务启动..."
