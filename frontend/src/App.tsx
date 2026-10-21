@@ -4,6 +4,9 @@
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider, App as AntdApp, Spin } from 'antd';
+import zhCN from 'antd/locale/zh_CN';
+import dayjs from 'dayjs';
+import 'dayjs/locale/zh-cn';
 import { AuthProvider } from './contexts/AuthContext';
 import { PermissionProvider } from './contexts/PermissionContext';
 import ProtectedRoute from './components/Common/ProtectedRoute';
@@ -26,6 +29,7 @@ const UserProfile = lazy(() => import('./pages/Profile/UserProfile'));
 const AnnualLeaveList = lazy(() => import('./pages/AnnualLeave/AnnualLeaveList'));
 const AnnualLeaveForm = lazy(() => import('./pages/AnnualLeave/AnnualLeaveForm'));
 const SocialSecurityList = lazy(() => import('./pages/SocialSecurity/SocialSecurityList'));
+const SocialSecurityForm = lazy(() => import('./pages/SocialSecurity/SocialSecurityForm'));
 const BusinessTripList = lazy(() => import('./pages/BusinessTrip/BusinessTripList'));
 const BusinessTripForm = lazy(() => import('./pages/BusinessTrip/BusinessTripForm'));
 const BusinessTripDetail = lazy(() => import('./pages/BusinessTrip/BusinessTripDetail'));
@@ -47,11 +51,15 @@ const ReimbursementDetail = lazy(() => import('./pages/Reimbursement/Reimburseme
 const ForcedPasswordChange = lazy(() => import('./pages/Login/ForcedPasswordChange'));
 const Reports = lazy(() => import('./pages/Reports'));
 const SelfService = lazy(() => import('./pages/SelfService/SelfService'));
+// 全局中文：Ant Design 组件文案（确认/取消、选择日期、暂无数据等）与 dayjs 星期月份
+dayjs.locale('zh-cn');
+
 const pageFallback = <Spin size="large" style={{ display: 'block', margin: '20vh auto' }} />;
 
 function App() {
   return (
     <ConfigProvider
+      locale={zhCN}
       theme={{
         token: {
           colorPrimary: '#1890ff',
@@ -195,6 +203,15 @@ function App() {
                     element={
                       <RoleGuard requiredRoles={['admin', 'hr_admin']}>
                         <SocialSecurityList />
+                      </RoleGuard>
+                    }
+                  />
+
+                  <Route
+                    path="social-security/new"
+                    element={
+                      <RoleGuard requiredRoles={['admin', 'hr_admin']}>
+                        <SocialSecurityForm />
                       </RoleGuard>
                     }
                   />

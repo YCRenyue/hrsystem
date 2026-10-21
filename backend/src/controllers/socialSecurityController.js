@@ -136,7 +136,7 @@ const createSocialSecurity = async (req, res) => {
   const { employee_id, year_month } = req.body;
 
   if (!employee_id || !year_month) {
-    throw new ValidationError('Employee ID and year_month are required');
+    throw new ValidationError('员工和缴纳年月为必填项');
   }
 
   const employee = await Employee.findByPk(employee_id);
@@ -149,9 +149,7 @@ const createSocialSecurity = async (req, res) => {
   });
 
   if (existing) {
-    throw new ValidationError(
-      `Social security record for ${year_month} already exists`
-    );
+    throw new ValidationError(`该员工 ${year_month} 的社保记录已存在`);
   }
 
   const data = { ...req.body };

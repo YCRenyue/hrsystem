@@ -75,7 +75,7 @@ const UserManagement: React.FC = () => {
       setUsers(data.items);
       setTotal(data.total);
     } catch (error) {
-      message.error('Failed to fetch users');
+      message.error('获取用户列表失败');
     } finally {
       setLoading(false);
     }
@@ -122,10 +122,10 @@ const UserManagement: React.FC = () => {
       onOk: async () => {
         try {
           const result = await userService.resetUserPassword(user.user_id);
-          message.success(result.message || 'Password reset successful');
+          message.success(result.message || '密码已重置');
           fetchUsers();
         } catch (error) {
-          message.error('Failed to reset password');
+          message.error('重置密码失败');
         }
       },
     });
@@ -141,10 +141,10 @@ const UserManagement: React.FC = () => {
       onOk: async () => {
         try {
           await userService.deleteUser(user.user_id);
-          message.success('User deleted successfully');
+          message.success('用户已删除');
           fetchUsers();
         } catch (error) {
-          message.error('Failed to delete user');
+          message.error('删除用户失败');
         }
       },
     });
@@ -163,13 +163,13 @@ const UserManagement: React.FC = () => {
         };
 
         await userService.updateUserRole(editingUser.user_id, updateData);
-        message.success('User updated successfully');
+        message.success('用户已更新');
       }
 
       setModalVisible(false);
       fetchUsers();
     } catch (error) {
-      message.error('Failed to save user');
+      message.error('保存用户失败');
     }
   };
 
@@ -291,7 +291,7 @@ const UserManagement: React.FC = () => {
       <Card title="用户管理">
         <Space style={{ marginBottom: 16 }} wrap>
           <Input
-            placeholder="Search username/name/email"
+            placeholder="搜索用户名、姓名或邮箱"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             onPressEnter={handleSearch}
@@ -299,7 +299,7 @@ const UserManagement: React.FC = () => {
             prefix={<SearchOutlined />}
           />
           <Select
-            placeholder="Filter by role"
+            placeholder="按角色筛选"
             value={roleFilter}
             onChange={setRoleFilter}
             allowClear
@@ -312,7 +312,7 @@ const UserManagement: React.FC = () => {
             <Option value="employee">普通员工</Option>
           </Select>
           <Select
-            placeholder="Filter by status"
+            placeholder="按状态筛选"
             value={statusFilter}
             onChange={setStatusFilter}
             allowClear
@@ -361,9 +361,9 @@ const UserManagement: React.FC = () => {
           <Form.Item
             label="角色"
             name="role"
-            rules={[{ required: true, message: 'Please select a role' }]}
+            rules={[{ required: true, message: '请选择角色' }]}
           >
-            <Select placeholder="Select role">
+            <Select placeholder="请选择角色">
               <Option value="admin">超级管理员</Option>
               <Option value="hr_admin">HR管理员</Option>
               <Option value="department_manager">部门经理</Option>
@@ -374,9 +374,9 @@ const UserManagement: React.FC = () => {
           <Form.Item
             label="数据访问范围"
             name="data_scope"
-            rules={[{ required: true, message: 'Please select data scope' }]}
+            rules={[{ required: true, message: '请选择数据访问范围' }]}
           >
-            <Select placeholder="Select data scope">
+            <Select placeholder="请选择数据访问范围">
               <Option value="all">全部数据</Option>
               <Option value="department">本部门</Option>
               <Option value="self">仅自己</Option>
@@ -392,9 +392,9 @@ const UserManagement: React.FC = () => {
           <Form.Item
             label="账户状态"
             name="status"
-            rules={[{ required: true, message: 'Please select status' }]}
+            rules={[{ required: true, message: '请选择账户状态' }]}
           >
-            <Select placeholder="Select status">
+            <Select placeholder="请选择账户状态">
               <Option value="active">正常</Option>
               <Option value="inactive">禁用</Option>
               <Option value="locked">锁定</Option>
