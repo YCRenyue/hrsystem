@@ -105,6 +105,7 @@ app.use('/api/canteen-meals', require('./routes/canteenMeal'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/reimbursements', require('./routes/reimbursements'));
+app.use('/api/punch', require('./routes/punchReview'));
 
 // Error handling middleware
 const { errorHandler } = require('./middleware/errorHandler');

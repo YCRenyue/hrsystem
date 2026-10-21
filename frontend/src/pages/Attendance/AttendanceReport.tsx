@@ -30,33 +30,26 @@ import type { ColumnsType } from 'antd/es/table';
 import { Dayjs } from 'dayjs';
 import { attendanceService, AttendanceSummaryRow, AttendanceReport as ReportData } from '../../services/attendanceService';
 import apiClient from '../../services/api';
+import { AttendanceImportResult } from '../../services/punchService';
 import { usePermission } from '../../hooks/usePermission';
+import PunchImportResultModal from '../../components/PunchImport/PunchImportResultModal';
+import PunchMappingModal from '../../components/PunchImport/PunchMappingModal';
 
-interface ImportResult {
-  sheets_processed: number;
-  employees_total: number;
-  matched: number;
-  daily_created: number;
-  daily_updated: number;
-  summaries_created: number;
-  summaries_updated: number;
-  periods: string[];
-  unmatched: Array<{ sheet: string; name: string; external_id?: string }>;
-  ambiguous: Array<{ sheet: string; name: string }>;
-}
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 
 const AttendanceReportPage: React.FC = () => {
   const { dataScope, hasPermission } = usePermission();
-  const { message, modal } = App.useApp();
+  const { message } = App.useApp();
 
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ReportData | null>(null);
   const [range, setRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [departmentId, setDepartmentId] = useState<string | undefined>(undefined);
   const [departments, setDepartments] = useState<Array<{ department_id: string; name: string }>>([]);
+  const [importResult, setImportResult] = useState<AttendanceImportResult | null>(null);
+  const [mappingOpen, setMappingOpen] = useState(false);
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
@@ -92,53 +85,14 @@ const AttendanceReportPage: React.FC = () => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const hideLoading = message.loading('正在解析考勤卡表...', 0);
+    const hideLoading = message.loading('正在解析考勤刷卡记录...', 0);
     try {
       const response = await apiClient.post('/attendances/import-card', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       hideLoading();
-      const result: ImportResult = response.data.data;
 
-      modal.success({
-        title: '考勤卡表导入完成',
-        width: 600,
-        content: (
-          <div>
-            <p>
-              处理工作表 <b>{result.sheets_processed}</b> 个，员工 <b>{result.employees_total}</b> 人，匹配成功 <b>{result.matched}</b> 人
-            </p>
-            <p>
-              写入打卡记录：新增 <b>{result.daily_created}</b> / 更新 <b>{result.daily_updated}</b>
-            </p>
-            <p>
-              汇总记录：新增 <b>{result.summaries_created}</b> / 更新 <b>{result.summaries_updated}</b>
-            </p>
-            {result.periods?.length > 0 && (
-              <p>统计周期：{result.periods.join(', ')}</p>
-            )}
-            {result.unmatched?.length > 0 && (
-              <div style={{ maxHeight: 200, overflow: 'auto', marginTop: 8 }}>
-                <b style={{ color: '#faad14' }}>未匹配员工（姓名在花名册中不存在）：</b>
-                {result.unmatched.map((u, i) => (
-                  <p key={i} style={{ margin: '4px 0' }}>
-                    [{u.sheet}] {u.name}（考勤表工号: {u.external_id || '-'}）
-                  </p>
-                ))}
-              </div>
-            )}
-            {result.ambiguous?.length > 0 && (
-              <div style={{ maxHeight: 200, overflow: 'auto', marginTop: 8 }}>
-                <b style={{ color: '#f5222d' }}>重名员工（需人工核对）：</b>
-                {result.ambiguous.map((a, i) => (
-                  <p key={i} style={{ margin: '4px 0' }}>[{a.sheet}] {a.name}</p>
-                ))}
-              </div>
-            )}
-          </div>
-        ),
-      });
-
+      setImportResult(response.data.data);
       fetchReport();
     } catch (error: unknown) {
       hideLoading();
@@ -303,9 +257,12 @@ const AttendanceReportPage: React.FC = () => {
               beforeUpload={handleImportCard}
             >
               <Button type="primary" icon={<ImportOutlined />}>
-                导入考勤卡表
+                导入考勤打卡
               </Button>
             </Upload>
+          )}
+          {canImport && (
+            <Button onClick={() => setMappingOpen(true)}>工号对照表</Button>
           )}
         </Space>
       </Card>
@@ -420,6 +377,17 @@ const AttendanceReportPage: React.FC = () => {
           size="middle"
         />
       </Card>
+
+      <PunchImportResultModal
+        deviceType="attendance"
+        result={importResult}
+        onClose={() => setImportResult(null)}
+      />
+      <PunchMappingModal
+        deviceType="attendance"
+        open={mappingOpen}
+        onClose={() => setMappingOpen(false)}
+      />
     </div>
   );
 };

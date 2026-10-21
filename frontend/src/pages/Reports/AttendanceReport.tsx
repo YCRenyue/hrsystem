@@ -75,7 +75,9 @@ const AttendanceReport: React.FC = () => {
     { value: 'absent', label: '缺勤', color: 'error' },
     { value: 'leave', label: '请假', color: 'default' },
     { value: 'holiday', label: '节假日', color: 'default' },
-    { value: 'weekend', label: '周末', color: 'default' }
+    { value: 'weekend', label: '周末', color: 'default' },
+    { value: 'business_trip', label: '出差', color: 'default' },
+    { value: 'missing_punch', label: '缺卡', color: 'error' }
   ];
 
   useEffect(() => {
