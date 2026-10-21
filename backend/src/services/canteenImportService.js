@@ -9,6 +9,7 @@ const { Op } = require('sequelize');
 const { CanteenMeal, Leave, BusinessTrip } = require('../models');
 const { importCanteenPunches } = require('./punch/canteenPunchImport');
 const { formatLocalDate } = require('../utils/dateUtils');
+const { applyEmployeeKeyword } = require('../utils/employeeSearch');
 
 /**
  * 判断某员工某天是否可以记食堂用餐（非周末、未请假、未出差）
@@ -49,7 +50,9 @@ async function isMealEligible(employeeId, date) {
  *   - perEmployee: 每位员工的中餐/晚餐次数
  *   - totals: 全局总计
  */
-async function getCanteenReport({ start_date, end_date, department_id } = {}) {
+async function getCanteenReport({
+  start_date, end_date, department_id, keyword
+} = {}) {
   const where = {};
   if (start_date && end_date) {
     where.meal_date = { [Op.between]: [start_date, end_date] };
@@ -69,6 +72,8 @@ async function getCanteenReport({ start_date, end_date, department_id } = {}) {
     include[0].where = { department_id };
     include[0].required = true;
   }
+  await applyEmployeeKeyword(include[0], keyword);
+  if (include[0].where) include[0].required = true;
 
   const meals = await CanteenMeal.findAll({
     where,

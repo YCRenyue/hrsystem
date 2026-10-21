@@ -578,7 +578,9 @@ const importCardExcel = async (req, res) => {
  * 食堂报表：每日/每周中餐晚餐人数 + 每人汇总
  */
 const getCanteenReport = async (req, res) => {
-  const { start_date, end_date, department_id } = req.query;
+  const {
+    start_date, end_date, department_id, keyword
+  } = req.query;
 
   let effectiveDepartmentId = department_id;
   if (req.user.data_scope === 'department') {
@@ -593,7 +595,8 @@ const getCanteenReport = async (req, res) => {
   const data = await canteenImportService.getCanteenReport({
     start_date,
     end_date,
-    department_id: effectiveDepartmentId
+    department_id: effectiveDepartmentId,
+    keyword
   });
 
   return res.json({ success: true, data });
