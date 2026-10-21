@@ -11,6 +11,7 @@ const {
   ValidationError,
   NotFoundError
 } = require('../middleware/errorHandler');
+const { formatLocalDate } = require('../utils/dateUtils');
 
 // Payment status mapping: Chinese to English
 const PAYMENT_STATUS_CHINESE_TO_ENGLISH = {
@@ -268,7 +269,7 @@ const downloadTemplate = async (req, res) => {
 
   const workbook = ExcelService.createTemplate(columns, sampleData);
   const filename = `social_security_template_${
-    new Date().toISOString().split('T')[0]
+    formatLocalDate(new Date())
   }.xlsx`;
 
   await ExcelService.sendExcelResponse(res, workbook, filename);
@@ -467,7 +468,7 @@ const exportToExcel = async (req, res) => {
   );
 
   const filename = `social_security_${
-    new Date().toISOString().split('T')[0]
+    formatLocalDate(new Date())
   }.xlsx`;
   await ExcelService.sendExcelResponse(res, workbook, filename);
 };

@@ -111,7 +111,6 @@ const OnboardingOffboardingReport: React.FC = () => {
       }
 
       if (filters.department_id) params.department_id = filters.department_id;
-      if (reportType === 'offboarding') params.departure_date = true;
 
       const response = await apiClient.get('/reports/onboarding-offboarding', { params });
 

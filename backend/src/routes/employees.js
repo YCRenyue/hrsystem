@@ -158,14 +158,15 @@ router.put(
 );
 
 /**
- * @route   DELETE /api/employees/:id
- * @desc    Delete employee
- * @access  Private (Admin only)
+ * @route   POST /api/employees/:id/offboard
+ * @desc    Offboard employee (mark inactive, record leave date, disable login).
+ *          Employees are never deleted.
+ * @access  Private (HR, Admin)
  */
-router.delete(
-  '/:id',
-  requireRole('admin'),
-  asyncHandler(employeeController.deleteEmployee)
+router.post(
+  '/:id/offboard',
+  requireRole('hr_admin', 'admin'),
+  asyncHandler(employeeController.offboardEmployee)
 );
 
 module.exports = router;

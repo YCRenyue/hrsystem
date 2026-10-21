@@ -3,7 +3,8 @@
  * 员工状态流转服务 - 基于状态机模式
  */
 
-const Employee = require('../models/Employee');
+const { Employee, User } = require('../models');
+const { NotFoundError, ValidationError } = require('../middleware/errorHandler');
 const annualLeaveService = require('./AnnualLeaveService');
 const logger = require('../utils/logger');
 
@@ -20,7 +21,7 @@ const EmployeeStatus = {
  * 状态转换规则定义
  */
 const STATUS_TRANSITIONS = {
-  [EmployeeStatus.PENDING]: [EmployeeStatus.ACTIVE],
+  [EmployeeStatus.PENDING]: [EmployeeStatus.ACTIVE, EmployeeStatus.INACTIVE],
   [EmployeeStatus.ACTIVE]: [EmployeeStatus.INACTIVE],
   [EmployeeStatus.INACTIVE]: [] // 离职后不可转换
 };
@@ -73,26 +74,29 @@ class EmployeeStatusService {
   }
 
   /**
-   * 员工离职（在职 -> 离职）
+   * 员工离职（待入职/在职 -> 离职）：记录离职日期、停用登录账号、结算年假。
+   * 员工记录永不删除，只标记为离职。
    * @param {string} employeeId - 员工ID
-   * @param {string} leaveDate - 离职日期
+   * @param {string} leaveDate - 离职日期 YYYY-MM-DD
    * @returns {Promise<Object>} 操作结果
    */
-  async deactivate(employeeId, leaveDate = null) {
+  async deactivate(employeeId, leaveDate) {
     const employee = await Employee.findByPk(employeeId);
 
     if (!employee) {
-      throw new Error('Employee not found');
+      throw new NotFoundError('Employee', employeeId);
     }
 
     if (!this.canTransition(employee.status, EmployeeStatus.INACTIVE)) {
-      throw new Error(`Invalid status transition from ${employee.status} to ${EmployeeStatus.INACTIVE}`);
+      throw new ValidationError('该员工已离职，不能重复办理');
     }
 
-    const result = await this._updateStatus(employee, EmployeeStatus.INACTIVE, {
-      leaveDate: leaveDate || new Date()
-    });
-    await annualLeaveService.settleOnOffboarding(employee, leaveDate || new Date());
+    const result = await this._updateStatus(employee, EmployeeStatus.INACTIVE, { leaveDate });
+    await User.update(
+      { is_active: false, status: 'inactive' },
+      { where: { employee_id: employeeId } }
+    );
+    await annualLeaveService.settleOnOffboarding(employee, leaveDate);
     return result;
   }
 

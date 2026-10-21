@@ -22,6 +22,9 @@ const {
 const notificationService = require('./NotificationService');
 const annualLeaveService = require('./AnnualLeaveService');
 const logger = require('../utils/logger');
+const { formatLocalDate } = require('../utils/dateUtils');
+
+const CRON_OPTIONS = { timezone: 'Asia/Shanghai' };
 
 class SchedulerService {
   constructor() {
@@ -44,55 +47,55 @@ class SchedulerService {
     this.jobs.push(
       cron.schedule('0 9 * * *', () => {
         this.runDailyOnboardingTask();
-      })
+      }, CRON_OPTIONS)
     );
 
     // Daily task at 10:00 AM - Send pre-onboarding reminders (3 days before)
     this.jobs.push(
       cron.schedule('0 10 * * *', () => {
         this.runPreOnboardingReminders();
-      })
+      }, CRON_OPTIONS)
     );
 
     // Weekly task on Monday at 9:00 AM - Send welcome messages (1 week after entry)
     this.jobs.push(
       cron.schedule('0 9 * * 1', () => {
         this.runWelcomeMessages();
-      })
+      }, CRON_OPTIONS)
     );
 
     // Daily task at 8:00 AM - Send training reminders
     this.jobs.push(
       cron.schedule('0 8 * * *', () => {
         this.runTrainingReminders();
-      })
+      }, CRON_OPTIONS)
     );
 
     // Daily task at 9:00 AM - Send contract expiry reminders (30 days before)
     this.jobs.push(
       cron.schedule('0 9 * * *', () => {
         this.runContractExpiryReminders();
-      })
+      }, CRON_OPTIONS)
     );
 
     // Monthly task on 1st day at 10:00 AM - Send monthly statistics
     this.jobs.push(
       cron.schedule('0 10 1 * *', () => {
         this.runMonthlyStatistics();
-      })
+      }, CRON_OPTIONS)
     );
 
     this.jobs.push(
       cron.schedule('0 1 * * *', () => {
         this.runAnnualLeaveAccrual();
-      })
+      }, CRON_OPTIONS)
     );
 
     // Hourly task - Advance business trip statuses (approved -> in_progress -> completed)
     this.jobs.push(
       cron.schedule('0 * * * *', () => {
         this.runBusinessTripLifecycle();
-      })
+      }, CRON_OPTIONS)
     );
 
     this.isRunning = true;
@@ -122,7 +125,7 @@ class SchedulerService {
     logger.info('Running daily onboarding task...');
 
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = formatLocalDate(new Date());
 
       // Find employees whose entry date is today and haven't completed onboarding
       const employees = await Employee.findAll({
@@ -358,8 +361,8 @@ class SchedulerService {
         try {
           const dateRange = { [Op.gte]: periodStart, [Op.lt]: periodEnd };
           const mealDateRange = {
-            [Op.gte]: periodStart.toISOString().slice(0, 10),
-            [Op.lt]: periodEnd.toISOString().slice(0, 10)
+            [Op.gte]: formatLocalDate(periodStart),
+            [Op.lt]: formatLocalDate(periodEnd)
           };
           const [travelAllowance, canteenExpense, attendance, overtime] = await Promise.all([
             Reimbursement.sum('total_amount', {

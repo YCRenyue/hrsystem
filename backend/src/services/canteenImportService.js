@@ -8,6 +8,7 @@
 const { Op } = require('sequelize');
 const { CanteenMeal, Leave, BusinessTrip } = require('../models');
 const { importCanteenPunches } = require('./punch/canteenPunchImport');
+const { formatLocalDate } = require('../utils/dateUtils');
 
 /**
  * 判断某员工某天是否可以记食堂用餐（非周末、未请假、未出差）
@@ -86,18 +87,18 @@ async function getCanteenReport({ start_date, end_date, department_id } = {}) {
     const day = d.getDay(); // 0 Sun ... 6 Sat
     const diff = (day === 0 ? -6 : 1 - day);
     d.setDate(d.getDate() + diff);
-    return d.toISOString().slice(0, 10);
+    return formatLocalDate(d);
   };
   const addDays = (dateStr, n) => {
     const d = new Date(`${dateStr}T00:00:00`);
     d.setDate(d.getDate() + n);
-    return d.toISOString().slice(0, 10);
+    return formatLocalDate(d);
   };
 
   meals.forEach((m) => {
     const date = typeof m.meal_date === 'string'
       ? m.meal_date
-      : new Date(m.meal_date).toISOString().slice(0, 10);
+      : formatLocalDate(new Date(m.meal_date));
     const type = m.meal_type;
 
     // daily
@@ -183,7 +184,7 @@ async function getEmployeeMealDetail({ employee_id, start_date, end_date } = {})
   meals.forEach((m) => {
     const date = typeof m.meal_date === 'string'
       ? m.meal_date
-      : new Date(m.meal_date).toISOString().slice(0, 10);
+      : formatLocalDate(new Date(m.meal_date));
     if (!byDate.has(date)) {
       byDate.set(date, {
         date, lunch_time: null, dinner_time: null, breakfast_time: null

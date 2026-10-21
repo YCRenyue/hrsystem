@@ -12,6 +12,7 @@ const {
   NotFoundError,
   ForbiddenError
 } = require('../middleware/errorHandler');
+const { formatLocalDate } = require('../utils/dateUtils');
 
 /**
  * Get annual leave records with pagination and filtering
@@ -281,7 +282,7 @@ const downloadTemplate = async (req, res) => {
 
   const workbook = ExcelService.createTemplate(columns, sampleData);
   const filename = `annual_leave_template_${
-    new Date().toISOString().split('T')[0]
+    formatLocalDate(new Date())
   }.xlsx`;
 
   await ExcelService.sendExcelResponse(res, workbook, filename);
@@ -422,7 +423,7 @@ const exportToExcel = async (req, res) => {
     'Annual Leave'
   );
 
-  const filename = `annual_leave_${new Date().toISOString().split('T')[0]}.xlsx`;
+  const filename = `annual_leave_${formatLocalDate(new Date())}.xlsx`;
   await ExcelService.sendExcelResponse(res, workbook, filename);
 };
 

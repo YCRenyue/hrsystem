@@ -7,8 +7,12 @@ const { Op } = require('sequelize');
 const { Employee, Department, User } = require('../models');
 const { encryptionService } = require('../utils/encryption');
 const { sequelize } = require('../config/database');
+const { ValidationError } = require('../middleware/errorHandler');
 
 const DEFAULT_PASSWORD = '123456';
+const RESIGNED_KEYWORD = '离职';
+const RESIGNED_ROW_ERROR = '离职人员不支持导入，员工离职请在员工详情中办理';
+const RESIGNED_FILE_ERROR = '系统不支持导入离职花名册，员工离职请在员工详情中办理';
 
 /** Maps Excel header names to internal field names */
 const HEADER_MAP = {
@@ -32,10 +36,8 @@ const HEADER_MAP = {
 const STATUS_MAP = {
   在职: 'active',
   待完善: 'pending',
-  离职: 'inactive',
   active: 'active',
-  pending: 'pending',
-  inactive: 'inactive'
+  pending: 'pending'
 };
 
 const GENDER_MAP = {
@@ -74,10 +76,8 @@ function parseExcelDate(value) {
   }
   if (typeof value === 'string') {
     const trimmed = value.trim();
-    if (/^\d{4}[-/]\d{2}[-/]\d{2}$/.test(trimmed)) {
-      const d = new Date(trimmed);
-      if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
-    }
+    const match = /^(\d{4})[-/](\d{2})[-/](\d{2})$/.exec(trimmed);
+    if (match) return `${match[1]}-${match[2]}-${match[3]}`;
   }
   return null;
 }
@@ -154,6 +154,11 @@ function parseRow(row, colMap, rowNum) {
     return { data: null, error: '员工编号和姓名为必填项' };
   }
 
+  const statusText = getCellText(raw.status_raw) || '';
+  if (statusText.includes(RESIGNED_KEYWORD) || statusText === 'inactive') {
+    return { data: null, error: RESIGNED_ROW_ERROR };
+  }
+
   const { contract_expiry_date, contract_type } = parseContractField(raw.contract_field);
   const phone = raw.phone !== null && raw.phone !== undefined && !(raw.phone instanceof Date)
     ? String(raw.phone).trim() || null
@@ -172,7 +177,7 @@ function parseRow(row, colMap, rowNum) {
       probation_end_date: parseExcelDate(raw.probation_end_date),
       department_name: getCellText(raw.department_name),
       position: getCellText(raw.position),
-      status: STATUS_MAP[getCellText(raw.status_raw)] || 'active',
+      status: STATUS_MAP[statusText] || 'active',
       notes: getCellText(raw.notes),
       contract_expiry_date,
       contract_type,
@@ -192,10 +197,13 @@ async function parseExcelFile(buffer) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
   const worksheet = workbook.getWorksheet(1);
-  if (!worksheet) throw new Error('Excel文件内容为空');
+  if (!worksheet) throw new ValidationError('Excel文件内容为空');
+
+  const title = getCellText(worksheet.getRow(1).getCell(1).value) || '';
+  if (title.includes(RESIGNED_KEYWORD)) throw new ValidationError(RESIGNED_FILE_ERROR);
 
   const colMap = buildColumnMap(worksheet);
-  if (colMap.size === 0) throw new Error('无法识别表头，请确认使用正确的Excel模板');
+  if (colMap.size === 0) throw new ValidationError('无法识别表头，请确认使用正确的Excel模板');
 
   const parsedRows = [];
   const parseErrors = [];
@@ -217,10 +225,47 @@ async function parseExcelFile(buffer) {
 }
 
 /**
- * Validate parsed rows against DB rules using batch queries.
- * Also creates any departments that don't yet exist.
+ * Normalize a department name for matching: drop whitespace and a trailing "部",
+ * so "人事部" and "人事" resolve to the same department.
+ * @param {string} name
+ * @returns {string}
+ */
+function normalizeDeptName(name) {
+  const compact = String(name).replace(/\s+/g, '');
+  return compact.replace(/部$/, '') || compact;
+}
+
+/**
+ * Match department names in the file to existing departments without writing anything.
  * @param {Array} parsedRows
- * @returns {Promise<{ validRows: Array, businessErrors: Array }>}
+ * @returns {Promise<{ idByKey: Map<string, string>, newDepartments: Map<string, string> }>}
+ *   idByKey: normalized name -> existing department_id;
+ *   newDepartments: normalized name -> name to create on confirm
+ */
+async function resolveDepartments(parsedRows) {
+  const departments = await Department.findAll({ attributes: ['department_id', 'name'] });
+  const idByKey = new Map();
+  departments.forEach((d) => {
+    const key = normalizeDeptName(d.name);
+    if (!idByKey.has(key)) idByKey.set(key, d.department_id);
+  });
+
+  const newDepartments = new Map();
+  parsedRows.forEach((r) => {
+    if (!r.department_name) return;
+    const key = normalizeDeptName(r.department_name);
+    if (!idByKey.has(key) && !newDepartments.has(key)) {
+      newDepartments.set(key, r.department_name.trim());
+    }
+  });
+  return { idByKey, newDepartments };
+}
+
+/**
+ * Validate parsed rows against DB rules using batch queries. Read-only: departments that
+ * do not exist yet are reported in newDepartments and only created by insertRows.
+ * @param {Array} parsedRows
+ * @returns {Promise<{ validRows: Array, businessErrors: Array, newDepartments: string[] }>}
  */
 async function validateRows(parsedRows) {
   const businessErrors = [];
@@ -242,22 +287,7 @@ async function validateRows(parsedRows) {
   const existingEmpNums = new Set(existingEmployees.map((e) => e.employee_number));
   const existingUsernames = new Set(existingUsers.map((u) => u.username));
 
-  const departmentNames = [...new Set(parsedRows.map((r) => r.department_name).filter(Boolean))];
-  const existingDepts = await Department.findAll({
-    where: { name: { [Op.in]: departmentNames } },
-    attributes: ['department_id', 'name']
-  });
-  const deptMap = {};
-  existingDepts.forEach((d) => { deptMap[d.name] = d.department_id; });
-
-  for (const deptName of departmentNames.filter((n) => !deptMap[n])) {
-    const code = deptName.replace(/\s+/g, '_').substring(0, 20).toUpperCase();
-    const [dept] = await Department.findOrCreate({
-      where: { name: deptName },
-      defaults: { name: deptName, code, status: 'active' }
-    });
-    deptMap[deptName] = dept.department_id;
-  }
+  const { idByKey, newDepartments } = await resolveDepartments(parsedRows);
 
   const seenNumbers = new Set();
 
@@ -281,10 +311,38 @@ async function validateRows(parsedRows) {
       continue;
     }
     seenNumbers.add(num);
-    validRows.push({ ...rowData, department_id: deptMap[rowData.department_name] || null });
+    const deptKey = rowData.department_name ? normalizeDeptName(rowData.department_name) : null;
+    validRows.push({
+      ...rowData,
+      department_id: deptKey ? idByKey.get(deptKey) || null : null,
+      new_department_name: deptKey ? newDepartments.get(deptKey) || null : null
+    });
   }
 
-  return { validRows, businessErrors };
+  return { validRows, businessErrors, newDepartments: [...newDepartments.values()] };
+}
+
+/**
+ * Create the departments that validateRows reported as new, inside the import transaction.
+ * @param {Array} validRows - rows from validateRows; department_id is filled in place
+ * @param {import('sequelize').Transaction} transaction
+ */
+async function createMissingDepartments(validRows, transaction) {
+  const createdIds = new Map();
+  for (const row of validRows) {
+    const deptName = row.new_department_name;
+    if (row.department_id || !deptName) continue;
+    if (!createdIds.has(deptName)) {
+      const code = deptName.replace(/\s+/g, '_').substring(0, 20).toUpperCase();
+      const [dept] = await Department.findOrCreate({
+        where: { name: deptName },
+        defaults: { name: deptName, code, status: 'active' },
+        transaction
+      });
+      createdIds.set(deptName, dept.department_id);
+    }
+    row.department_id = createdIds.get(deptName);
+  }
 }
 
 /**
@@ -298,6 +356,8 @@ async function insertRows(validRows, userId) {
   const transaction = await sequelize.transaction();
 
   try {
+    await createMissingDepartments(validRows, transaction);
+
     for (const rowData of validRows) {
       const employee = Employee.build({
         employee_number: rowData.employee_number,
@@ -346,4 +406,6 @@ async function insertRows(validRows, userId) {
   }
 }
 
-module.exports = { parseExcelFile, validateRows, insertRows };
+module.exports = {
+  parseExcelFile, validateRows, insertRows, normalizeDeptName
+};

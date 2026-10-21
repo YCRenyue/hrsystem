@@ -74,7 +74,7 @@ class ReportService {
             model: Employee,
             as: 'employee',
             where: employeeWhere,
-            attributes: ['employee_id', 'employee_number', 'name', 'department_id'],
+            attributes: ['employee_id', 'employee_number', 'name_encrypted', 'department_id'],
             include: [
               {
                 model: Department,
@@ -160,7 +160,7 @@ class ReportService {
             model: Employee,
             as: 'employee',
             where: employeeWhere,
-            attributes: ['employee_id', 'employee_number', 'name', 'department_id'],
+            attributes: ['employee_id', 'employee_number', 'name_encrypted', 'department_id'],
             include: [
               {
                 model: Department,
@@ -262,8 +262,8 @@ class ReportService {
           status: 'inactive'
         };
 
-        if (start_date && end_date && filters.departure_date) {
-          offboardingWhere.departure_date = {
+        if (start_date && end_date) {
+          offboardingWhere.leave_date = {
             [Op.between]: [start_date, end_date]
           };
         }
@@ -277,7 +277,7 @@ class ReportService {
               attributes: ['department_id', 'name']
             }
           ],
-          order: [['departure_date', 'DESC']]
+          order: [['leave_date', 'DESC']]
         });
 
         offboardingData = {
@@ -286,7 +286,7 @@ class ReportService {
           byDepartment: user.data_scope === 'all'
             ? this._groupEmployeesByDepartment(offboardingEmployees)
             : null,
-          byMonth: this._groupEmployeesByMonth(offboardingEmployees, 'departure_date')
+          byMonth: this._groupEmployeesByMonth(offboardingEmployees, 'leave_date')
         };
       }
 
@@ -570,7 +570,7 @@ class ReportService {
       employee: {
         employee_id: leave.employee?.employee_id,
         employee_number: leave.employee?.employee_number,
-        name: leave.employee?.name,
+        name: leave.employee?.getName(),
         department: leave.employee?.department?.name
       },
       leave_type: leave.leave_type,
@@ -593,7 +593,7 @@ class ReportService {
       employee: {
         employee_id: att.employee?.employee_id,
         employee_number: att.employee?.employee_number,
-        name: att.employee?.name,
+        name: att.employee?.getName(),
         department: att.employee?.department?.name
       },
       date: att.date,
@@ -616,10 +616,10 @@ class ReportService {
     return {
       employee_id: emp.employee_id,
       employee_number: emp.employee_number,
-      name: emp.name,
+      name: emp.getName(),
       department: emp.department?.name,
       entry_date: emp.entry_date,
-      departure_date: emp.departure_date,
+      departure_date: emp.leave_date,
       status: emp.status
     };
   }

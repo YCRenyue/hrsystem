@@ -59,6 +59,7 @@ export interface Employee {
   entry_date?: string; // Backend uses entry_date, not hire_date
   hire_date?: string; // Alias for entry_date
   probation_end_date?: string;
+  leave_date?: string;
   department_id?: string;
   department?: Department;
   position?: string; // Backend uses string, not Position object
@@ -116,6 +117,7 @@ export interface ImportPreviewData {
   business_error_count: number;
   parse_errors: ImportErrorItem[];
   business_errors: ImportErrorItem[];
+  new_departments: string[];
   sample_rows: ImportSampleRow[];
 }
 

@@ -15,6 +15,7 @@ const {
 } = require('../../models');
 const { parsePunchWorkbook, timeToMinutes } = require('./punchRecordParser');
 const { matchEmployees, findPunchesAfterLeave } = require('./employeeMatcher');
+const { formatLocalDate } = require('../../utils/dateUtils');
 
 const SOURCE_TAG = 'card_import';
 const DEVICE = 'canteen';
@@ -85,8 +86,8 @@ async function loadAbsenceChecker(employeeId, period, transaction) {
   ]);
   return (date) => leaves.some((l) => l.start_date <= date && l.end_date >= date)
     || trips.some((t) => {
-      const start = new Date(t.start_datetime).toISOString().slice(0, 10);
-      const end = new Date(t.end_datetime).toISOString().slice(0, 10);
+      const start = formatLocalDate(new Date(t.start_datetime));
+      const end = formatLocalDate(new Date(t.end_datetime));
       return start <= date && end >= date;
     });
 }
