@@ -37,25 +37,19 @@ import {
   CanteenEmployeeDetail,
 } from '../../services/canteenService';
 import apiClient from '../../services/api';
+import { CanteenImportResult } from '../../services/punchService';
 import { usePermission } from '../../hooks/usePermission';
+import PunchImportResultModal from '../../components/PunchImport/PunchImportResultModal';
+import PunchAnomalyPanel from '../../components/PunchImport/PunchAnomalyPanel';
+import PunchMappingModal from '../../components/PunchImport/PunchMappingModal';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 
-interface ImportResult {
-  sheets_processed: number;
-  employees_total: number;
-  matched: number;
-  meals_created: number;
-  meals_updated: number;
-  periods: string[];
-  unmatched: Array<{ sheet: string; name: string; external_id?: string }>;
-  ambiguous: Array<{ sheet: string; name: string }>;
-}
 
 const CanteenReportPage: React.FC = () => {
   const { dataScope, hasPermission } = usePermission();
-  const { message, modal } = App.useApp();
+  const { message } = App.useApp();
 
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ReportData | null>(null);
@@ -66,6 +60,9 @@ const CanteenReportPage: React.FC = () => {
   const [detailEmployee, setDetailEmployee] = useState<CanteenPerEmployee | null>(null);
   const [detailData, setDetailData] = useState<CanteenEmployeeDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [importResult, setImportResult] = useState<CanteenImportResult | null>(null);
+  const [mappingOpen, setMappingOpen] = useState(false);
+  const [anomalyRefreshKey, setAnomalyRefreshKey] = useState(0);
 
   const fetchReport = useCallback(async () => {
     setLoading(true);
@@ -121,50 +118,15 @@ const CanteenReportPage: React.FC = () => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const hideLoading = message.loading('正在解析食堂卡表...', 0);
+    const hideLoading = message.loading('正在解析食堂刷卡记录...', 0);
     try {
       const response = await apiClient.post('/canteen-meals/import-card', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       hideLoading();
-      const result: ImportResult = response.data.data;
 
-      modal.success({
-        title: '食堂卡表导入完成',
-        width: 600,
-        content: (
-          <div>
-            <p>
-              处理工作表 <b>{result.sheets_processed}</b> 个，员工 <b>{result.employees_total}</b> 人，匹配成功 <b>{result.matched}</b> 人
-            </p>
-            <p>
-              写入就餐记录：新增 <b>{result.meals_created}</b> / 更新 <b>{result.meals_updated}</b>
-            </p>
-            {result.periods?.length > 0 && (
-              <p>统计周期：{result.periods.join(', ')}</p>
-            )}
-            {result.unmatched?.length > 0 && (
-              <div style={{ maxHeight: 200, overflow: 'auto', marginTop: 8 }}>
-                <b style={{ color: '#faad14' }}>未匹配员工（姓名在花名册中不存在）：</b>
-                {result.unmatched.map((u, i) => (
-                  <p key={i} style={{ margin: '4px 0' }}>
-                    [{u.sheet}] {u.name}（卡表工号: {u.external_id || '-'}）
-                  </p>
-                ))}
-              </div>
-            )}
-            {result.ambiguous?.length > 0 && (
-              <div style={{ maxHeight: 200, overflow: 'auto', marginTop: 8 }}>
-                <b style={{ color: '#f5222d' }}>重名员工（需人工核对）：</b>
-                {result.ambiguous.map((a, i) => (
-                  <p key={i} style={{ margin: '4px 0' }}>[{a.sheet}] {a.name}</p>
-                ))}
-              </div>
-            )}
-          </div>
-        ),
-      });
-
+      setImportResult(response.data.data);
+      setAnomalyRefreshKey((k) => k + 1);
       fetchReport();
     } catch (error: unknown) {
       hideLoading();
@@ -301,9 +263,12 @@ const CanteenReportPage: React.FC = () => {
               beforeUpload={handleImportCard}
             >
               <Button type="primary" icon={<ImportOutlined />}>
-                导入食堂卡表
+                导入食堂打卡
               </Button>
             </Upload>
+          )}
+          {canImport && (
+            <Button onClick={() => setMappingOpen(true)}>工号对照表</Button>
           )}
         </Space>
       </Card>
@@ -443,9 +408,31 @@ const CanteenReportPage: React.FC = () => {
                 />
               ),
             },
+            ...(canImport ? [{
+              key: 'anomalies',
+              label: '待复核刷卡',
+              children: (
+                <PunchAnomalyPanel
+                  range={range}
+                  refreshKey={anomalyRefreshKey}
+                  onResolved={fetchReport}
+                />
+              ),
+            }] : []),
           ]}
         />
       </Card>
+
+      <PunchImportResultModal
+        deviceType="canteen"
+        result={importResult}
+        onClose={() => setImportResult(null)}
+      />
+      <PunchMappingModal
+        deviceType="canteen"
+        open={mappingOpen}
+        onClose={() => setMappingOpen(false)}
+      />
 
       <Modal
         open={!!detailEmployee}

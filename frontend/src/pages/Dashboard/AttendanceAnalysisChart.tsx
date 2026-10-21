@@ -39,6 +39,8 @@ const AttendanceAnalysisChart: React.FC = () => {
             leave: '请假',
             holiday: '节假日',
             weekend: '周末',
+            business_trip: '出差',
+            missing_punch: '缺卡',
           };
 
           const formattedData = response.data.data.statusDistribution.map(item => ({

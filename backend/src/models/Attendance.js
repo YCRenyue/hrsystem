@@ -73,10 +73,11 @@ const Attendance = sequelize.define('Attendance', {
       'leave',
       'holiday',
       'weekend',
-      'business_trip'
+      'business_trip',
+      'missing_punch'
     ),
     defaultValue: 'normal',
-    comment: '考勤状态：normal-正常, late-迟到, early_leave-早退, absent-缺勤, leave-请假, holiday-节假日, weekend-周末, business_trip-出差'
+    comment: '考勤状态：normal-正常, late-迟到, early_leave-早退, absent-缺勤, leave-请假, holiday-节假日, weekend-周末, business_trip-出差, missing_punch-缺卡'
   },
   business_trip_id: {
     type: DataTypes.UUID,

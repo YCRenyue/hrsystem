@@ -185,7 +185,9 @@ class ReportService {
         : null;
 
       // 异常考勤汇总
-      const abnormalRecords = attendances.filter((a) => ['late', 'early_leave', 'absent'].includes(a.status));
+      const abnormalRecords = attendances.filter(
+        (a) => ['late', 'early_leave', 'absent', 'missing_punch'].includes(a.status)
+      );
 
       return {
         attendances: attendances.map((att) => this._formatAttendanceRecord(att)),

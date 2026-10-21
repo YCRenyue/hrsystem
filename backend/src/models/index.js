@@ -16,6 +16,8 @@ const Notification = require('./Notification');
 const Reimbursement = require('./Reimbursement');
 const ReimbursementItem = require('./ReimbursementItem');
 const OperationLog = require('./OperationLog');
+const PunchCardMapping = require('./PunchCardMapping');
+const PunchAnomaly = require('./PunchAnomaly');
 
 /**
  * Model Associations
@@ -253,6 +255,10 @@ BusinessTrip.hasMany(Reimbursement, {
   as: 'reimbursements'
 });
 
+// Punch import associations（打卡对照表 / 待复核打卡 → 员工）
+PunchCardMapping.belongsTo(Employee, { foreignKey: 'employee_id', as: 'employee' });
+PunchAnomaly.belongsTo(Employee, { foreignKey: 'employee_id', as: 'employee' });
+
 // OperationLog associations（审计日志 → 操作人）
 OperationLog.belongsTo(User, {
   foreignKey: 'user_id',
@@ -297,7 +303,9 @@ const initModels = () => ({
   Notification,
   Reimbursement,
   ReimbursementItem,
-  OperationLog
+  OperationLog,
+  PunchCardMapping,
+  PunchAnomaly
 });
 
 module.exports = {
@@ -319,6 +327,8 @@ module.exports = {
   Reimbursement,
   ReimbursementItem,
   OperationLog,
+  PunchCardMapping,
+  PunchAnomaly,
   syncModels,
   initModels
 };

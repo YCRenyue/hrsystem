@@ -16,7 +16,9 @@ export interface Attendance {
   afternoon_check_out?: string | null;
   overtime_check_in?: string | null;
   overtime_check_out?: string | null;
-  status: 'normal' | 'late' | 'early_leave' | 'absent' | 'leave' | 'holiday' | 'weekend';
+  status:
+    | 'normal' | 'late' | 'early_leave' | 'absent' | 'leave' | 'holiday' | 'weekend'
+    | 'business_trip' | 'missing_punch';
   late_minutes: number;
   early_leave_minutes: number;
   work_hours: number;
