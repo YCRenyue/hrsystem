@@ -554,7 +554,7 @@ const confirmImport = async (req, res) => {
 
   const successCount = await employeeImportService.insertRows(validRows, req.user?.user_id);
 
-  res.json({
+  return res.json({
     success: true,
     data: { success_count: successCount, error_count: errorCount, errors: allErrors }
   });

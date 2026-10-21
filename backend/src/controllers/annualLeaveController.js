@@ -82,7 +82,7 @@ const getAnnualLeaves = async (req, res) => {
     return obj;
   });
 
-  res.json({
+  return res.json({
     success: true,
     data,
     pagination: {

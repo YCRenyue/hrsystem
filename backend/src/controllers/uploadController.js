@@ -280,24 +280,17 @@ const getEmployeeFileUrls = async (req, res) => {
     });
   }
 
-  // Generate signed URLs for all existing files
-  const urls = {};
+  // Generate signed URLs for all existing files in parallel
+  const entries = await Promise.all(VALID_FILE_TYPES.map(async (fileType) => {
+    const objectKey = employee[FILE_TYPE_TO_COLUMN[fileType]];
+    if (!objectKey) return [`${fileType}_url`, null];
+    const result = await ossService.getSignedUrl(objectKey);
+    return [`${fileType}_url`, result.success ? result.url : null];
+  }));
 
-  for (const fileType of VALID_FILE_TYPES) {
-    const columnName = FILE_TYPE_TO_COLUMN[fileType];
-    const objectKey = employee[columnName];
-
-    if (objectKey) {
-      const result = await ossService.getSignedUrl(objectKey);
-      urls[`${fileType}_url`] = result.success ? result.url : null;
-    } else {
-      urls[`${fileType}_url`] = null;
-    }
-  }
-
-  res.json({
+  return res.json({
     success: true,
-    data: urls
+    data: Object.fromEntries(entries)
   });
 };
 
@@ -349,7 +342,7 @@ const deleteEmployeeFile = async (req, res) => {
     objectKey
   });
 
-  res.json({
+  return res.json({
     success: true,
     message: 'File deleted successfully'
   });
