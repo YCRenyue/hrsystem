@@ -64,6 +64,10 @@ jobs:
         with:
           node-version: '18.x'
       - name: Check backend
+        env:
+          NODE_ENV: test
+          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
+          JWT_SECRET: ci-test-jwt-secret-not-for-production
         run: |
           cd backend
           npm ci
