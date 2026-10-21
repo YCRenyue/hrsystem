@@ -38,6 +38,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import { leaveService, Leave, LeaveStats } from '../../services/leaveService';
 import { usePermission } from '../../hooks/usePermission';
 import { useAuth } from '../../contexts/AuthContext';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { canApproveStage } from '../../utils/approvalWorkflow';
 
 const { RangePicker } = DatePicker;
@@ -110,6 +111,9 @@ const LeaveList: React.FC = () => {
   );
   const [statusFilter, setStatusFilter] = useState<string | undefined>(initialStatus);
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
+  const [keywordInput, setKeywordInput] = useState('');
+  const keyword = useDebouncedValue(keywordInput.trim(), 300);
+  const canSearchEmployees = user?.role !== 'employee';
 
   // Approval modal state
   const [approvalModal, setApprovalModal] = useState<{
@@ -142,7 +146,8 @@ const LeaveList: React.FC = () => {
           start_date: dateRange[0].format('YYYY-MM-DD'),
           end_date: dateRange[1].format('YYYY-MM-DD'),
           status: statusFilter,
-          leave_type: typeFilter
+          leave_type: typeFilter,
+          keyword: keyword || undefined
         }),
         leaveService.getStats({
           start_date: dateRange[0].format('YYYY-MM-DD'),
@@ -167,7 +172,11 @@ const LeaveList: React.FC = () => {
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagination.current, pagination.pageSize, dateRange, statusFilter, typeFilter]);
+  }, [pagination.current, pagination.pageSize, dateRange, statusFilter, typeFilter, keyword]);
+
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, current: 1 }));
+  }, [keyword]);
 
   /**
    * Handle table change
@@ -589,6 +598,15 @@ const LeaveList: React.FC = () => {
       {/* Data Table */}
       <Card>
         <Space style={{ marginBottom: '16px' }} wrap>
+          {canSearchEmployees && (
+            <Input.Search
+              placeholder="按姓名或工号搜索"
+              allowClear
+              style={{ width: 200 }}
+              value={keywordInput}
+              onChange={(e) => setKeywordInput(e.target.value)}
+            />
+          )}
           <RangePicker
             value={dateRange}
             onChange={handleDateRangeChange}

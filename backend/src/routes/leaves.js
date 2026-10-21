@@ -79,13 +79,6 @@ router.post(
 );
 
 /**
- * @route   GET /api/leaves/:id
- * @desc    Get single leave record
- * @access  Private
- */
-router.get('/:id', asyncHandler(leaveController.getLeaveById));
-
-/**
  * @route   POST /api/leaves
  * @desc    Create leave record (员工本人或管理者)
  * @access  Private (任何已认证用户：员工提交本人申请，管理者可代为提交)

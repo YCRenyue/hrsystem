@@ -57,6 +57,7 @@ export interface LeaveListParams {
   status?: string;
   start_date?: string;
   end_date?: string;
+  keyword?: string;
 }
 
 export interface LeaveListResponse {

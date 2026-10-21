@@ -16,6 +16,7 @@ const {
   notifyApplicantOnLeaveDecision
 } = require('../services/leaveNotifier');
 const { ValidationError } = require('../middleware/errorHandler');
+const { applyEmployeeKeyword } = require('../utils/employeeSearch');
 
 const APPROVAL_ROLES = ['admin', 'hr_admin', 'department_manager'];
 
@@ -165,7 +166,8 @@ const getLeaveList = async (req, res) => {
       leave_type,
       status,
       start_date,
-      end_date
+      end_date,
+      keyword
     } = req.query;
 
     const limit = parseInt(size, 10);
@@ -216,6 +218,8 @@ const getLeaveList = async (req, res) => {
       // employee: 只能查看自己的数据
       where.employee_id = req.user.employee_id;
     }
+
+    await applyEmployeeKeyword(include[0], keyword);
 
     const { count, rows } = await Leave.findAndCountAll({
       where,

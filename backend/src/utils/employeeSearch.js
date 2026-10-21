@@ -53,7 +53,23 @@ const buildEmployeeKeywordWhere = async (keyword) => {
   };
 };
 
+/**
+ * 给关联员工的 include 追加“工号或姓名”搜索条件，保留原有条件（如数据范围）
+ *
+ * @param {Object} employeeInclude - Sequelize include 中的 Employee 项
+ * @param {string} keyword - 搜索关键字，为空时不做任何事
+ * @returns {Promise<void>}
+ */
+const applyEmployeeKeyword = async (employeeInclude, keyword) => {
+  if (!keyword || !String(keyword).trim()) return;
+  const keywordWhere = await buildEmployeeKeywordWhere(keyword);
+  const existing = employeeInclude.where;
+  // eslint-disable-next-line no-param-reassign
+  employeeInclude.where = existing ? { [Op.and]: [existing, keywordWhere] } : keywordWhere;
+};
+
 module.exports = {
   findEmployeeIdsByName,
-  buildEmployeeKeywordWhere
+  buildEmployeeKeywordWhere,
+  applyEmployeeKeyword
 };
