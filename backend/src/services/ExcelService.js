@@ -131,6 +131,7 @@ class ExcelService {
       if (!hasData) continue;
 
       try {
+        // eslint-disable-next-line no-await-in-loop -- rows are imported in order so errors map to row numbers
         await rowParser(row, rowNum);
         results.success_count++;
       } catch (error) {

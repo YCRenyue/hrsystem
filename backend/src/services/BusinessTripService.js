@@ -252,6 +252,7 @@ const syncAttendanceOnApproval = async (trip, { transaction } = {}) => {
     if (!isWeekend(cursor)) {
       const dateStr = formatDate(cursor);
 
+      // eslint-disable-next-line no-await-in-loop -- queries share one transaction connection and must run in order
       const existing = await Attendance.findOne({
         where: { employee_id: trip.employee_id, date: dateStr },
         transaction
@@ -266,8 +267,10 @@ const syncAttendanceOnApproval = async (trip, { transaction } = {}) => {
         existing.work_hours = STANDARD_WORK_HOURS_PER_DAY;
         existing.late_minutes = 0;
         existing.early_leave_minutes = 0;
+        // eslint-disable-next-line no-await-in-loop -- queries share one transaction connection and must run in order
         await existing.save({ transaction });
       } else {
+        // eslint-disable-next-line no-await-in-loop -- queries share one transaction connection and must run in order
         await Attendance.create(
           {
             employee_id: trip.employee_id,
@@ -309,8 +312,10 @@ const rollbackAttendanceOnCancel = async (trip, { transaction } = {}) => {
       record.status = record.previous_status;
       record.previous_status = null;
       record.business_trip_id = null;
+      // eslint-disable-next-line no-await-in-loop -- queries share one transaction connection and must run in order
       await record.save({ transaction });
     } else {
+      // eslint-disable-next-line no-await-in-loop -- queries share one transaction connection and must run in order
       await record.destroy({ transaction });
     }
   }
@@ -356,6 +361,7 @@ const cancelLinkedReimbursements = async (trip, { userId, reason, transaction } 
       record.cancellation_reason = reason
         ? `出差单已撤销：${reason}`
         : '关联出差单已撤销';
+      // eslint-disable-next-line no-await-in-loop -- queries share one transaction connection and must run in order
       await record.save({ transaction });
       cancelledCount += 1;
     }

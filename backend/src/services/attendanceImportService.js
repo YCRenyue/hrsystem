@@ -162,6 +162,7 @@ async function importCardWorkbook(buffer, sourceFile = null) {
 
   await sequelize.transaction(async (transaction) => {
     for (const { entry, employee } of matched) {
+      // eslint-disable-next-line no-await-in-loop -- queries share one transaction connection and must run in order
       const stats = await upsertEmployeeAttendances(employee.employee_id, entry, dates, transaction);
       result.daily_created += stats.created;
       result.daily_updated += stats.updated;
@@ -171,6 +172,7 @@ async function importCardWorkbook(buffer, sourceFile = null) {
       if (summary) {
         const warning = checkSummaryAbsence(entry, summary, dates);
         if (warning) result.summary_warnings.push(warning);
+        // eslint-disable-next-line no-await-in-loop -- queries share one transaction connection and must run in order
         const wasCreated = await upsertSummary({
           employeeId: employee.employee_id,
           period: parsed.period,

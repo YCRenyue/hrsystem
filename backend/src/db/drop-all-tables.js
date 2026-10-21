@@ -37,6 +37,7 @@ async function dropAllTables() {
     for (const table of tables) {
       const tableName = table[`Tables_in_${sequelize.config.database}`];
       console.log(`删除表: ${tableName}`);
+      // eslint-disable-next-line no-await-in-loop -- tables are dropped one by one so the log shows progress
       await sequelize.query(`DROP TABLE IF EXISTS \`${tableName}\``);
     }
 

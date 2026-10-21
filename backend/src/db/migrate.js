@@ -121,7 +121,9 @@ async function runMigrations() {
       console.log(`Executing: ${file}`);
       const migration = require(path.join(migrationsDir, file));
 
+      // eslint-disable-next-line no-await-in-loop -- migrations must run in order
       await migration.up(queryInterface, Sequelize);
+      // eslint-disable-next-line no-await-in-loop -- migrations must run in order
       await recordMigration(queryInterface, file);
       console.log(`Done: ${file}\n`);
     }

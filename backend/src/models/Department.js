@@ -15,6 +15,7 @@ class Department extends Model {
     let current = this;
 
     while (current.parent_id) {
+      // eslint-disable-next-line no-await-in-loop -- each step needs the parent loaded by the previous one
       const parent = await Department.findByPk(current.parent_id);
       if (parent) {
         path.unshift(parent.name);
@@ -36,14 +37,8 @@ class Department extends Model {
       where: { parent_id: this.department_id }
     });
 
-    const allChildren = [...children];
-
-    for (const child of children) {
-      const grandChildren = await child.getAllChildren();
-      allChildren.push(...grandChildren);
-    }
-
-    return allChildren;
+    const descendants = await Promise.all(children.map((child) => child.getAllChildren()));
+    return [...children, ...descendants.flat()];
   }
 
   /**

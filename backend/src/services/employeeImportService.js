@@ -334,6 +334,7 @@ async function createMissingDepartments(validRows, transaction) {
     if (row.department_id || !deptName) continue;
     if (!createdIds.has(deptName)) {
       const code = deptName.replace(/\s+/g, '_').substring(0, 20).toUpperCase();
+      // eslint-disable-next-line no-await-in-loop -- queries share one transaction connection and must run in order
       const [dept] = await Department.findOrCreate({
         where: { name: deptName },
         defaults: { name: deptName, code, status: 'active' },
@@ -381,8 +382,10 @@ async function insertRows(validRows, userId) {
       if (rowData.bank_card) employee.setBankCard(rowData.bank_card);
       if (rowData.birth_date) employee.setBirthDate(rowData.birth_date);
 
+      // eslint-disable-next-line no-await-in-loop -- queries share one transaction connection and must run in order
       await employee.save({ transaction });
 
+      // eslint-disable-next-line no-await-in-loop -- queries share one transaction connection and must run in order
       await User.create({
         employee_id: employee.employee_id,
         username: employee.employee_number,

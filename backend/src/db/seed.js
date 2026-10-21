@@ -51,6 +51,7 @@ function envFlag(name, fallback = false) {
  */
 async function seedDepartments() {
   for (const [code, name] of DEPARTMENTS) {
+    // eslint-disable-next-line no-await-in-loop -- seed runs once on a small fixed list
     const [department, created] = await Department.findOrCreate({
       where: { code },
       defaults: {
@@ -64,6 +65,7 @@ async function seedDepartments() {
     });
 
     if (!created && department.name !== name) {
+      // eslint-disable-next-line no-await-in-loop -- seed runs once on a small fixed list
       await department.update({ name, path: name, status: 'active' });
     }
   }
