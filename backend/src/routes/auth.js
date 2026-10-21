@@ -7,13 +7,14 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const { authenticateToken } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { loginLimiter } = require('../middleware/rateLimiter');
 
 /**
  * @route   POST /api/auth/login
  * @desc    Login with username and password
  * @access  Public
  */
-router.post('/login', asyncHandler(authController.login));
+router.post('/login', loginLimiter, asyncHandler(authController.login));
 
 /**
  * @route   GET /api/auth/me
