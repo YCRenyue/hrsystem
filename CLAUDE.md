@@ -976,7 +976,7 @@ a dedicated EncryptionUtil class for better reusability.
 - **永远不要提交秘密** - 对所有敏感配置使用环境变量
 - **验证所有用户输入** - 使用 express-validator 或类似工具
 - **使用参数化查询** - Sequelize 自动处理此问题
-- **实施速率限制** - 已在 `backend/src/app.js` 中配置
+- **实施速率限制** - 见 `backend/src/middleware/rateLimiter.js`
 - **保持依赖项更新** - 定期运行 `npm audit` 和 `npm update`
 - **在生产中对所有外部通信使用 HTTPS**
 - **实施适当的身份验证** - JWT 令牌具有合理的过期时间
@@ -989,7 +989,7 @@ a dedicated EncryptionUtil class for better reusability.
 - 在返回解密数据之前实施**适当的权限检查**
 - 使用**参数化查询**（Sequelize 处理此问题）以防止 SQL 注入
 - **JWT 令牌在 24 小时后过期**（可通过 `JWT_EXPIRES_IN` 配置）
-- **在所有 API 路由上强制执行速率限制**（每 15 分钟 100 个请求）
+- **在所有 API 路由上强制执行速率限制**（每 IP 每 15 分钟 3000 次；登录按 IP + 用户名限 20 次失败，见 `backend/src/middleware/rateLimiter.js`）
 - **在生产中使用 HTTPS**（在 Nginx 中配置）
 - **审计所有敏感操作** - 记录到 `operation_logs` 表
 

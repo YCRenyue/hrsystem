@@ -2323,6 +2323,13 @@ const NotificationService = {
     - 后端解密姓名做包含匹配；前端边输边搜，300ms 防抖并丢弃过时响应
   - [x] 入职通知发送失败只返回简短原因，删除 CORS 中的旧服务器 IP (已完成 - 2026-10-21)
   - [ ] 工作地点不保存、社保添加记录路由缺失、请假默认筛选漏掉未来请假
+- [x] 清理部署流水线警告 (已完成 - 2026-10-21)
+  - GitHub Actions 升级到 Node 24 版本（checkout v5、setup-node v5、upload-artifact v6、setup-buildx v4、build-push v7、paths-filter v4），runs-on 固定 ubuntu-24.04
+  - CI、质量检查和前后端镜像从 Node 18 升级到 Node 22
+  - 后端 lint 清零：拆分 leaveController（Excel 移到 leaveExcelController）、businessTripController（通知移到 businessTripNotifier）；审批公共函数合并到 approvalService；超长函数拆分；必须顺序执行的循环注明原因
+- [x] 年假、社保、食堂列表和导出支持按姓名搜索 (已完成 - 2026-10-21)
+- [ ] 其它涉及员工的页面补充姓名搜索：请假列表、考勤报表、食堂就餐报表、文件确认列表、综合报表
+- [ ] GET /api/leaves/:id 路由指向不存在的 getLeaveById，请求会报 500
 
 ### 版本 2.3.1 (2026-10-20)
 - [x] 完成阿里云 ECS 生产部署配置
