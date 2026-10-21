@@ -22,7 +22,8 @@ async function getLeaveReport(req, res) {
       leave_type: req.query.leave_type,
       department_id: req.query.department_id,
       employee_id: req.query.employee_id,
-      status: req.query.status
+      status: req.query.status,
+      keyword: req.query.keyword
     };
 
     logger.info('Generating leave report', {
@@ -60,7 +61,8 @@ async function getAttendanceReport(req, res) {
       end_date: req.query.end_date,
       department_id: req.query.department_id,
       employee_id: req.query.employee_id,
-      status: req.query.status
+      status: req.query.status,
+      keyword: req.query.keyword
     };
 
     logger.info('Generating attendance report', {

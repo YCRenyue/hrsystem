@@ -9,6 +9,7 @@ import {
   Form,
   DatePicker,
   Select,
+  Input,
   Button,
   Table,
   Card,
@@ -117,6 +118,7 @@ const LeaveReport: React.FC = () => {
       if (filters.leave_type) params.leave_type = filters.leave_type;
       if (filters.department_id) params.department_id = filters.department_id;
       if (filters.status) params.status = filters.status;
+      if (filters.keyword?.trim()) params.keyword = filters.keyword.trim();
 
       const response = await apiClient.get('/reports/leaves', { params });
 
@@ -193,6 +195,10 @@ const LeaveReport: React.FC = () => {
           layout="inline"
           onFinish={handleSearch}
         >
+          <Form.Item name="keyword" label="员工">
+            <Input placeholder="姓名或工号" allowClear style={{ width: 140 }} />
+          </Form.Item>
+
           <Form.Item name="dateRange" label="日期范围">
             <RangePicker />
           </Form.Item>

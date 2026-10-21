@@ -2328,8 +2328,10 @@ const NotificationService = {
   - CI、质量检查和前后端镜像从 Node 18 升级到 Node 22
   - 后端 lint 清零：拆分 leaveController（Excel 移到 leaveExcelController）、businessTripController（通知移到 businessTripNotifier）；审批公共函数合并到 approvalService；超长函数拆分；必须顺序执行的循环注明原因
 - [x] 年假、社保、食堂列表和导出支持按姓名搜索 (已完成 - 2026-10-21)
-- [ ] 其它涉及员工的页面补充姓名搜索：请假列表、考勤报表、食堂就餐报表、文件确认列表、综合报表
-- [ ] GET /api/leaves/:id 路由指向不存在的 getLeaveById，请求会报 500
+- [x] 其它涉及员工的页面补充姓名搜索 (已完成 - 2026-10-21)
+  - 请假列表、考勤报表、食堂就餐报表、文件确认列表、综合报表（假期、考勤）均可按姓名或工号搜索
+  - 后端统一使用 `utils/employeeSearch.js` 的 `applyEmployeeKeyword`，保留原有数据范围条件；前端 300ms 防抖
+- [x] 删除 GET /api/leaves/:id（指向不存在的 getLeaveById，前端未使用） (已完成 - 2026-10-21)
 
 ### 版本 2.3.1 (2026-10-20)
 - [x] 完成阿里云 ECS 生产部署配置
