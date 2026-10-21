@@ -32,6 +32,7 @@ import dayjs from "dayjs";
 import type { ColumnsType } from "antd/es/table";
 import { Employee, EmployeeQueryParams } from "../../types";
 import { employeeService } from "../../services/employeeService";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import {
   uploadService,
   FileUrls,
@@ -62,6 +63,8 @@ const DocumentConfirmationList: React.FC = () => {
   const [stats, setStats] = useState({ total: 0, signed: 0, pending: 0 });
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>();
+  const [keywordInput, setKeywordInput] = useState("");
+  const keyword = useDebouncedValue(keywordInput.trim(), 300);
   const [pledgeModalVisible, setPledgeModalVisible] = useState(false);
   const [pledgeModalLoading, setPledgeModalLoading] = useState(false);
   const [pledgeTargetId, setPledgeTargetId] = useState<string>("");
@@ -91,18 +94,19 @@ const DocumentConfirmationList: React.FC = () => {
         page,
         size: PAGE_SIZE,
         ...(statusFilter ? getDocumentStatusParams(statusFilter) : {}),
+        ...(keyword ? { keyword } : {}),
       };
       const result = await employeeService.getEmployees(params);
       setEmployees(result.items);
       setTotal(result.total);
     } catch (error: any) {
       message.error(
-        error.response?.data?.message || "Failed to load employees"
+        error.response?.data?.message || "加载员工列表失败"
       );
     } finally {
       setLoading(false);
     }
-  }, [getDocumentStatusParams, page, statusFilter, message]);
+  }, [getDocumentStatusParams, page, statusFilter, keyword, message]);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -408,6 +412,16 @@ const DocumentConfirmationList: React.FC = () => {
 
         <div style={{ marginBottom: 16 }}>
           <Space>
+            <Input.Search
+              placeholder="按姓名或工号搜索"
+              allowClear
+              style={{ width: 200 }}
+              value={keywordInput}
+              onChange={(e) => {
+                setPage(1);
+                setKeywordInput(e.target.value);
+              }}
+            />
             <Select
               placeholder="筛选状态"
               allowClear
