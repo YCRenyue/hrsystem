@@ -41,8 +41,7 @@ async function getLeaveReport(req, res) {
     logger.error('获取假期报表失败:', error.message);
     res.status(500).json({
       success: false,
-      message: '获取假期报表失败',
-      error: error.message
+      message: '获取假期报表失败'
     });
   }
 }
@@ -80,8 +79,7 @@ async function getAttendanceReport(req, res) {
     logger.error('获取考勤报表失败:', error.message);
     res.status(500).json({
       success: false,
-      message: '获取考勤报表失败',
-      error: error.message
+      message: '获取考勤报表失败'
     });
   }
 }
@@ -99,8 +97,7 @@ async function getOnboardingOffboardingReport(req, res) {
       start_date: req.query.start_date,
       end_date: req.query.end_date,
       department_id: req.query.department_id,
-      report_type: req.query.report_type || 'both',
-      departure_date: req.query.departure_date === 'true'
+      report_type: req.query.report_type || 'both'
     };
 
     logger.info('Generating onboarding/offboarding report', {
@@ -119,8 +116,7 @@ async function getOnboardingOffboardingReport(req, res) {
     logger.error('获取入离职报表失败:', error.message);
     res.status(500).json({
       success: false,
-      message: '获取入离职报表失败',
-      error: error.message
+      message: '获取入离职报表失败'
     });
   }
 }
