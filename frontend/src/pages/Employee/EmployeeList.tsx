@@ -1,7 +1,7 @@
 /**
  * Employee List Page - Display and manage employees
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Table,
   Button,
@@ -28,6 +28,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
 import { Employee, EmployeeQueryParams, Department, ImportPreviewData } from '../../types';
 import { employeeService } from '../../services/employeeService';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import ImportPreviewModal from './ImportPreviewModal';
 import { departmentService } from '../../services/departmentService';
 import { usePermission } from '../../hooks/usePermission';
@@ -38,6 +39,8 @@ import './EmployeeList.css';
 const { Search } = Input;
 const { Option } = Select;
 const { RangePicker } = DatePicker;
+
+const SEARCH_DEBOUNCE_MS = 300;
 
 const EmployeeList: React.FC = () => {
   const navigate = useNavigate();
@@ -72,16 +75,24 @@ const EmployeeList: React.FC = () => {
     }
   }, [message]);
 
+  const latestRequestRef = useRef(0);
+  const [keywordInput, setKeywordInput] = useState('');
+  const debouncedKeyword = useDebouncedValue(keywordInput.trim(), SEARCH_DEBOUNCE_MS);
+
   const fetchEmployees = React.useCallback(async () => {
+    // 只采用最后一次请求的结果，避免先发后到的旧结果覆盖新结果
+    latestRequestRef.current += 1;
+    const requestId = latestRequestRef.current;
     setLoading(true);
     try {
       const response = await employeeService.getEmployees(queryParams);
+      if (requestId !== latestRequestRef.current) return;
       setEmployees(response.items);
       setTotal(response.total);
     } catch (error) {
-      message.error('获取员工列表失败');
+      if (requestId === latestRequestRef.current) message.error('获取员工列表失败');
     } finally {
-      setLoading(false);
+      if (requestId === latestRequestRef.current) setLoading(false);
     }
   }, [queryParams, message]);
 
@@ -93,8 +104,20 @@ const EmployeeList: React.FC = () => {
     fetchEmployees();
   }, [fetchEmployees]);
 
+  const applyKeyword = React.useCallback((keyword: string) => {
+    setQueryParams((prev) => {
+      if ((prev.keyword || '') === keyword) return prev;
+      return { ...prev, keyword: keyword || undefined, page: 1 };
+    });
+  }, []);
+
+  useEffect(() => {
+    applyKeyword(debouncedKeyword);
+  }, [debouncedKeyword, applyKeyword]);
+
   const handleSearch = (keyword: string) => {
-    setQueryParams({ ...queryParams, keyword, page: 1 });
+    setKeywordInput(keyword);
+    applyKeyword(keyword.trim());
   };
 
   const handleStatusFilter = (status: string | undefined) => {
@@ -369,6 +392,8 @@ const EmployeeList: React.FC = () => {
             placeholder="按姓名、邮箱或员工编号搜索"
             allowClear
             enterButton={<SearchOutlined />}
+            value={keywordInput}
+            onChange={(e) => setKeywordInput(e.target.value)}
             onSearch={handleSearch}
             style={{ width: 300 }}
           />

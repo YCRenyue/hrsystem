@@ -12,6 +12,7 @@ const {
 } = require('../middleware/errorHandler');
 const { encryptionService } = require('../utils/encryption');
 const { recordOperation } = require('../utils/audit');
+const { findEmployeeIdsByName } = require('../utils/employeeSearch');
 const { sequelize } = require('../config/database');
 
 // 无法匹配任何 UUID 的哨兵值，用于数据范围为空时返回空集
@@ -94,10 +95,12 @@ const getEmployees = async (req, res) => {
   const where = {};
 
   if (keyword) {
-    // Search in non-encrypted fields only
+    // 姓名是密文，先在内存中解密匹配，再与工号、邮箱的模糊匹配合并
+    const nameMatchedIds = await findEmployeeIdsByName(keyword);
     where[Op.or] = [
       { employee_number: { [Op.like]: `%${keyword}%` } },
-      { email: { [Op.like]: `%${keyword}%` } }
+      { email: { [Op.like]: `%${keyword}%` } },
+      ...(nameMatchedIds.length > 0 ? [{ employee_id: { [Op.in]: nameMatchedIds } }] : [])
     ];
   }
 
