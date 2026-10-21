@@ -5,6 +5,7 @@
  * 适用于员工总量较小（< 数千）的查询场景，例如出差/报销/请假列表的姓名筛选。
  */
 
+const { Op } = require('sequelize');
 const { Employee } = require('../models');
 
 /**
@@ -35,6 +36,24 @@ const findEmployeeIdsByName = async (keyword) => {
   return matched;
 };
 
+/**
+ * 构建按“工号或姓名”模糊搜索员工的 where 条件，用于关联员工的列表查询
+ *
+ * @param {string} keyword - 搜索关键字
+ * @returns {Promise<Object>} 用于 Employee include 的 where 条件
+ */
+const buildEmployeeKeywordWhere = async (keyword) => {
+  const trimmed = (keyword || '').trim();
+  const nameMatchedIds = await findEmployeeIdsByName(trimmed);
+  return {
+    [Op.or]: [
+      { employee_number: { [Op.like]: `%${trimmed}%` } },
+      ...(nameMatchedIds.length > 0 ? [{ employee_id: { [Op.in]: nameMatchedIds } }] : [])
+    ]
+  };
+};
+
 module.exports = {
-  findEmployeeIdsByName
+  findEmployeeIdsByName,
+  buildEmployeeKeywordWhere
 };

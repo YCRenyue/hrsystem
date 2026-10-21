@@ -12,6 +12,7 @@ const {
   NotFoundError
 } = require('../middleware/errorHandler');
 const { formatLocalDate } = require('../utils/dateUtils');
+const { buildEmployeeKeywordWhere } = require('../utils/employeeSearch');
 
 // Meal type mapping: Chinese to English
 const MEAL_TYPE_CHINESE_TO_ENGLISH = {
@@ -116,11 +117,7 @@ const getCanteenMeals = async (req, res) => {
 
   // Search by employee number
   if (search) {
-    queryOptions.include[0].where = {
-      [Op.or]: [
-        { employee_number: { [Op.like]: `%${search}%` } }
-      ]
-    };
+    queryOptions.include[0].where = await buildEmployeeKeywordWhere(search);
   }
 
   const { count, rows } = await CanteenMeal.findAndCountAll(queryOptions);
@@ -520,11 +517,7 @@ const exportToExcel = async (req, res) => {
   };
 
   if (search) {
-    queryOptions.include[0].where = {
-      [Op.or]: [
-        { employee_number: { [Op.like]: `%${search}%` } }
-      ]
-    };
+    queryOptions.include[0].where = await buildEmployeeKeywordWhere(search);
   }
 
   const records = await CanteenMeal.findAll(queryOptions);
