@@ -20,6 +20,7 @@ const {
 const businessTripService = require('../services/BusinessTripService');
 const dataScopeService = require('../services/DataScopeService');
 const inAppNotification = require('../services/InAppNotificationService');
+const { getInitialApprovalStage, findUserIdForEmployee } = require('../services/approvalService');
 const { findEmployeeIdsByName } = require('../utils/employeeSearch');
 const { formatLocalDateTime } = require('../utils/dateUtils');
 const {
@@ -33,31 +34,6 @@ const APPROVER_ROLES = ['admin', 'hr_admin', 'department_manager'];
 // 仅 admin 可物理删除记录（保留审计边界）
 const DELETABLE_ROLES = ['admin'];
 const MANAGEMENT_ROLES = ['admin', 'hr_admin', 'department_manager'];
-
-const getInitialApprovalStage = async (departmentId) => {
-  if (!departmentId) return 'hr';
-  const count = await User.count({
-    where: {
-      role: 'department_manager',
-      department_id: departmentId,
-      status: 'active',
-      is_active: true
-    }
-  });
-  return count > 0 ? 'department' : 'hr';
-};
-
-/**
- * 找到员工对应的 user 账号（用于发通知给员工本人）
- */
-const findUserIdForEmployee = async (employeeId) => {
-  if (!employeeId) return null;
-  const u = await User.findOne({
-    where: { employee_id: employeeId },
-    attributes: ['user_id']
-  });
-  return u ? u.user_id : null;
-};
 
 /**
  * 通知所有审批人：有新出差申请待审批

@@ -11,35 +11,11 @@ const dataScopeService = require('../services/DataScopeService');
 const leaveWorkflowService = require('../services/LeaveWorkflowService');
 const ExcelService = require('../services/ExcelService');
 const inAppNotification = require('../services/InAppNotificationService');
+const { getInitialApprovalStage, findUserIdForEmployee } = require('../services/approvalService');
 const { ValidationError } = require('../middleware/errorHandler');
 const { formatLocalDate } = require('../utils/dateUtils');
 
 const APPROVAL_ROLES = ['admin', 'hr_admin', 'department_manager'];
-
-const getInitialApprovalStage = async (departmentId) => {
-  if (!departmentId) return 'hr';
-  const count = await User.count({
-    where: {
-      role: 'department_manager',
-      department_id: departmentId,
-      status: 'active',
-      is_active: true
-    }
-  });
-  return count > 0 ? 'department' : 'hr';
-};
-
-/**
- * 找到指定员工对应的 user 账号（用于发通知给申请人）
- */
-const findUserIdForEmployee = async (employeeId) => {
-  if (!employeeId) return null;
-  const u = await User.findOne({
-    where: { employee_id: employeeId },
-    attributes: ['user_id']
-  });
-  return u ? u.user_id : null;
-};
 
 /**
  * 请假类型映射
