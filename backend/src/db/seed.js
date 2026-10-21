@@ -106,6 +106,9 @@ async function seed() {
         updates.password_hash = await encryptionService.hashPassword(password);
         updates.must_change_password = true;
         updates.password_changed_at = new Date();
+        // Clear stale failed attempts so one more typo does not re-lock immediately
+        updates.login_attempts = 0;
+        updates.locked_until = null;
       }
 
       await existingAdmin.update(updates);
