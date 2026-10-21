@@ -103,7 +103,7 @@ describe('canteen punch planning', () => {
 });
 
 describe('attendance punch planning', () => {
-  const { assignSlots, buildDailyRecord } = attendance._internal;
+  const { assignSlots, buildDailyRecord, scheduleForDepartment } = attendance._internal;
 
   test('四次打卡分配到四个时段，额外打卡单独列出', () => {
     const slots = assignSlots(['08:25', '09:18', '09:49', '11:33', '13:24', '18:17']);
@@ -131,6 +131,32 @@ describe('attendance punch planning', () => {
       .toEqual({ status: 'late', late_minutes: 25, early_leave_minutes: 0 });
     expect(buildDailyRecord('2026-03-04', ['07:58', '16:01']).derived.status)
       .toBe('early_leave');
+  });
+
+  test('工作日按上班时段算工作时长，17:00 之后算加班，扣除午休', () => {
+    // 08:25-17:00 扣 1 小时午休 = 7.6 小时；17:00-18:17 = 1.3 小时
+    expect(buildDailyRecord('2026-03-12', ['08:25', '11:40', '13:10', '18:17']).hours)
+      .toEqual({ work_hours: 7.6, overtime_hours: 1.3 });
+    // 早到不算加班
+    expect(buildDailyRecord('2026-03-12', ['07:10', '17:00']).hours)
+      .toEqual({ work_hours: 8, overtime_hours: 0 });
+  });
+
+  test('生产部 07:30 上班：07:40 到算迟到，工作时长从 07:30 起算', () => {
+    const production = scheduleForDepartment('生产部');
+    const record = buildDailyRecord('2026-03-12', ['07:25', '17:30'], production);
+    expect(record.derived.status).toBe('normal');
+    expect(record.hours).toEqual({ work_hours: 8.5, overtime_hours: 0.5 });
+    expect(buildDailyRecord('2026-03-12', ['07:40', '17:00'], production).derived)
+      .toEqual({ status: 'late', late_minutes: 10, early_leave_minutes: 0 });
+    expect(scheduleForDepartment('销售部')).not.toBe(production);
+  });
+
+  test('周末打卡时长全部算加班，只有一次打卡不计时长', () => {
+    expect(buildDailyRecord('2026-03-08', ['08:00', '18:17']).hours)
+      .toEqual({ work_hours: 0, overtime_hours: 9.3 });
+    expect(buildDailyRecord('2026-03-09', ['19:15']).hours)
+      .toEqual({ work_hours: 0, overtime_hours: 0 });
   });
 
   test('工作日无打卡为缺勤，周末为 weekend', () => {

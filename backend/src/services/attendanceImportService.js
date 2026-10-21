@@ -164,7 +164,7 @@ async function importCardWorkbook(buffer, sourceFile = null) {
   await sequelize.transaction(async (transaction) => {
     for (const { entry, employee } of matched) {
       // eslint-disable-next-line no-await-in-loop -- queries share one transaction connection and must run in order
-      const stats = await upsertEmployeeAttendances(employee.employee_id, entry, dates, transaction);
+      const stats = await upsertEmployeeAttendances(employee, entry, dates, transaction);
       result.daily_created += stats.created;
       result.daily_updated += stats.updated;
       result.manual_kept += stats.manual_kept;
