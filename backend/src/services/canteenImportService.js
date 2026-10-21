@@ -19,7 +19,7 @@
 const XLSX = require('xlsx');
 const { Op } = require('sequelize');
 const {
-  Employee, CanteenMeal, sequelize
+  Employee, CanteenMeal, Leave, BusinessTrip, sequelize
 } = require('../models');
 
 const BLOCK_BASES = [0, 15, 30];
@@ -90,6 +90,30 @@ function parseDayCell(value) {
     day: parseInt(match[1], 10),
     weekday: match[2] || null
   };
+}
+
+async function isMealEligible(employeeId, date) {
+  const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+  if (weekday === 0 || weekday === 6) return false;
+  const [leaveCount, tripCount] = await Promise.all([
+    Leave.count({
+      where: {
+        employee_id: employeeId,
+        status: 'approved',
+        start_date: { [Op.lte]: date },
+        end_date: { [Op.gte]: date }
+      }
+    }),
+    BusinessTrip.count({
+      where: {
+        employee_id: employeeId,
+        status: { [Op.in]: ['approved', 'in_progress', 'completed'] },
+        start_datetime: { [Op.lte]: new Date(`${date}T23:59:59`) },
+        end_datetime: { [Op.gte]: new Date(`${date}T00:00:00`) }
+      }
+    })
+  ]);
+  return leaveCount === 0 && tripCount === 0;
 }
 
 function readWorkbook(buffer) {
@@ -199,6 +223,35 @@ async function upsertDailyMeals({
 
   let created = 0;
   let updated = 0;
+  let skipped = 0;
+  const [leaves, trips] = await Promise.all([
+    Leave.findAll({
+      where: {
+        employee_id: employeeId,
+        status: 'approved',
+        start_date: { [Op.lte]: period.end },
+        end_date: { [Op.gte]: period.start }
+      },
+      transaction
+    }),
+    BusinessTrip.findAll({
+      where: {
+        employee_id: employeeId,
+        status: { [Op.in]: ['approved', 'in_progress', 'completed'] },
+        start_datetime: { [Op.lte]: new Date(`${period.end}T23:59:59`) },
+        end_datetime: { [Op.gte]: new Date(`${period.start}T00:00:00`) }
+      },
+      transaction
+    })
+  ]);
+
+  const isAbsent = (date) => leaves.some(
+    (leave) => leave.start_date <= date && leave.end_date >= date
+  ) || trips.some((trip) => {
+    const start = new Date(trip.start_datetime).toISOString().slice(0, 10);
+    const end = new Date(trip.end_datetime).toISOString().slice(0, 10);
+    return start <= date && end >= date;
+  });
 
   for (const entry of daily) {
     const date = `${year}-${pad(month)}-${pad(entry.day)}`;
@@ -207,6 +260,16 @@ async function upsertDailyMeals({
       { type: 'lunch', time: entry.lunch_time },
       { type: 'dinner', time: entry.dinner_time }
     ].filter((m) => !!m.time);
+
+    const weekday = new Date(`${date}T00:00:00Z`).getUTCDay();
+    if (weekday === 0 || weekday === 6 || isAbsent(date)) {
+      skipped += meals.length;
+      await CanteenMeal.destroy({
+        where: { employee_id: employeeId, meal_date: date },
+        transaction
+      });
+      continue;
+    }
 
     for (const meal of meals) {
       const data = {
@@ -241,7 +304,7 @@ async function upsertDailyMeals({
     }
   }
 
-  return { created, updated };
+  return { created, updated, skipped };
 }
 
 /**
@@ -265,6 +328,7 @@ async function importCardWorkbook(buffer, sourceFile = null) {
     ambiguous: [],
     meals_created: 0,
     meals_updated: 0,
+    meals_skipped: 0,
     periods: new Set(),
     source_file: sourceFile
   };
@@ -295,7 +359,7 @@ async function importCardWorkbook(buffer, sourceFile = null) {
 
         result.matched += 1;
 
-        const { created, updated } = await upsertDailyMeals({
+        const { created, updated, skipped } = await upsertDailyMeals({
           employeeId: emp.employee_id,
           period: item.period,
           daily: item.daily,
@@ -304,6 +368,7 @@ async function importCardWorkbook(buffer, sourceFile = null) {
         });
         result.meals_created += created;
         result.meals_updated += updated;
+        result.meals_skipped += skipped;
       }
     }
   });
@@ -489,6 +554,7 @@ module.exports = {
   importCardWorkbook,
   getCanteenReport,
   getEmployeeMealDetail,
+  isMealEligible,
   _internal: {
     parsePeriod,
     parseTime,

@@ -26,13 +26,14 @@ import dayjs from "dayjs";
 import { useAuth } from "../../contexts/AuthContext";
 import { Employee } from "../../types";
 import { employeeService } from "../../services/employeeService";
+import { DocumentType } from "./partyInfoHelpers";
 
 const { Title, Text } = Typography;
 
 interface DocumentItem {
   key: string;
   title: string;
-  type: "policy_ack" | "training_pledge";
+  type: DocumentType;
   isSigned: boolean;
   signedAt?: string;
 }
@@ -99,6 +100,13 @@ const MyDocumentConfirmations: React.FC = () => {
       type: "training_pledge",
       isSigned: !!employee.training_pledge_status,
       signedAt: employee.training_pledge_signed_at,
+    },
+    {
+      key: "employment_contract",
+      title: "劳动合同",
+      type: "employment_contract",
+      isSigned: !!employee.employment_contract_status,
+      signedAt: employee.employment_contract_signed_at,
     },
   ];
 

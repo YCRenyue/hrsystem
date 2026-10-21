@@ -6,7 +6,7 @@ const express = require('express');
 const router = express.Router();
 const onboardingController = require('../controllers/onboardingController');
 const { asyncHandler } = require('../middleware/errorHandler');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireRole } = require('../middleware/auth');
 
 /**
  * @route   GET /api/onboarding/form/:token
@@ -27,13 +27,23 @@ router.post('/form/:token', asyncHandler(onboardingController.submitOnboardingFo
  * @desc    Send onboarding form to employee via email
  * @access  Private (HR/Admin only)
  */
-router.post('/send/:employeeId', authenticateToken, asyncHandler(onboardingController.sendOnboardingForm));
+router.post(
+  '/send/:employeeId',
+  authenticateToken,
+  requireRole('admin', 'hr_admin'),
+  asyncHandler(onboardingController.sendOnboardingForm)
+);
 
 /**
  * @route   POST /api/onboarding/test-email
  * @desc    Test email configuration
  * @access  Private (Admin only)
  */
-router.post('/test-email', authenticateToken, asyncHandler(onboardingController.testEmail));
+router.post(
+  '/test-email',
+  authenticateToken,
+  requireRole('admin'),
+  asyncHandler(onboardingController.testEmail)
+);
 
 module.exports = router;

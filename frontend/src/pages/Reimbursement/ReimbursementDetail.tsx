@@ -17,6 +17,10 @@ import {
   reimbursementService, ReimbursementDetail as RBDetail, ReimbursementCategory,
 } from '../../services/reimbursementService';
 import { useAuth } from '../../contexts/AuthContext';
+import {
+  canDisburseReimbursement,
+  canReviewReimbursement,
+} from '../../utils/approvalWorkflow';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -52,7 +56,8 @@ const ReimbursementDetailPage: React.FC = () => {
   const [payRefOpen, setPayRefOpen] = useState(false);
   const [paymentRef, setPaymentRef] = useState('');
 
-  const isFinance = ['admin', 'hr_admin'].includes(user?.role || '');
+  const canReview = canReviewReimbursement(user?.role);
+  const canDisburse = canDisburseReimbursement(user?.role);
 
   const fetchData = useCallback(async () => {
     if (!id) return;
@@ -152,11 +157,11 @@ const ReimbursementDetailPage: React.FC = () => {
 
   const meta = STATUS_LABELS[data.status] || { text: data.status, color: 'default' };
   const isOwner = user?.employee_id === data.employee_id;
-  const canEdit = ['draft', 'rejected'].includes(data.status) && (isOwner || isFinance);
-  const canSubmit = ['draft', 'rejected'].includes(data.status) && (isOwner || isFinance);
-  const canCancel = ['pending', 'approved'].includes(data.status) && (isOwner || isFinance);
-  const canApprove = isFinance && data.status === 'pending';
-  const canPay = isFinance && data.status === 'approved';
+  const canEdit = ['draft', 'rejected'].includes(data.status) && (isOwner || canReview);
+  const canSubmit = ['draft', 'rejected'].includes(data.status) && (isOwner || canReview);
+  const canCancel = ['pending', 'approved'].includes(data.status) && (isOwner || canReview);
+  const canApprove = canReview && data.status === 'pending';
+  const canPay = canDisburse && data.status === 'approved';
 
   const itemColumns = [
     {

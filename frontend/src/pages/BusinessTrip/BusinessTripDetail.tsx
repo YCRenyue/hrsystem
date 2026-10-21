@@ -33,6 +33,7 @@ import dayjs from 'dayjs';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import WatermarkPanel from './WatermarkPanel';
+import { canApproveStage } from '../../utils/approvalWorkflow';
 
 const { TextArea } = Input;
 
@@ -61,6 +62,7 @@ interface TripDetail {
   span_days: number;
   attachments: Attachment[];
   status: string;
+  approval_stage?: 'department' | 'hr';
   submitted_at?: string;
   submitter?: { display_name: string } | null;
   approver?: { display_name: string } | null;
@@ -118,11 +120,13 @@ const BusinessTripDetail: React.FC = () => {
     if (!trip || !showApproveModal) return;
     setApproving(true);
     try {
-      await api.post(`/business-trips/${trip.trip_id}/approve`, {
+      const response = await api.post(`/business-trips/${trip.trip_id}/approve`, {
         decision: showApproveModal,
         notes: approveNotes,
       });
-      message.success(showApproveModal === 'approved' ? '已批准' : '已拒绝');
+      message.success(
+        response.data.message || (showApproveModal === 'approved' ? '已批准' : '已拒绝')
+      );
       setShowApproveModal(null);
       setApproveNotes('');
       fetchTrip();
@@ -181,7 +185,8 @@ const BusinessTripDetail: React.FC = () => {
   const isOwner = user?.employee_id === trip.employee_id;
   const canEdit = ['draft', 'pending', 'rejected'].includes(trip.status) && (isOwner || isApprover);
   const canCancel = ['pending', 'approved', 'in_progress'].includes(trip.status) && (isOwner || isApprover);
-  const canApprove = isApprover && trip.status === 'pending';
+  const isCurrentApprover = canApproveStage(user?.role, trip.approval_stage);
+  const canApprove = isCurrentApprover && trip.status === 'pending';
 
   return (
     <div>

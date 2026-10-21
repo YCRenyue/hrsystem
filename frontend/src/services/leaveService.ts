@@ -12,7 +12,8 @@ export interface Leave {
   end_date: string;
   days: number;
   reason?: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  approval_stage?: 'department' | 'hr';
   approver_id?: string;
   approval_notes?: string;
   approved_at?: string;

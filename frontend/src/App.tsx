@@ -1,41 +1,53 @@
 /**
  * Main App Component - Router configuration
  */
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider, App as AntdApp } from 'antd';
+import { ConfigProvider, App as AntdApp, Spin } from 'antd';
 import { AuthProvider } from './contexts/AuthContext';
 import { PermissionProvider } from './contexts/PermissionContext';
 import ProtectedRoute from './components/Common/ProtectedRoute';
 import { RoleGuard, AccessDenied } from './components/Permission';
 import MainLayout from './components/Layout/MainLayout';
-import Login from './pages/Login/Login';
-import Dashboard from './pages/Dashboard/Dashboard';
-import EmployeeList from './pages/Employee/EmployeeList';
-import EmployeeForm from './pages/Employee/EmployeeForm';
-import EmployeeDetail from './pages/Employee/EmployeeDetail';
-import OnboardingForm from './pages/Onboarding/OnboardingForm';
-import DepartmentList from './pages/Department/DepartmentList';
-import AttendanceReport from './pages/Attendance/AttendanceReport';
-import LeaveList from './pages/Leave/LeaveList';
-import UserSettings from './pages/Settings';
-import UserProfile from './pages/Profile/UserProfile';
-import AnnualLeaveList from './pages/AnnualLeave/AnnualLeaveList';
-import AnnualLeaveForm from './pages/AnnualLeave/AnnualLeaveForm';
-import SocialSecurityList from './pages/SocialSecurity/SocialSecurityList';
-import BusinessTripList from './pages/BusinessTrip/BusinessTripList';
-import BusinessTripForm from './pages/BusinessTrip/BusinessTripForm';
-import BusinessTripDetail from './pages/BusinessTrip/BusinessTripDetail';
-import CanteenReport from './pages/CanteenMeal/CanteenReport';
-import UserManagement from './pages/UserManagement/UserManagement';
-import DocumentConfirmationList from './pages/DocumentConfirmation/DocumentConfirmationList';
-import DocumentSigningPage from './pages/DocumentConfirmation/DocumentSigningPage';
-import MyDocumentConfirmations from './pages/DocumentConfirmation/MyDocumentConfirmations';
-import NotificationCenter from './pages/Notifications/NotificationCenter';
-import ReimbursementList from './pages/Reimbursement/ReimbursementList';
-import ReimbursementForm from './pages/Reimbursement/ReimbursementForm';
-import ReimbursementDetail from './pages/Reimbursement/ReimbursementDetail';
 import './App.css';
+
+// Page-level code splitting: each page is fetched on first navigation
+const Login = lazy(() => import('./pages/Login/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard/Dashboard'));
+const EmployeeList = lazy(() => import('./pages/Employee/EmployeeList'));
+const EmployeeForm = lazy(() => import('./pages/Employee/EmployeeForm'));
+const EmployeeDetail = lazy(() => import('./pages/Employee/EmployeeDetail'));
+const OnboardingForm = lazy(() => import('./pages/Onboarding/OnboardingForm'));
+const DepartmentList = lazy(() => import('./pages/Department/DepartmentList'));
+const AttendanceReport = lazy(() => import('./pages/Attendance/AttendanceReport'));
+const LeaveList = lazy(() => import('./pages/Leave/LeaveList'));
+const UserSettings = lazy(() => import('./pages/Settings'));
+const UserProfile = lazy(() => import('./pages/Profile/UserProfile'));
+const AnnualLeaveList = lazy(() => import('./pages/AnnualLeave/AnnualLeaveList'));
+const AnnualLeaveForm = lazy(() => import('./pages/AnnualLeave/AnnualLeaveForm'));
+const SocialSecurityList = lazy(() => import('./pages/SocialSecurity/SocialSecurityList'));
+const BusinessTripList = lazy(() => import('./pages/BusinessTrip/BusinessTripList'));
+const BusinessTripForm = lazy(() => import('./pages/BusinessTrip/BusinessTripForm'));
+const BusinessTripDetail = lazy(() => import('./pages/BusinessTrip/BusinessTripDetail'));
+const CanteenReport = lazy(() => import('./pages/CanteenMeal/CanteenReport'));
+const UserManagement = lazy(() => import('./pages/UserManagement/UserManagement'));
+const DocumentConfirmationList = lazy(
+  () => import('./pages/DocumentConfirmation/DocumentConfirmationList'),
+);
+const DocumentSigningPage = lazy(
+  () => import('./pages/DocumentConfirmation/DocumentSigningPage'),
+);
+const MyDocumentConfirmations = lazy(
+  () => import('./pages/DocumentConfirmation/MyDocumentConfirmations'),
+);
+const NotificationCenter = lazy(() => import('./pages/Notifications/NotificationCenter'));
+const ReimbursementList = lazy(() => import('./pages/Reimbursement/ReimbursementList'));
+const ReimbursementForm = lazy(() => import('./pages/Reimbursement/ReimbursementForm'));
+const ReimbursementDetail = lazy(() => import('./pages/Reimbursement/ReimbursementDetail'));
+const ForcedPasswordChange = lazy(() => import('./pages/Login/ForcedPasswordChange'));
+const Reports = lazy(() => import('./pages/Reports'));
+const SelfService = lazy(() => import('./pages/SelfService/SelfService'));
+const pageFallback = <Spin size="large" style={{ display: 'block', margin: '20vh auto' }} />;
 
 function App() {
   return (
@@ -51,8 +63,17 @@ function App() {
         <AuthProvider>
           <PermissionProvider>
             <Router>
+              <Suspense fallback={pageFallback}>
               <Routes>
                 <Route path="/login" element={<Login />} />
+                <Route
+                  path="/change-password"
+                  element={
+                    <ProtectedRoute>
+                      <ForcedPasswordChange />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route
                   path="/"
                   element={
@@ -61,8 +82,17 @@ function App() {
                     </ProtectedRoute>
                   }
                 >
-                  <Route index element={<Navigate to="/dashboard" replace />} />
+                  <Route index element={<Navigate to="/self-service" replace />} />
                   <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="self-service" element={<SelfService />} />
+                  <Route
+                    path="reports"
+                    element={
+                      <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager', 'finance']}>
+                        <Reports />
+                      </RoleGuard>
+                    }
+                  />
 
                   {/* Employee management - accessible to admin, hr_admin, and department_manager */}
                   <Route
@@ -138,9 +168,7 @@ function App() {
                   <Route
                     path="annual-leave"
                     element={
-                      <RoleGuard requiredRoles={['admin', 'hr_admin', 'department_manager']}>
-                        <AnnualLeaveList />
-                      </RoleGuard>
+                      <AnnualLeaveList />
                     }
                   />
 
@@ -247,6 +275,7 @@ function App() {
                 {/* Catch all - redirect to dashboard */}
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>
+              </Suspense>
             </Router>
           </PermissionProvider>
         </AuthProvider>

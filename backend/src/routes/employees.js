@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const employeeController = require('../controllers/employeeController');
+const documentSigningController = require('../controllers/documentSigningController');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 
@@ -26,6 +27,22 @@ const upload = multer({
       cb(null, true);
     } else {
       cb(new Error('Only Excel files are allowed'));
+    }
+  }
+});
+
+// Configure multer for the signed-document screenshot (image only)
+const uploadScreenshot = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['image/png', 'image/jpeg', 'image/jpg'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PNG/JPEG screenshots are allowed'));
     }
   }
 });
@@ -106,12 +123,15 @@ router.put(
 
 /**
  * @route   PUT /api/employees/:id/sign-document
- * @desc    Sign a document confirmation (policy or training)
+ * @desc    Sign a document confirmation (policy ack / training pledge / employment contract).
+ *          multipart/form-data: documentType, partyInfo (JSON string, optional),
+ *          password (step-up auth), screenshot (signed document image)
  * @access  Private (employee owner, HR, Admin)
  */
 router.put(
   '/:id/sign-document',
-  asyncHandler(employeeController.signDocument)
+  uploadScreenshot.single('screenshot'),
+  asyncHandler(documentSigningController.signDocument)
 );
 
 /**
@@ -122,7 +142,19 @@ router.put(
 router.put(
   '/:id/training-pledge',
   requireRole('hr_admin', 'admin'),
-  asyncHandler(employeeController.saveTrainingPledge)
+  asyncHandler(documentSigningController.saveTrainingPledge)
+);
+
+/**
+ * @route   PUT /api/employees/:id/employment-contract
+ * @desc    Save or update employment contract terms (party A info, position,
+ *          work location, term dates, salary) for an employee
+ * @access  Private (HR, Admin only)
+ */
+router.put(
+  '/:id/employment-contract',
+  requireRole('hr_admin', 'admin'),
+  asyncHandler(documentSigningController.saveEmploymentContract)
 );
 
 /**

@@ -80,6 +80,8 @@ const OnboardingOffboardingReport: React.FC = () => {
       end_date: dayjs().format('YYYY-MM-DD'),
       report_type: 'both'
     });
+    // The initial report should run once with the default period.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchDepartments = async () => {

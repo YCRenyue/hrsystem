@@ -1,8 +1,8 @@
 /**
  * Main Layout - Layout wrapper with navigation and header
  */
-import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Avatar, Dropdown, theme } from 'antd';
+import React, { useState, useEffect, Suspense } from 'react';
+import { Layout, Menu, Avatar, Dropdown, Drawer, Grid, Button, Spin, theme } from 'antd';
 import {
   UserOutlined,
   TeamOutlined,
@@ -19,6 +19,9 @@ import {
   UsergroupAddOutlined,
   FileProtectOutlined,
   WalletOutlined,
+  AppstoreOutlined,
+  BarChartOutlined,
+  MenuOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -47,6 +50,9 @@ const applyPreferences = (prefs: UserPreferences) => {
 
 const MainLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
@@ -100,6 +106,7 @@ const MainLayout: React.FC = () => {
 
   const isManager = ['admin', 'hr_admin', 'department_manager']
     .includes(user?.role || '');
+  const canViewReports = isManager || user?.role === 'finance';
 
   const documentConfirmationMenuItem = {
     key: '/document-confirmations',
@@ -161,6 +168,12 @@ const MainLayout: React.FC = () => {
 
   // Sidebar navigation menu
   const sidebarMenuItems: MenuProps['items'] = [
+    {
+      key: '/self-service',
+      icon: <AppstoreOutlined />,
+      label: '自助服务',
+      onClick: () => navigate('/self-service'),
+    },
     ...managerMenuItems,
     ...(!isManager ? [documentConfirmationMenuItem] : []),
     {
@@ -181,6 +194,12 @@ const MainLayout: React.FC = () => {
       label: '差旅报销',
       onClick: () => navigate('/reimbursements'),
     },
+    ...(canViewReports ? [{
+      key: '/reports',
+      icon: <BarChartOutlined />,
+      label: '综合报表',
+      onClick: () => navigate('/reports'),
+    }] : []),
     // Admin-only menu items
     ...(user?.role === 'admin' ? [
       {
@@ -194,6 +213,7 @@ const MainLayout: React.FC = () => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
+      {!isMobile && (
       <Sider collapsible collapsed={collapsed} onCollapse={setCollapsed}>
         <div
           style={{
@@ -215,6 +235,22 @@ const MainLayout: React.FC = () => {
           items={sidebarMenuItems}
         />
       </Sider>
+      )}
+      <Drawer
+        title="越祥生物科技"
+        placement="left"
+        open={isMobile && mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        styles={{ body: { padding: 0, background: '#001529' } }}
+      >
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          items={sidebarMenuItems}
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      </Drawer>
       <Layout>
         <Header
           style={{
@@ -225,7 +261,18 @@ const MainLayout: React.FC = () => {
             alignItems: 'center',
           }}
         >
-          <div style={{ fontSize: 18, fontWeight: 500 }}>
+          <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+            {isMobile && (
+              <Button
+                type="text"
+                icon={<MenuOutlined />}
+                onClick={() => setMobileMenuOpen(true)}
+                aria-label="打开导航"
+                style={{ marginRight: 8 }}
+              />
+            )}
+          <div style={{ fontSize: isMobile ? 16 : 18, fontWeight: 500 }}>
+            {location.pathname === '/self-service' && '自助服务'}
             {location.pathname === '/dashboard' && '系统概览'}
             {location.pathname === '/employees' && '员工管理'}
             {location.pathname === '/departments' && '部门管理'}
@@ -251,27 +298,32 @@ const MainLayout: React.FC = () => {
             {location.pathname === '/document-confirmations' && '制度确认'}
             {location.pathname === '/document-confirmations/my' && '我的制度确认'}
             {location.pathname.match(/^\/document-confirmations\/[^/]+\/[^/]+$/) && '制度确认详情'}
+            {location.pathname === '/reports' && '综合报表'}
+          </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <NotificationBell />
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
               <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                 <Avatar icon={<UserOutlined />} style={{ marginRight: 8 }} />
-                <span>{user?.username || '用户'}</span>
+                {!isMobile && <span>{user?.username || '用户'}</span>}
               </div>
             </Dropdown>
           </div>
         </Header>
         <Content
           style={{
-            margin: '24px 16px',
-            padding: 24,
+            margin: isMobile ? 8 : '24px 16px',
+            padding: isMobile ? 12 : 24,
             minHeight: 280,
             background: colorBgContainer,
             borderRadius: borderRadiusLG,
           }}
         >
-          <Outlet />
+          {/* Keep the layout shell visible while a lazy page chunk loads */}
+          <Suspense fallback={<Spin size="large" style={{ display: 'block', margin: '80px auto' }} />}>
+            <Outlet />
+          </Suspense>
         </Content>
       </Layout>
     </Layout>

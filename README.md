@@ -146,6 +146,7 @@ npm run install:all
 # 3. 配置环境变量
 cp .env.example .env
 # 编辑 .env，配置数据库连接、JWT_SECRET、ENCRYPTION_KEY、钉钉 API 等
+# 年假结转上限和社保公积金比例可按 backend/.env.example 中的计算变量覆盖
 
 # 4. 初始化数据库（必须依次执行）
 npm run db:migrate    # 创建表结构

@@ -1,6 +1,7 @@
 /**
  * Document Templates for Policy Confirmation and Training Commitment
  */
+import { EMPLOYMENT_CONTRACT_TEMPLATE } from "./employmentContractTemplate";
 
 // ---------------------------------------------------------------------------
 // Interfaces
@@ -430,4 +431,5 @@ export const POLICY_CONFIRMATION_TEMPLATE: DocumentTemplate = {
 export const DOCUMENT_TEMPLATES: Record<string, DocumentTemplate> = {
   policy_ack: POLICY_CONFIRMATION_TEMPLATE,
   training_pledge: TRAINING_COMMITMENT_TEMPLATE,
+  employment_contract: EMPLOYMENT_CONTRACT_TEMPLATE,
 };

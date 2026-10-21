@@ -57,6 +57,24 @@ apiClient.interceptors.response.use(
 
       // Handle 403 Forbidden
       if (status === 403) {
+        const responseData = error.response.data as { code?: string } | undefined;
+        if (responseData?.code === 'PASSWORD_CHANGE_REQUIRED') {
+          const storedUser = localStorage.getItem('user_info');
+          if (storedUser) {
+            try {
+              const user = JSON.parse(storedUser);
+              localStorage.setItem(
+                'user_info',
+                JSON.stringify({ ...user, must_change_password: true })
+              );
+            } catch {
+              localStorage.removeItem('user_info');
+            }
+          }
+          if (window.location.pathname !== '/change-password') {
+            window.location.href = '/change-password';
+          }
+        }
         console.error('Access denied');
       }
 

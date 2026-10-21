@@ -61,6 +61,7 @@ const EmployeeForm: React.FC = () => {
     diploma_url: null,
     policy_ack_url: null,
     training_pledge_url: null,
+    employment_contract_url: null,
   });
   const [uploadingType, setUploadingType] = useState<FileType | null>(null);
 

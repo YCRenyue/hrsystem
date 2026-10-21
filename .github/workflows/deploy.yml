@@ -36,15 +36,15 @@ on:
 
 env:
   # Aliyun ACR Configuration
-  ACR_REGISTRY: crpi-1f9h7rkbm8zj38tu.cn-zhangjiakou.personal.cr.aliyuncs.com
-  ACR_REGISTRY_VPC: crpi-1f9h7rkbm8zj38tu-vpc.cn-zhangjiakou.personal.cr.aliyuncs.com
-  ACR_NAMESPACE: ycrenyue
+  ACR_REGISTRY: crpi-itz6meqzm8jndmax.cn-shanghai.personal.cr.aliyuncs.com
+  ACR_REGISTRY_VPC: crpi-itz6meqzm8jndmax-vpc.cn-shanghai.personal.cr.aliyuncs.com
+  ACR_NAMESPACE: tonyhuang0908
   ACR_REPOSITORY_BACKEND: hrsystem-backend
   ACR_REPOSITORY_FRONTEND: hrsystem-frontend
   ACR_REPOSITORY_DB: hrsystem-mysql
   BACKEND_PORT: 3001
-  FRONTEND_PORT: 8080
-  DEPLOY_PLATFORM: linux/arm64
+  FRONTEND_PORT: 80
+  DEPLOY_PLATFORM: linux/amd64
   # Database container configuration
   DB_CONTAINER_NAME: hrsystem-db
   DB_VOLUME_NAME: hrsystem-db-data
@@ -53,6 +53,36 @@ env:
   DOCKER_NETWORK: hrsystem-network
 
 jobs:
+  quality-gate:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+      - name: Check backend
+        env:
+          NODE_ENV: test
+          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
+          JWT_SECRET: ci-test-jwt-secret-not-for-production
+        run: |
+          cd backend
+          npm ci
+          npm run lint
+          npm test -- --runInBand
+      - name: Check frontend
+        run: |
+          cd frontend
+          npm ci
+          npx tsc --noEmit
+          npx eslint src/ --max-warnings=0
+          npm test -- --watchAll=false --runInBand
+        env:
+          CI: true
+
   # 1. 检测变更和配置
   prepare:
     name: 📋 准备和检测
@@ -135,11 +165,15 @@ jobs:
   build-and-push:
     name: 🏗️ 构建和推送镜像
     runs-on: ubuntu-latest
-    needs: prepare
+    needs: [prepare, quality-gate]
     if: ${{ needs.prepare.outputs.should_deploy_backend == 'true' || needs.prepare.outputs.should_deploy_frontend == 'true' }}
     permissions:
       contents: read
       packages: write
+    env:
+      # ACR Personal Edition rejects buildx provenance/SBOM attestation manifests
+      # (application/vnd.oci.empty.v1+json), so push plain single-platform images.
+      BUILDX_NO_DEFAULT_ATTESTATIONS: 1
     outputs:
       backend_image: ${{ steps.image_info.outputs.backend_image }}
       frontend_image: ${{ steps.image_info.outputs.frontend_image }}
@@ -280,8 +314,9 @@ jobs:
       - name: 🔐 配置 SSH 密钥
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.ECS_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+          printf '%s\n' "${{ secrets.ECS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.ECS_SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
       - name: SSH preflight check
         run: |
           set -euo pipefail
@@ -292,12 +327,6 @@ jobs:
           echo "Checking TCP connectivity to ${ECS_HOST}:${SSH_PORT}"
           if ! timeout 10 bash -c "cat < /dev/null > /dev/tcp/${ECS_HOST}/${SSH_PORT}"; then
             echo "::error::GitHub Actions runner cannot reach ${ECS_HOST}:${SSH_PORT}. Check that ECS is using a public IP or EIP, the security group allows the port, the OS firewall allows the port, and sshd is listening on that port."
-            exit 1
-          fi
-
-          echo "Checking SSH handshake on ${ECS_HOST}:${SSH_PORT}"
-          if ! ssh-keyscan -T 10 -p "${SSH_PORT}" -H "${ECS_HOST}" >> ~/.ssh/known_hosts 2>/dev/null; then
-            echo "::error::TCP is reachable but the SSH handshake failed. This usually means the configured port is not serving sshd, sshd is unhealthy, or the server is actively resetting the runner connection."
             exit 1
           fi
 
@@ -320,9 +349,8 @@ jobs:
             -o ServerAliveInterval=30 \
             -o ServerAliveCountMax=3 \
             -o StrictHostKeyChecking=yes \
-            -p ${SSH_PORT} root@${ECS_HOST} << ENDSSH
+            -p ${SSH_PORT} deploy@${ECS_HOST} << ENDSSH
             set -e
-            set -x
 
             echo "📦 登录阿里云 ACR..."
             echo "Server architecture: \$(uname -m)"
@@ -333,16 +361,8 @@ jobs:
             fi
 
             if ! docker info >/dev/null 2>&1; then
-              echo "Docker daemon is not running, trying to start it..."
-              if command -v systemctl >/dev/null 2>&1; then
-                systemctl start docker || true
-                sleep 3
-              fi
-
-              if ! docker info >/dev/null 2>&1; then
-                echo "Docker daemon is unavailable on the ECS host."
-                exit 1
-              fi
+              echo "Docker daemon is unavailable to the deploy user."
+              exit 1
             fi
 
             echo "${{ secrets.ACR_PASSWORD }}" | docker login \
@@ -443,6 +463,7 @@ jobs:
                 -e DB_USER="${{ vars.DB_USER }}" \
                 -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
                 -e DB_TIMEZONE="${{ vars.DB_TIMEZONE }}" \
+                -e ENCRYPTION_KEY="${{ secrets.ENCRYPTION_KEY }}" \
                 ${BACKEND_IMAGE} \
                 node src/db/migrate.js
 
@@ -466,8 +487,11 @@ jobs:
                 ${BACKEND_IMAGE} \
                 node src/db/seed.js
 
-              docker stop hrsystem-backend 2>/dev/null || true
-              docker rm hrsystem-backend 2>/dev/null || true
+              docker rm -f hrsystem-backend-previous 2>/dev/null || true
+              if docker ps -a --format '{{.Names}}' | grep -q '^hrsystem-backend$'; then
+                docker stop hrsystem-backend
+                docker rename hrsystem-backend hrsystem-backend-previous
+              fi
 
               docker run -d \
                 --name hrsystem-backend \
@@ -484,7 +508,18 @@ jobs:
                 -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
                 -e DB_TIMEZONE="${{ vars.DB_TIMEZONE }}" \
                 -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+                -e JWT_EXPIRES_IN="${{ vars.JWT_EXPIRES_IN }}" \
                 -e ENCRYPTION_KEY="${{ secrets.ENCRYPTION_KEY }}" \
+                -e LOG_LEVEL="${{ vars.LOG_LEVEL }}" \
+                -e OSS_REGION="${{ vars.OSS_REGION }}" \
+                -e OSS_BUCKET="${{ vars.OSS_BUCKET }}" \
+                -e OSS_INTERNAL="${{ vars.OSS_INTERNAL }}" \
+                -e ALICLOUD_ACCESS_KEY="${{ secrets.ALICLOUD_ACCESS_KEY }}" \
+                -e ALICLOUD_SECRET_KEY="${{ secrets.ALICLOUD_SECRET_KEY }}" \
+                -e DINGTALK_APP_KEY="${{ vars.DINGTALK_APP_KEY }}" \
+                -e DINGTALK_AGENT_ID="${{ vars.DINGTALK_AGENT_ID }}" \
+                -e DINGTALK_CORP_ID="${{ vars.DINGTALK_CORP_ID }}" \
+                -e DINGTALK_APP_SECRET="${{ secrets.DINGTALK_APP_SECRET }}" \
                 -e SMTP_HOST="${{ vars.SMTP_HOST }}" \
                 -e SMTP_PORT="${{ vars.SMTP_PORT }}" \
                 -e SMTP_SECURE="${{ vars.SMTP_SECURE }}" \
@@ -497,9 +532,16 @@ jobs:
               sleep 10
               if curl -sf http://localhost:${{ env.BACKEND_PORT }}/health > /dev/null; then
                 echo "✅ 后端服务部署成功"
+                docker rm hrsystem-backend-previous 2>/dev/null || true
               else
-                echo "⚠️ 后端健康检查失败，查看日志："
+                echo "后端健康检查失败，开始回滚："
                 docker logs hrsystem-backend --tail 30
+                docker rm -f hrsystem-backend
+                if docker ps -a --format '{{.Names}}' | grep -q '^hrsystem-backend-previous$'; then
+                  docker rename hrsystem-backend-previous hrsystem-backend
+                  docker start hrsystem-backend
+                fi
+                exit 1
               fi
             fi
 
@@ -511,8 +553,11 @@ jobs:
 
               docker pull ${FRONTEND_IMAGE}
 
-              docker stop hrsystem-frontend 2>/dev/null || true
-              docker rm hrsystem-frontend 2>/dev/null || true
+              docker rm -f hrsystem-frontend-previous 2>/dev/null || true
+              if docker ps -a --format '{{.Names}}' | grep -q '^hrsystem-frontend$'; then
+                docker stop hrsystem-frontend
+                docker rename hrsystem-frontend hrsystem-frontend-previous
+              fi
 
               CONTAINER_ON_PORT=\$(docker ps -q --filter "publish=${{ env.FRONTEND_PORT }}")
               if [ -n "\$CONTAINER_ON_PORT" ]; then
@@ -532,16 +577,23 @@ jobs:
                 --name hrsystem-frontend \
                 --restart unless-stopped \
                 --network ${{ env.DOCKER_NETWORK }} \
-                -p 127.0.0.1:${{ env.FRONTEND_PORT }}:80 \
+                -p ${{ env.FRONTEND_PORT }}:80 \
                 ${FRONTEND_IMAGE}
 
               echo "⏳ 等待前端服务启动..."
               sleep 5
               if curl -sf http://localhost:${{ env.FRONTEND_PORT }}/ > /dev/null; then
                 echo "✅ 前端服务部署成功"
+                docker rm hrsystem-frontend-previous 2>/dev/null || true
               else
-                echo "⚠️ 前端健康检查失败，查看日志："
+                echo "前端健康检查失败，开始回滚："
                 docker logs hrsystem-frontend --tail 30
+                docker rm -f hrsystem-frontend
+                if docker ps -a --format '{{.Names}}' | grep -q '^hrsystem-frontend-previous$'; then
+                  docker rename hrsystem-frontend-previous hrsystem-frontend
+                  docker start hrsystem-frontend
+                fi
+                exit 1
               fi
             fi
 

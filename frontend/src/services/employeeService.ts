@@ -129,16 +129,34 @@ export const employeeService = {
    * Send onboarding form email to employee
    */
   /**
-   * Sign a document confirmation (policy or training)
+   * Sign a document confirmation (policy ack / training pledge / employment contract).
+   * Sends the signed-document screenshot together with the sign request so the
+   * backend can treat the OSS upload and the DB status flip as one atomic
+   * operation (see backend employeeController.signDocument) - a document can
+   * never end up marked "signed" without its evidence screenshot on file.
+   *
+   * @param password - the caller's current login password (step-up auth,
+   *   re-verified server-side immediately before signing)
    */
   async signDocument(
     employeeId: string,
-    documentType: 'policy_ack' | 'training_pledge',
+    documentType: 'policy_ack' | 'training_pledge' | 'employment_contract',
+    screenshot: File,
+    password: string,
     partyInfo?: Record<string, string>
   ): Promise<{ documentType: string; signedAt: string }> {
-    const response = await apiClient.put<
-      ApiResponse<{ documentType: string; signedAt: string }>
-    >(`/employees/${employeeId}/sign-document`, { documentType, partyInfo });
+    const formData = new FormData();
+    formData.append('documentType', documentType);
+    formData.append('password', password);
+    formData.append('screenshot', screenshot);
+    if (partyInfo) {
+      formData.append('partyInfo', JSON.stringify(partyInfo));
+    }
+    const response = await apiClient.put<ApiResponse<{ documentType: string; signedAt: string }>>(
+      `/employees/${employeeId}/sign-document`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
     return response.data.data!;
   },
 
@@ -171,6 +189,50 @@ export const employeeService = {
         party_a_address: string;
       }>
     >(`/employees/${employeeId}/training-pledge`, data);
+    return response.data.data!;
+  },
+
+  /**
+   * Save or update employment contract terms (HR only)
+   */
+  async saveEmploymentContract(
+    employeeId: string,
+    data: {
+      party_a_name: string;
+      party_a_address: string;
+      contract_type: string;
+      position: string;
+      work_location: string;
+      contract_start_date: string;
+      contract_end_date: string;
+      monthly_salary: number;
+    }
+  ): Promise<{
+    contract_id: string;
+    employee_id: string;
+    party_a_name: string;
+    party_a_address: string;
+    contract_type: string;
+    position: string;
+    work_location: string;
+    contract_start_date: string;
+    contract_end_date: string;
+    monthly_salary: number;
+  }> {
+    const response = await apiClient.put<
+      ApiResponse<{
+        contract_id: string;
+        employee_id: string;
+        party_a_name: string;
+        party_a_address: string;
+        contract_type: string;
+        position: string;
+        work_location: string;
+        contract_start_date: string;
+        contract_end_date: string;
+        monthly_salary: number;
+      }>
+    >(`/employees/${employeeId}/employment-contract`, data);
     return response.data.data!;
   },
 

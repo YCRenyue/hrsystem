@@ -98,7 +98,6 @@ router.post('/', asyncHandler(leaveController.createLeave));
  */
 router.put(
   '/:id',
-  requireRole('admin', 'hr_admin', 'department_manager'),
   asyncHandler(leaveController.updateLeave)
 );
 

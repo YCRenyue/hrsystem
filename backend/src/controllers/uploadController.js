@@ -2,15 +2,17 @@
  * Upload Controller
  * Handles file upload to OSS and signed URL generation
  */
-const { Employee, OnboardingProcess } = require('../models');
+const {
+  Employee, OnboardingProcess, BusinessTrip, Reimbursement
+} = require('../models');
 const { ossService } = require('../services/OSSService');
-const { NotFoundError, ValidationError } = require('../middleware/errorHandler');
+const { NotFoundError, ValidationError, ForbiddenError } = require('../middleware/errorHandler');
 const logger = require('../utils/logger');
 
 // Valid file types for upload
 const VALID_FILE_TYPES = [
   'id_card_front', 'id_card_back', 'bank_card', 'diploma',
-  'policy_ack', 'training_pledge'
+  'policy_ack', 'training_pledge', 'employment_contract'
 ];
 
 // Map file type to database column
@@ -20,7 +22,88 @@ const FILE_TYPE_TO_COLUMN = {
   bank_card: 'bank_card_oss_key',
   diploma: 'diploma_oss_key',
   policy_ack: 'policy_ack_file_key',
-  training_pledge: 'training_pledge_file_key'
+  training_pledge: 'training_pledge_file_key',
+  employment_contract: 'employment_contract_file_key'
+};
+
+// Roles allowed to access any employee's personal documents (ID card, bank
+// card, diploma, signed policy/pledge/contract files)
+const EMPLOYEE_FILE_ROLES = ['admin', 'hr_admin'];
+// Roles allowed to view any business trip / reimbursement attachment
+const VIEW_ALL_ROLES = ['admin', 'hr_admin', 'department_manager'];
+
+/**
+ * Verify the caller may act on the given employee's files: must be the
+ * employee themselves, or HR/admin. Used as defense-in-depth on top of route
+ * auth so one authenticated user cannot read/overwrite/delete another
+ * employee's documents by passing an arbitrary :employeeId.
+ * @param {Object} req Express request (req.user from JWT)
+ * @param {string} employeeId
+ * @throws {ForbiddenError} if the caller is not permitted
+ */
+const assertEmployeeFileAccess = (req, employeeId) => {
+  const isOwner = req.user?.employee_id === employeeId;
+  if (!isOwner && !EMPLOYEE_FILE_ROLES.includes(req.user?.role)) {
+    throw new ForbiddenError('无权访问该员工的文件');
+  }
+};
+
+/**
+ * Parse an OSS object key to determine which resource it belongs to, so
+ * GET /api/upload/signed-url can be checked for ownership instead of handing
+ * out a signed URL for any key a caller happens to pass in.
+ * @param {string} key OSS object key
+ * @returns {{ type: 'employee'|'businesstrip'|'reimbursement'|'unknown', id: string|null }}
+ */
+const resolveOssKeyOwner = (key) => {
+  let match = key.match(/^(?:idcard|misc)\/([^/]+)\//);
+  if (match) return { type: 'employee', id: match[1] };
+
+  match = key.match(/^(?:bankcard|diploma)\/([^_/]+)_/);
+  if (match) return { type: 'employee', id: match[1] };
+
+  match = key.match(/^businesstrip\/([^/]+)\//);
+  if (match) return { type: 'businesstrip', id: match[1] };
+
+  match = key.match(/^reimbursement\/([^/]+)\//);
+  if (match) return { type: 'reimbursement', id: match[1] };
+
+  return { type: 'unknown', id: null };
+};
+
+/**
+ * Verify the caller may obtain a signed URL for the given OSS object key.
+ * Fails closed: unrecognized key formats are only accessible to HR/admin.
+ * @param {Object} req Express request
+ * @param {string} key OSS object key
+ * @throws {ForbiddenError} if the caller is not permitted
+ */
+const assertSignedUrlAccess = async (req, key) => {
+  const { type, id } = resolveOssKeyOwner(key);
+  const role = req.user?.role;
+
+  if (type === 'employee') {
+    if (req.user?.employee_id === id || EMPLOYEE_FILE_ROLES.includes(role)) return;
+    throw new ForbiddenError('无权访问该文件');
+  }
+
+  if (type === 'businesstrip') {
+    if (VIEW_ALL_ROLES.includes(role)) return;
+    const trip = await BusinessTrip.findByPk(id);
+    if (trip && req.user?.employee_id && trip.employee_id === req.user.employee_id) return;
+    throw new ForbiddenError('无权访问该文件');
+  }
+
+  if (type === 'reimbursement') {
+    if (VIEW_ALL_ROLES.includes(role)) return;
+    const reimbursement = await Reimbursement.findByPk(id);
+    if (reimbursement && req.user?.employee_id && reimbursement.employee_id === req.user.employee_id) return;
+    throw new ForbiddenError('无权访问该文件');
+  }
+
+  // Unknown key format: fail closed, only HR/admin may access
+  if (EMPLOYEE_FILE_ROLES.includes(role)) return;
+  throw new ForbiddenError('无权访问该文件');
 };
 
 /**
@@ -30,6 +113,8 @@ const FILE_TYPE_TO_COLUMN = {
 const uploadEmployeeFile = async (req, res) => {
   const { employeeId } = req.params;
   const { fileType } = req.body;
+
+  assertEmployeeFileAccess(req, employeeId);
 
   if (!VALID_FILE_TYPES.includes(fileType)) {
     throw new ValidationError(`Invalid file type. Must be one of: ${VALID_FILE_TYPES.join(', ')}`);
@@ -172,6 +257,8 @@ const uploadOnboardingFile = async (req, res) => {
 const getEmployeeFileUrls = async (req, res) => {
   const { employeeId } = req.params;
 
+  assertEmployeeFileAccess(req, employeeId);
+
   const employee = await Employee.findByPk(employeeId);
   if (!employee) {
     throw new NotFoundError('Employee', employeeId);
@@ -185,7 +272,10 @@ const getEmployeeFileUrls = async (req, res) => {
         id_card_front_url: null,
         id_card_back_url: null,
         bank_card_url: null,
-        diploma_url: null
+        diploma_url: null,
+        policy_ack_url: null,
+        training_pledge_url: null,
+        employment_contract_url: null
       }
     });
   }
@@ -217,6 +307,8 @@ const getEmployeeFileUrls = async (req, res) => {
  */
 const deleteEmployeeFile = async (req, res) => {
   const { employeeId, fileType } = req.params;
+
+  assertEmployeeFileAccess(req, employeeId);
 
   if (!VALID_FILE_TYPES.includes(fileType)) {
     throw new ValidationError(`Invalid file type. Must be one of: ${VALID_FILE_TYPES.join(', ')}`);
@@ -375,6 +467,9 @@ const uploadReimbursementInvoice = async (req, res) => {
 const getSignedUrlForKey = async (req, res) => {
   const { key } = req.query;
   if (!key) throw new ValidationError('缺少 key 参数');
+
+  await assertSignedUrlAccess(req, key);
+
   if (!ossService.isConfigured()) {
     return res.json({ success: true, data: { url: null } });
   }

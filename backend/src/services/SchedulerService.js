@@ -11,8 +11,16 @@
 
 const cron = require('node-cron');
 const { Op } = require('sequelize');
-const { Employee, OnboardingProcess, BusinessTrip } = require('../models');
+const {
+  Employee,
+  OnboardingProcess,
+  BusinessTrip,
+  Reimbursement,
+  CanteenMeal,
+  Attendance
+} = require('../models');
 const notificationService = require('./NotificationService');
+const annualLeaveService = require('./AnnualLeaveService');
 const logger = require('../utils/logger');
 
 class SchedulerService {
@@ -74,6 +82,12 @@ class SchedulerService {
       })
     );
 
+    this.jobs.push(
+      cron.schedule('0 1 * * *', () => {
+        this.runAnnualLeaveAccrual();
+      })
+    );
+
     // Hourly task - Advance business trip statuses (approved -> in_progress -> completed)
     this.jobs.push(
       cron.schedule('0 * * * *', () => {
@@ -108,64 +122,71 @@ class SchedulerService {
     logger.info('Running daily onboarding task...');
 
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = new Date().toISOString().slice(0, 10);
 
       // Find employees whose entry date is today and haven't completed onboarding
       const employees = await Employee.findAll({
         where: {
-          entry_date: {
-            [Op.eq]: today
-          },
+          entry_date: today,
           status: 'pending',
           data_complete: false
-        },
-        include: [
-          {
-            model: OnboardingProcess,
-            as: 'onboardingProcess',
-            required: false
-          }
-        ]
+        }
       });
 
       logger.info(`Found ${employees.length} employees starting today`);
 
       for (const employee of employees) {
         try {
-          // Generate form token if not exists
-          // eslint-disable-next-line prefer-destructuring
-          let onboardingProcess = employee.onboardingProcess;
+          // Serial execution limits pressure on notification providers.
+          // eslint-disable-next-line no-await-in-loop
+          let onboardingProcess = await OnboardingProcess.findOne({
+            where: {
+              employee_id: employee.employee_id,
+              status: { [Op.ne]: 'completed' }
+            },
+            order: [['created_at', 'DESC']]
+          });
           if (!onboardingProcess) {
             /* eslint-disable no-await-in-loop */
-            // 串行处理：依赖外部通知服务，避免并发风险
             onboardingProcess = await OnboardingProcess.create({
               employee_id: employee.employee_id,
-              process_status: 'pending',
-              form_token: this._generateFormToken()
+              status: 'pending'
             });
           }
 
-          // Generate form URL
           const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-          const formUrl = `${baseUrl}/onboarding/${onboardingProcess.form_token}`;
+          if (!onboardingProcess.form_token || onboardingProcess.isTokenExpired()) {
+            onboardingProcess.status = 'pending';
+            onboardingProcess.generateFormToken();
+          }
+          const formUrl = onboardingProcess.generateFormLink(baseUrl);
+          await onboardingProcess.save();
 
-          // Send notification
           const result = await notificationService.sendOnboardingNotification(
-            employee,
+            {
+              name: employee.getName(),
+              email: employee.email,
+              dingtalk_user_id: employee.dingtalk_user_id
+            },
             formUrl
           );
 
-          // Update process status
-          await onboardingProcess.update({
-            process_status: 'sent',
-            sent_time: new Date(),
-            notification_method: result.channel
-          });
+          await onboardingProcess.markAsSent(
+            result.channel || 'manual',
+            result.success,
+            result.error
+          );
 
-          logger.info(`Onboarding notification sent to ${employee.name} via ${result.channel}`);
+          logger.info('Onboarding notification processed', {
+            employeeId: employee.employee_id,
+            success: result.success,
+            channel: result.channel
+          });
         } catch (error) {
-          logger.error(`Failed to send onboarding notification to ${employee.name}:`, error.message);
+          logger.error('Failed to send onboarding notification', {
+            employeeId: employee.employee_id,
+            error: error.message
+          });
         }
       }
 
@@ -322,6 +343,8 @@ class SchedulerService {
       const lastMonth = new Date();
       lastMonth.setMonth(lastMonth.getMonth() - 1);
       const monthName = lastMonth.toLocaleString('zh-CN', { year: 'numeric', month: 'long' });
+      const periodStart = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
+      const periodEnd = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 1);
 
       const employees = await Employee.findAll({
         where: {
@@ -333,14 +356,31 @@ class SchedulerService {
 
       for (const employee of employees) {
         try {
-          // TODO: Calculate actual statistics from database
-          // For now, sending placeholder data
+          const dateRange = { [Op.gte]: periodStart, [Op.lt]: periodEnd };
+          const mealDateRange = {
+            [Op.gte]: periodStart.toISOString().slice(0, 10),
+            [Op.lt]: periodEnd.toISOString().slice(0, 10)
+          };
+          const [travelAllowance, canteenExpense, attendance, overtime] = await Promise.all([
+            Reimbursement.sum('total_amount', {
+              where: { employee_id: employee.employee_id, status: 'paid', paid_at: dateRange }
+            }),
+            CanteenMeal.sum('subsidy_amount', {
+              where: { employee_id: employee.employee_id, meal_date: mealDateRange }
+            }),
+            Attendance.count({
+              where: { employee_id: employee.employee_id, date: mealDateRange }
+            }),
+            Attendance.sum('overtime_hours', {
+              where: { employee_id: employee.employee_id, date: mealDateRange }
+            })
+          ]);
           const statistics = {
             month: monthName,
-            travelAllowance: 0, // TODO: Calculate from travel records
-            canteenExpense: 0, // TODO: Calculate from canteen records
-            attendance: 0, // TODO: Calculate from attendance records
-            overtime: 0 // TODO: Calculate from overtime records
+            travelAllowance: Number(travelAllowance || 0),
+            canteenExpense: Number(canteenExpense || 0),
+            attendance: Number(attendance || 0),
+            overtime: Number(overtime || 0)
           };
 
           await notificationService.sendMonthlyStatistics(employee, statistics);
@@ -353,6 +393,24 @@ class SchedulerService {
       logger.info('Monthly statistics completed');
     } catch (error) {
       logger.error('Error in monthly statistics:', error.message);
+    }
+  }
+
+  /**
+   * Ensure active employees have the current year's calculated annual leave balance.
+   */
+  async runAnnualLeaveAccrual() {
+    const year = new Date().getFullYear();
+    try {
+      const employees = await Employee.findAll({ where: { status: 'active' } });
+      for (const employee of employees) {
+        // Serial writes keep the unique employee/year constraint deterministic.
+        // eslint-disable-next-line no-await-in-loop
+        await annualLeaveService.ensureBalance(employee, year);
+      }
+      logger.info(`Annual leave balances ensured for ${employees.length} employees`);
+    } catch (error) {
+      logger.error('Error in annual leave accrual task:', error.message);
     }
   }
 
@@ -398,17 +456,6 @@ class SchedulerService {
   }
 
   /**
-   * Generate a unique form token
-   *
-   * @private
-   * @returns {string} Form token
-   */
-  _generateFormToken() {
-    const crypto = require('crypto');
-    return crypto.randomBytes(32).toString('hex');
-  }
-
-  /**
    * Manually trigger a specific task (for testing)
    *
    * @param {string} taskName - Name of the task to run
@@ -421,6 +468,7 @@ class SchedulerService {
       training: () => this.runTrainingReminders(),
       'contract-expiry': () => this.runContractExpiryReminders(),
       statistics: () => this.runMonthlyStatistics(),
+      'annual-leave-accrual': () => this.runAnnualLeaveAccrual(),
       'business-trip-lifecycle': () => this.runBusinessTripLifecycle()
     };
 

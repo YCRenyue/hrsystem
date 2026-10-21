@@ -33,7 +33,7 @@ class OnboardingProcess extends Model {
       this.generateFormToken();
     }
 
-    const formUrl = `${baseUrl}/onboarding/form/${this.form_token}`;
+    const formUrl = `${baseUrl}/onboarding/${this.form_token}`;
     this.form_link = formUrl;
     return formUrl;
   }
@@ -72,12 +72,13 @@ class OnboardingProcess extends Model {
 
   /**
    * Mark process as completed with submitted data
-   * @param {Object} submittedData - Data submitted by employee
    */
-  async markAsCompleted(submittedData) {
+  async markAsCompleted() {
     this.status = 'completed';
     this.completed_at = new Date();
-    this.submitted_data = submittedData;
+    // Sensitive onboarding fields already live in encrypted Employee columns.
+    // Do not keep a second plaintext copy in this JSON field.
+    this.submitted_data = null;
     await this.save();
   }
 

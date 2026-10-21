@@ -1,4 +1,5 @@
-FROM node:18-alpine
+ARG DOCKER_REGISTRY=docker.io
+FROM ${DOCKER_REGISTRY}/library/node:18-alpine
 
 WORKDIR /app
 

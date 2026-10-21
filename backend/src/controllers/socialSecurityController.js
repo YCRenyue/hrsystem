@@ -6,6 +6,7 @@ const { Op } = require('sequelize');
 const SocialSecurity = require('../models/SocialSecurity');
 const Employee = require('../models/Employee');
 const ExcelService = require('../services/ExcelService');
+const calculationService = require('../services/SocialSecurityCalculationService');
 const {
   ValidationError,
   NotFoundError
@@ -156,7 +157,15 @@ const createSocialSecurity = async (req, res) => {
     );
   }
 
-  const record = await SocialSecurity.create(req.body);
+  const data = { ...req.body };
+  if (!data.manual_contributions) {
+    Object.assign(data, calculationService.calculate(
+      data.social_security_base,
+      data.housing_fund_base
+    ));
+  }
+  delete data.manual_contributions;
+  const record = await SocialSecurity.create(data);
 
   res.status(201).json({
     success: true,
@@ -175,7 +184,16 @@ const updateSocialSecurity = async (req, res) => {
     throw new NotFoundError('Social security record', id);
   }
 
-  await record.update(req.body);
+  const data = { ...req.body };
+  if (!data.manual_contributions
+      && (data.social_security_base !== undefined || data.housing_fund_base !== undefined)) {
+    Object.assign(data, calculationService.calculate(
+      data.social_security_base ?? record.social_security_base,
+      data.housing_fund_base ?? record.housing_fund_base
+    ));
+  }
+  delete data.manual_contributions;
+  await record.update(data);
 
   res.json({
     success: true,

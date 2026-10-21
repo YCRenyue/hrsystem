@@ -44,10 +44,10 @@ router.post(
   asyncHandler(businessTripController.submitBusinessTrip)
 );
 
-// 审批（当前阶段：仅 admin；后续会扩展为多级审批 员工-经理-admin）
+// 审批：部门负责人、HR 或管理员
 router.post(
   '/:id/approve',
-  requireRole('admin'),
+  requireRole('admin', 'hr_admin', 'department_manager'),
   asyncHandler(businessTripController.approveBusinessTrip)
 );
 

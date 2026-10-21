@@ -7,12 +7,29 @@
 
 require('dotenv').config();
 
-const { sequelize, User } = require('../models');
+const { sequelize, Department, User } = require('../models');
 const { ROLE_PERMISSIONS_MAP } = require('../constants/permissions');
 const { encryptionService } = require('../utils/encryption');
 
 const DEFAULT_ADMIN_USERNAME = 'admin';
 const DEFAULT_ADMIN_PASSWORD = '123456';
+const DEPARTMENTS = [
+  ['DEPT_01', '办公室'],
+  ['DEPT_02', '财务部'],
+  ['DEPT_03', '采购部'],
+  ['DEPT_04', '仓储部'],
+  ['DEPT_05', '技术部'],
+  ['DEPT_06', '妈妈班'],
+  ['DEPT_07', '人事'],
+  ['DEPT_08', '设备部'],
+  ['DEPT_09', '生产部'],
+  ['DEPT_10', '市场部'],
+  ['DEPT_11', '物流部'],
+  ['DEPT_12', '销售部'],
+  ['DEPT_13', '行政部'],
+  ['DEPT_14', '质量部'],
+  ['DEPT_15', '综合部']
+];
 
 function envValue(name, fallback) {
   const value = process.env[name];
@@ -27,6 +44,56 @@ function envFlag(name, fallback = false) {
   return value.toLowerCase() === 'true';
 }
 
+/**
+ * Ensure the departments represented in the current employee roster exist.
+ *
+ * @returns {Promise<void>}
+ */
+async function seedDepartments() {
+  for (const [code, name] of DEPARTMENTS) {
+    const [department, created] = await Department.findOrCreate({
+      where: { code },
+      defaults: {
+        name,
+        level: 1,
+        path: name,
+        status: 'active',
+        sort_order: Number(code.slice(-2)),
+        created_by: 'system'
+      }
+    });
+
+    if (!created && department.name !== name) {
+      await department.update({ name, path: name, status: 'active' });
+    }
+  }
+
+  console.log(`Departments seeded: ${DEPARTMENTS.length}`);
+}
+
+/**
+ * Re-read the admin row and check the stored hash matches the seed password,
+ * so a broken reset fails the deploy instead of surfacing as a login 401.
+ *
+ * @param {string} username - Admin username
+ * @param {string} password - Expected plain password
+ * @returns {Promise<void>}
+ * @throws {Error} If the stored hash does not match
+ */
+async function verifyAdminPassword(username, password) {
+  const admin = await User.scope('withPassword').findOne({ where: { username } });
+  const matches = Boolean(admin)
+    && await encryptionService.verifyPassword(password, admin.password_hash);
+
+  console.log(`Admin password check: source=${process.env.SEED_ADMIN_PASSWORD ? 'env' : 'default'}`
+    + ` length=${password.length} status=${admin && admin.status}`
+    + ` login_attempts=${admin && admin.login_attempts} matches=${matches}`);
+
+  if (!matches) {
+    throw new Error(`Stored password hash for ${username} does not match the seed password`);
+  }
+}
+
 async function seed() {
   const username = envValue('SEED_ADMIN_USERNAME', DEFAULT_ADMIN_USERNAME);
   const password = envValue('SEED_ADMIN_PASSWORD', DEFAULT_ADMIN_PASSWORD);
@@ -38,6 +105,7 @@ async function seed() {
   try {
     console.log('Starting database seed...');
     await sequelize.authenticate();
+    await seedDepartments();
 
     const adminDefaults = {
       display_name: displayName,
@@ -61,6 +129,9 @@ async function seed() {
         updates.password_hash = await encryptionService.hashPassword(password);
         updates.must_change_password = true;
         updates.password_changed_at = new Date();
+        // Clear stale failed attempts so one more typo does not re-lock immediately
+        updates.login_attempts = 0;
+        updates.locked_until = null;
       }
 
       await existingAdmin.update(updates);
@@ -80,6 +151,7 @@ async function seed() {
       }
     }
 
+    await verifyAdminPassword(username, password);
     console.log('Database seed completed successfully.');
   } catch (error) {
     console.error('Database seed failed:', error);

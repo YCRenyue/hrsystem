@@ -15,6 +15,38 @@ const normalizeBooleanValue = (value) => {
 const { encryptionService } = require('../utils/encryption');
 
 /**
+ * Decrypt (or mask) the `employee_id_card_encrypted` field on a related
+ * document record (TrainingPledge / EmploymentContract) before it is sent to
+ * the client, mirroring the permission gating already applied to the main
+ * employee record's own ID card field.
+ * @param {Model} record - TrainingPledge or EmploymentContract instance
+ * @param {boolean} includeSensitive - Whether the caller may see the full number
+ * @returns {Object} Plain object with `employee_id_card` set, encrypted blob removed
+ */
+const decryptPartyIdCard = (record, includeSensitive) => {
+  const plain = record.get ? record.get({ plain: true }) : { ...record };
+  const encrypted = plain.employee_id_card_encrypted;
+  delete plain.employee_id_card_encrypted;
+
+  if (!encrypted) {
+    plain.employee_id_card = null;
+    return plain;
+  }
+
+  try {
+    const decrypted = encryptionService.decrypt(
+      Buffer.isBuffer(encrypted) ? encrypted.toString('utf8') : encrypted
+    );
+    plain.employee_id_card = includeSensitive ? decrypted : encryptionService.maskIdCard(decrypted);
+  } catch (error) {
+    console.error('Error decrypting party ID card:', error);
+    plain.employee_id_card = null;
+  }
+
+  return plain;
+};
+
+/**
  * Employee Model
  * Stores employee information with encrypted sensitive fields
  */
@@ -279,6 +311,11 @@ class Employee extends Model {
         ? new Date(this.training_pledge_signed_at).toISOString().replace('T', ' ').split('.')[0]
         : null,
       has_training_pledge_file: !!this.training_pledge_file_key,
+      employment_contract_status: normalizeBooleanValue(this.employment_contract_status),
+      employment_contract_signed_at: this.employment_contract_signed_at
+        ? new Date(this.employment_contract_signed_at).toISOString().replace('T', ' ').split('.')[0]
+        : null,
+      has_employment_contract_file: !!this.employment_contract_file_key,
       created_at: this.created_at ? new Date(this.created_at).toISOString().replace('T', ' ').split('.')[0] : null,
       updated_at: this.updated_at ? new Date(this.updated_at).toISOString().replace('T', ' ').split('.')[0] : null
     };
@@ -288,11 +325,17 @@ class Employee extends Model {
       data.department = this.department.get ? this.department.get({ plain: true }) : this.department;
     }
 
-    // Include trainingPledge if loaded
+    // Include trainingPledge if loaded. The employee ID card is stored encrypted
+    // (employee_id_card_encrypted) and is only decrypted here when the caller is
+    // permitted to view sensitive data; otherwise a masked value is returned so
+    // it is never leaked to unauthorized viewers regardless of `includeSensitive`.
     if (this.trainingPledge) {
-      data.trainingPledge = this.trainingPledge.get
-        ? this.trainingPledge.get({ plain: true })
-        : this.trainingPledge;
+      data.trainingPledge = decryptPartyIdCard(this.trainingPledge, includeSensitive);
+    }
+
+    // Include employmentContract if loaded, same ID card handling as above.
+    if (this.employmentContract) {
+      data.employmentContract = decryptPartyIdCard(this.employmentContract, includeSensitive);
     }
 
     if (includeSensitive) {
@@ -474,6 +517,22 @@ Employee.init(
       type: DataTypes.STRING(500),
       allowNull: true,
       comment: '培训承诺函OSS对象键'
+    },
+    employment_contract_status: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      comment: '是否已签署劳动合同'
+    },
+    employment_contract_signed_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: '劳动合同签署时间'
+    },
+    employment_contract_file_key: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+      comment: '劳动合同OSS对象键'
     },
     // Contract info
     contract_expiry_date: {

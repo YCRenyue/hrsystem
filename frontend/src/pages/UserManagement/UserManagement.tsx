@@ -32,6 +32,7 @@ const roleLabels: Record<string, { label: string; color: string }> = {
   admin: { label: '超级管理员', color: 'red' },
   hr_admin: { label: 'HR管理员', color: 'orange' },
   department_manager: { label: '部门经理', color: 'blue' },
+  finance: { label: '财务', color: 'gold' },
   employee: { label: '普通员工', color: 'default' },
 };
 
@@ -307,6 +308,7 @@ const UserManagement: React.FC = () => {
             <Option value="admin">超级管理员</Option>
             <Option value="hr_admin">HR管理员</Option>
             <Option value="department_manager">部门经理</Option>
+            <Option value="finance">财务</Option>
             <Option value="employee">普通员工</Option>
           </Select>
           <Select
@@ -365,6 +367,7 @@ const UserManagement: React.FC = () => {
               <Option value="admin">超级管理员</Option>
               <Option value="hr_admin">HR管理员</Option>
               <Option value="department_manager">部门经理</Option>
+              <Option value="finance">财务</Option>
               <Option value="employee">普通员工</Option>
             </Select>
           </Form.Item>

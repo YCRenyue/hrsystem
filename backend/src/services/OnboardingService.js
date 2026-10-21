@@ -133,7 +133,7 @@ class OnboardingService {
 
       await this._updateEmployeeData(employee, formData);
 
-      await process.markAsCompleted(formData);
+      await process.markAsCompleted();
 
       logger.info('Onboarding form submitted', {
         processId: process.process_id,

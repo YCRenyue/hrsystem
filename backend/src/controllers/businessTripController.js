@@ -18,6 +18,7 @@ const {
   User
 } = require('../models');
 const businessTripService = require('../services/BusinessTripService');
+const dataScopeService = require('../services/DataScopeService');
 const inAppNotification = require('../services/InAppNotificationService');
 const { findEmployeeIdsByName } = require('../utils/employeeSearch');
 const {
@@ -30,8 +31,20 @@ const {
 const APPROVER_ROLES = ['admin', 'hr_admin', 'department_manager'];
 // 仅 admin 可物理删除记录（保留审计边界）
 const DELETABLE_ROLES = ['admin'];
-// 可见所有员工出差记录的角色集合（HR/部门经理保留查询能力）
-const VIEW_ALL_ROLES = ['admin', 'hr_admin', 'department_manager'];
+const MANAGEMENT_ROLES = ['admin', 'hr_admin', 'department_manager'];
+
+const getInitialApprovalStage = async (departmentId) => {
+  if (!departmentId) return 'hr';
+  const count = await User.count({
+    where: {
+      role: 'department_manager',
+      department_id: departmentId,
+      status: 'active',
+      is_active: true
+    }
+  });
+  return count > 0 ? 'department' : 'hr';
+};
 
 /**
  * 找到员工对应的 user 账号（用于发通知给员工本人）
@@ -105,7 +118,7 @@ const notifyApplicantOnApproval = async (trip, decision, approverUserId, notes) 
  */
 const notifyOnCancel = async (trip, cancellerRole, cancellerUserId, employee) => {
   try {
-    if (VIEW_ALL_ROLES.includes(cancellerRole)) {
+    if (MANAGEMENT_ROLES.includes(cancellerRole)) {
       const recipientUserId = await findUserIdForEmployee(trip.employee_id);
       if (recipientUserId) {
         await inAppNotification.send({
@@ -163,11 +176,9 @@ const serializeTrip = (record) => {
  * @param {BusinessTrip} record
  * @returns {boolean}
  */
-const canAccessTrip = (user, record) => {
-  if (!user) return false;
-  if (VIEW_ALL_ROLES.includes(user.role)) return true;
-  return user.employee_id && record.employee_id === user.employee_id;
-};
+const canAccessTrip = (user, record) => (
+  dataScopeService.canAccessEmployee(user, record.employee_id)
+);
 
 /**
  * GET /api/business-trips
@@ -195,14 +206,6 @@ const getBusinessTrips = async (req, res) => {
     where.start_datetime = {};
     if (startDate) where.start_datetime[Op.gte] = new Date(startDate);
     if (endDate) where.start_datetime[Op.lte] = new Date(`${endDate}T23:59:59`);
-  }
-
-  // 普通员工只能看自己；admin/hr_admin/department_manager 可查全部
-  if (!VIEW_ALL_ROLES.includes(req.user.role)) {
-    if (!req.user.employee_id) {
-      return res.json({ success: true, data: [], pagination: { total: 0, page: 1, size: limit } });
-    }
-    where.employee_id = req.user.employee_id;
   }
 
   // 按姓名搜索（密文存储 → 内存解密匹配）
@@ -253,6 +256,16 @@ const getBusinessTrips = async (req, res) => {
     include[0].where = { employee_number: { [Op.like]: `%${keyword}%` } };
   }
 
+  if (!dataScopeService.applyResourceScope(where, include[0], req.user)) {
+    return res.json({
+      success: true,
+      data: [],
+      pagination: {
+        total: 0, page: parseInt(page, 10), size: limit, totalPages: 0
+      }
+    });
+  }
+
   const { count, rows } = await BusinessTrip.findAndCountAll({
     where,
     include,
@@ -291,7 +304,9 @@ const getBusinessTripById = async (req, res) => {
   });
 
   if (!record) throw new NotFoundError('出差申请', req.params.id);
-  if (!canAccessTrip(req.user, record)) throw new ForbiddenError('无权查看该出差申请');
+  if (!(await canAccessTrip(req.user, record))) {
+    throw new ForbiddenError('无权查看该出差申请');
+  }
 
   return res.json({ success: true, data: serializeTrip(record) });
 };
@@ -310,6 +325,9 @@ const checkConflicts = async (req, res) => {
 
   if (!employeeId || !startDatetime || !endDatetime) {
     throw new ValidationError('员工ID、出差开始与结束时间均为必填');
+  }
+  if (!(await dataScopeService.canAccessEmployee(req.user, employeeId))) {
+    throw new ForbiddenError('无权检查该员工的行程冲突');
   }
 
   const conflicts = await businessTripService.detectConflicts(
@@ -359,7 +377,7 @@ const createBusinessTrip = async (req, res) => {
   } = req.body;
 
   // 决定本次申请所属员工：管理者可代替指定，普通员工只能给自己提交
-  const isManager = VIEW_ALL_ROLES.includes(req.user.role);
+  const isManager = req.user.data_scope !== 'self' && req.user.role !== 'employee';
   let employeeId = bodyEmployeeId;
   if (!isManager) {
     if (!req.user.employee_id) {
@@ -376,6 +394,9 @@ const createBusinessTrip = async (req, res) => {
 
   const employee = await Employee.findByPk(employeeId);
   if (!employee) throw new NotFoundError('员工', employeeId);
+  if (!(await dataScopeService.canAccessEmployee(req.user, employeeId))) {
+    throw new ForbiddenError('无权为该员工创建出差申请');
+  }
 
   // 计算时长 + 冲突检查
   const durations = businessTripService.calculateDurations(startDatetime, endDatetime);
@@ -402,6 +423,7 @@ const createBusinessTrip = async (req, res) => {
     span_days: durations.span_days,
     attachments: attachments ? JSON.stringify(attachments) : null,
     status: submit ? 'pending' : 'draft',
+    approval_stage: await getInitialApprovalStage(employee.department_id),
     submitted_by: req.user.user_id,
     submitted_at: submit ? new Date() : null
   });
@@ -421,7 +443,7 @@ const updateBusinessTrip = async (req, res) => {
   const trip = await BusinessTrip.findByPk(req.params.id);
   if (!trip) throw new NotFoundError('出差申请', req.params.id);
 
-  if (!canAccessTrip(req.user, trip)) {
+  if (!(await canAccessTrip(req.user, trip))) {
     throw new ForbiddenError('无权修改该出差申请');
   }
 
@@ -480,7 +502,7 @@ const updateBusinessTrip = async (req, res) => {
 const submitBusinessTrip = async (req, res) => {
   const trip = await BusinessTrip.findByPk(req.params.id);
   if (!trip) throw new NotFoundError('出差申请', req.params.id);
-  if (!canAccessTrip(req.user, trip)) throw new ForbiddenError('无权提交该出差申请');
+  if (!(await canAccessTrip(req.user, trip))) throw new ForbiddenError('无权提交该出差申请');
 
   if (!['draft', 'rejected'].includes(trip.status)) {
     throw new ValidationError(`当前状态(${trip.status})不可提交`);
@@ -504,6 +526,11 @@ const submitBusinessTrip = async (req, res) => {
   await trip.save();
 
   const employee = await Employee.findByPk(trip.employee_id);
+  trip.approval_stage = await getInitialApprovalStage(employee?.department_id);
+  trip.manager_approver_id = null;
+  trip.manager_approved_at = null;
+  trip.manager_approval_notes = null;
+  await trip.save();
   await notifyApproversOnSubmit(trip, employee, req.user.user_id);
 
   return res.json({ success: true, data: serializeTrip(trip) });
@@ -531,6 +558,40 @@ const approveBusinessTrip = async (req, res) => {
   // 禁止审批自己提交的出差申请（admin 除外，便于单人环境调试）
   if (req.user.role !== 'admin' && trip.employee_id === req.user.employee_id) {
     throw new ForbiddenError('不能审批自己的出差申请');
+  }
+
+  const isDepartmentStage = trip.approval_stage === 'department';
+  const allowedRoles = isDepartmentStage
+    ? ['admin', 'department_manager']
+    : ['admin', 'hr_admin'];
+  if (!allowedRoles.includes(req.user.role)) {
+    throw new ForbiddenError(isDepartmentStage ? '当前需部门负责人审批' : '当前需HR审批');
+  }
+  if (!(await dataScopeService.canAccessEmployee(req.user, trip.employee_id))) {
+    throw new ForbiddenError('无权审批该员工的申请');
+  }
+
+  if (isDepartmentStage && decision === 'approved') {
+    trip.manager_approver_id = req.user.user_id;
+    trip.manager_approved_at = new Date();
+    trip.manager_approval_notes = notes || null;
+    trip.approval_stage = 'hr';
+    await trip.save();
+    const hrApproverIds = await inAppNotification.getHrApproverUserIds();
+    await inAppNotification.sendToMany(hrApproverIds, {
+      senderUserId: req.user.user_id,
+      type: inAppNotification.NotificationTypes.BUSINESS_TRIP_SUBMITTED,
+      title: '出差申请待HR复核',
+      content: `出差单 ${trip.trip_number} 已通过部门审批，请完成HR复核。`,
+      relatedResource: 'business_trip',
+      relatedId: trip.trip_id,
+      linkUrl: `/business-trips/${trip.trip_id}`
+    });
+    return res.json({
+      success: true,
+      message: '部门审批已通过，等待HR复核',
+      data: serializeTrip(trip)
+    });
   }
 
   await businessTripService.runInTransaction(async (t) => {
@@ -567,7 +628,7 @@ const cancelBusinessTrip = async (req, res) => {
   const { reason } = req.body;
   const trip = await BusinessTrip.findByPk(req.params.id);
   if (!trip) throw new NotFoundError('出差申请', req.params.id);
-  if (!canAccessTrip(req.user, trip)) throw new ForbiddenError('无权撤销该出差申请');
+  if (!(await canAccessTrip(req.user, trip))) throw new ForbiddenError('无权撤销该出差申请');
 
   if (!['pending', 'approved', 'in_progress'].includes(trip.status)) {
     throw new ValidationError(`当前状态(${trip.status})不可撤销`);
@@ -677,7 +738,7 @@ const getWorkHoursStats = async (req, res) => {
 const addWatermarkPhoto = async (req, res) => {
   const trip = await BusinessTrip.findByPk(req.params.id);
   if (!trip) throw new NotFoundError('出差申请', req.params.id);
-  if (!canAccessTrip(req.user, trip)) throw new ForbiddenError('无权操作该出差申请');
+  if (!(await canAccessTrip(req.user, trip))) throw new ForbiddenError('无权操作该出差申请');
 
   if (!['approved', 'in_progress', 'completed'].includes(trip.status)) {
     throw new ValidationError(`仅已批准/进行中的出差可上传水印打卡，当前状态：${trip.status}`);
@@ -715,7 +776,7 @@ const addWatermarkPhoto = async (req, res) => {
 const getWatermarkAudit = async (req, res) => {
   const trip = await BusinessTrip.findByPk(req.params.id);
   if (!trip) throw new NotFoundError('出差申请', req.params.id);
-  if (!canAccessTrip(req.user, trip)) throw new ForbiddenError('无权查看该出差申请');
+  if (!(await canAccessTrip(req.user, trip))) throw new ForbiddenError('无权查看该出差申请');
 
   const audit = businessTripService.auditWatermarkPhotos(trip);
   const watermarks = businessTripService

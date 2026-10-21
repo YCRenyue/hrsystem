@@ -120,7 +120,9 @@ class EncryptionService {
     }
 
     if (idCard.length === 18) {
-      return idCard.replace(/^(\d{3})\d{11}(\d{4})$/, '$1***********$2');
+      // The 18th character is a checksum digit that may legitimately be 'X'
+      // (per GB 11643), so the last group must accept it - not just \d.
+      return idCard.replace(/^(\d{3})\d{11}([0-9Xx]{4})$/, '$1***********$2');
     }
 
     return idCard;

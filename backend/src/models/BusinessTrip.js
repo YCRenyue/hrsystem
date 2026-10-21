@@ -118,6 +118,25 @@ BusinessTrip.init(
       defaultValue: 'pending',
       comment: '申请状态'
     },
+    approval_stage: {
+      type: DataTypes.ENUM('department', 'hr'),
+      allowNull: false,
+      defaultValue: 'hr',
+      comment: '当前审批阶段'
+    },
+    manager_approver_id: {
+      type: DataTypes.UUID,
+      references: { model: 'users', key: 'user_id' },
+      comment: '部门审批人'
+    },
+    manager_approved_at: {
+      type: DataTypes.DATE,
+      comment: '部门审批时间'
+    },
+    manager_approval_notes: {
+      type: DataTypes.TEXT,
+      comment: '部门审批意见'
+    },
     submitted_by: {
       type: DataTypes.UUID,
       references: { model: 'users', key: 'user_id' },
