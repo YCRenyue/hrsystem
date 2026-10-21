@@ -5,6 +5,7 @@ const { OnboardingProcess, Employee } = require('../models');
 const { NotFoundError, ValidationError } = require('../middleware/errorHandler');
 const notificationService = require('../services/NotificationService');
 const logger = require('../utils/logger');
+const { summarizeNotificationError } = require('../utils/notificationError');
 
 /**
  * Get onboarding form by token
@@ -227,12 +228,12 @@ const sendOnboardingForm = async (req, res) => {
     success: result.success,
     message: result.success
       ? `入职表单已通过${result.channel}发送`
-      : `发送失败：${result.error}`,
+      : `发送失败：${summarizeNotificationError(result.error)}`,
     data: {
       success: result.success,
       message: result.success
         ? `入职表单已通过${result.channel}发送`
-        : `发送失败：${result.error}`,
+        : `发送失败：${summarizeNotificationError(result.error)}`,
       channel: result.channel,
       formUrl
     }
@@ -267,16 +268,14 @@ const testEmail = async (req, res) => {
       success: result.success,
       message: result.success
         ? `测试邮件已通过${result.channel}发送成功`
-        : `发送测试邮件失败：${result.error}`,
-      channel: result.channel,
-      error: result.error
+        : `发送测试邮件失败：${summarizeNotificationError(result.error)}`,
+      channel: result.channel
     });
   } catch (error) {
     logger.error('Test email error:', error);
     res.status(500).json({
       success: false,
-      message: `邮件发送错误：${error.message}`,
-      error: error.message
+      message: `邮件发送错误：${summarizeNotificationError(error)}`
     });
   }
 };
