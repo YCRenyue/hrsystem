@@ -794,6 +794,17 @@ const Employee = sequelize.define('Employee', {
 - **外键**：在 Sequelize 模型中定义，具有适当的级联规则
 - **索引**：对加密字段哈希和外键至关重要
 - **无软删除**：数据库配置中设置 `paranoid: false` - 记录被永久删除
+- **员工不删除**：员工只能通过“办理离职”（`POST /api/employees/:id/offboard`）标记为离职，没有删除接口
+
+### 时间约定（统一北京时间）
+
+- 后端进程 `TZ=Asia/Shanghai`（`backend/Dockerfile`），Sequelize `timezone: '+08:00'`，
+  MySQL `--default-time-zone=+08:00`，三处一致；库里 DATETIME 存的就是北京时间
+- 取日期用 `backend/src/utils/dateUtils.js` 的 `formatLocalDate` / `formatLocalDateTime`，
+  禁止用 `toISOString().slice(0, 10)`（那是 UTC 日期，北京时间 0 点至 8 点会差一天）
+- 只对 `YYYY-MM-DD` 字符串做按天推算时，可以显式使用 `T00:00:00Z` + `getUTC*`，不受时区影响
+- 所有 `cron.schedule` 都传 `{ timezone: 'Asia/Shanghai' }`
+- 后端测试通过 `backend/jest.setup.js`（globalSetup）在北京时间下运行
 
 ## 开发指南
 
