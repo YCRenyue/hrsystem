@@ -45,6 +45,10 @@ jobs:
         run: |
           cd backend
           npm test -- --runInBand
+        env:
+          NODE_ENV: test
+          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
+          JWT_SECRET: ci-test-jwt-secret-not-for-production
 
   frontend-build:
     name: Frontend Build
