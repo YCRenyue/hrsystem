@@ -62,7 +62,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '18.x'
+          node-version: '22.x'
       - name: Check backend
         env:
           NODE_ENV: test
