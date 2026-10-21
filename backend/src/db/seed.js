@@ -71,6 +71,29 @@ async function seedDepartments() {
   console.log(`Departments seeded: ${DEPARTMENTS.length}`);
 }
 
+/**
+ * Re-read the admin row and check the stored hash matches the seed password,
+ * so a broken reset fails the deploy instead of surfacing as a login 401.
+ *
+ * @param {string} username - Admin username
+ * @param {string} password - Expected plain password
+ * @returns {Promise<void>}
+ * @throws {Error} If the stored hash does not match
+ */
+async function verifyAdminPassword(username, password) {
+  const admin = await User.scope('withPassword').findOne({ where: { username } });
+  const matches = Boolean(admin)
+    && await encryptionService.verifyPassword(password, admin.password_hash);
+
+  console.log(`Admin password check: source=${process.env.SEED_ADMIN_PASSWORD ? 'env' : 'default'}`
+    + ` length=${password.length} status=${admin && admin.status}`
+    + ` login_attempts=${admin && admin.login_attempts} matches=${matches}`);
+
+  if (!matches) {
+    throw new Error(`Stored password hash for ${username} does not match the seed password`);
+  }
+}
+
 async function seed() {
   const username = envValue('SEED_ADMIN_USERNAME', DEFAULT_ADMIN_USERNAME);
   const password = envValue('SEED_ADMIN_PASSWORD', DEFAULT_ADMIN_PASSWORD);
@@ -128,6 +151,7 @@ async function seed() {
       }
     }
 
+    await verifyAdminPassword(username, password);
     console.log('Database seed completed successfully.');
   } catch (error) {
     console.error('Database seed failed:', error);
