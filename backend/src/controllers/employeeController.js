@@ -72,27 +72,23 @@ const parseBooleanQuery = (value) => {
 };
 
 /**
- * Get paginated list of employees
+ * 根据列表查询参数构建员工 where 条件（关键字含姓名搜索、筛选项、数据范围）
+ *
+ * @param {Object} query - req.query
+ * @param {Object} user - req.user
+ * @returns {Promise<Object>} Sequelize where 条件
  */
-const getEmployees = async (req, res) => {
+const buildEmployeeWhere = async (query, user) => {
   const {
-    page = 1,
-    size = 10,
     keyword,
     department_id,
     status,
     employment_type,
     policy_ack_status,
     training_pledge_status,
-    employment_contract_status,
-    sort_by = 'employee_number',
-    sort_order = 'ASC'
-  } = req.query;
+    employment_contract_status
+  } = query;
 
-  const offset = (parseInt(page, 10) - 1) * parseInt(size, 10);
-  const limit = parseInt(size, 10);
-
-  // Build where clause
   const where = {};
 
   if (keyword) {
@@ -133,7 +129,25 @@ const getEmployees = async (req, res) => {
   }
 
   // 行级数据范围过滤（覆盖前面按 query 传入的 department_id）
-  applyEmployeeScope(where, req.user);
+  applyEmployeeScope(where, user);
+  return where;
+};
+
+/**
+ * Get paginated list of employees
+ */
+const getEmployees = async (req, res) => {
+  const {
+    page = 1,
+    size = 10,
+    sort_by = 'employee_number',
+    sort_order = 'ASC'
+  } = req.query;
+
+  const offset = (parseInt(page, 10) - 1) * parseInt(size, 10);
+  const limit = parseInt(size, 10);
+
+  const where = await buildEmployeeWhere(req.query, req.user);
 
   // Build order clause
   let orderClause;

@@ -9,11 +9,66 @@ const {
 const permissionService = require('../services/PermissionService');
 const dataScopeService = require('../services/DataScopeService');
 const leaveWorkflowService = require('../services/LeaveWorkflowService');
-const inAppNotification = require('../services/InAppNotificationService');
-const { getInitialApprovalStage, findUserIdForEmployee } = require('../services/approvalService');
+const { getInitialApprovalStage } = require('../services/approvalService');
+const {
+  notifyApproversOnLeaveSubmit,
+  notifyHrForReview,
+  notifyApplicantOnLeaveDecision
+} = require('../services/leaveNotifier');
 const { ValidationError } = require('../middleware/errorHandler');
 
 const APPROVAL_ROLES = ['admin', 'hr_admin', 'department_manager'];
+
+/**
+ * 检查该员工在指定日期内是否已有进行中的请假或出差
+ *
+ * @param {string} employeeId - 员工 ID
+ * @param {string} startDate - 开始日期 YYYY-MM-DD
+ * @param {string} endDate - 结束日期 YYYY-MM-DD
+ * @returns {Promise<boolean>} 是否冲突
+ */
+const hasScheduleConflict = async (employeeId, startDate, endDate) => {
+  const [leaveConflict, tripConflict] = await Promise.all([
+    Leave.count({
+      where: {
+        employee_id: employeeId,
+        status: { [Op.in]: ['pending', 'approved'] },
+        start_date: { [Op.lte]: endDate },
+        end_date: { [Op.gte]: startDate }
+      }
+    }),
+    BusinessTrip.count({
+      where: {
+        employee_id: employeeId,
+        status: { [Op.in]: ['pending', 'approved', 'in_progress'] },
+        start_datetime: { [Op.lte]: new Date(`${endDate}T23:59:59`) },
+        end_datetime: { [Op.gte]: new Date(`${startDate}T00:00:00`) }
+      }
+    })
+  ]);
+  return leaveConflict > 0 || tripConflict > 0;
+};
+
+/**
+ * 检查当前用户能否审批该请假（角色、本人、状态、审批级别）
+ *
+ * @param {Object} user - 当前用户
+ * @param {Object} leave - 请假记录
+ * @returns {{status: number, message: string}|null} 不允许时返回错误，允许时返回 null
+ */
+const getApprovalDenial = (user, leave) => {
+  if (!APPROVAL_ROLES.includes(user.role)) return { status: 403, message: '无审批权限' };
+  if (user.role !== 'admin' && user.employee_id === leave.employee_id) {
+    return { status: 403, message: '不能审批自己的申请' };
+  }
+  if (leave.status !== 'pending') return { status: 400, message: '仅待审批申请可审批' };
+  const isDepartmentStage = leave.approval_stage === 'department';
+  const allowedRoles = isDepartmentStage ? ['admin', 'department_manager'] : ['admin', 'hr_admin'];
+  if (!allowedRoles.includes(user.role)) {
+    return { status: 403, message: isDepartmentStage ? '当前需部门负责人审批' : '当前需HR审批' };
+  }
+  return null;
+};
 
 /**
  * Create leave application
@@ -66,25 +121,7 @@ const createLeave = async (req, res) => {
       return res.status(400).json({ success: false, message: '请假日期或天数无效' });
     }
 
-    const [leaveConflict, tripConflict] = await Promise.all([
-      Leave.count({
-        where: {
-          employee_id: employeeId,
-          status: { [Op.in]: ['pending', 'approved'] },
-          start_date: { [Op.lte]: end_date },
-          end_date: { [Op.gte]: start_date }
-        }
-      }),
-      BusinessTrip.count({
-        where: {
-          employee_id: employeeId,
-          status: { [Op.in]: ['pending', 'approved', 'in_progress'] },
-          start_datetime: { [Op.lte]: new Date(`${end_date}T23:59:59`) },
-          end_datetime: { [Op.gte]: new Date(`${start_date}T00:00:00`) }
-        }
-      })
-    ]);
-    if (leaveConflict || tripConflict) {
+    if (await hasScheduleConflict(employeeId, start_date, end_date)) {
       return res.status(409).json({ success: false, message: '该时段已有请假或出差申请' });
     }
 
@@ -100,26 +137,7 @@ const createLeave = async (req, res) => {
       attachment_url
     });
 
-    // 推送通知给所有审批人（admin）
-    try {
-      const employeeName = employee && typeof employee.getName === 'function'
-        ? employee.getName()
-        : '员工';
-      const approverIds = await inAppNotification.getApproverUserIds({
-        departmentId: employee.department_id
-      });
-      await inAppNotification.sendToMany(approverIds, {
-        senderUserId: req.user.user_id,
-        type: inAppNotification.NotificationTypes.LEAVE_SUBMITTED,
-        title: '新请假申请待审批',
-        content: `${employeeName} 提交了请假申请\n类型：${leave_type}\n时间：${start_date} 至 ${end_date}\n天数：${days}天\n${reason ? `事由：${reason}` : ''}`,
-        relatedResource: 'leave',
-        relatedId: leave.leave_id,
-        linkUrl: `/leaves?status=pending&highlight=${leave.leave_id}`
-      });
-    } catch (notifyErr) {
-      console.error('[leave.create notify] failed:', notifyErr.message);
-    }
+    await notifyApproversOnLeaveSubmit(employee, leave, req.user.user_id);
 
     return res.status(201).json({
       success: true,
@@ -348,45 +366,18 @@ const updateLeave = async (req, res) => {
     }
 
     if (isApproval) {
-      if (!APPROVAL_ROLES.includes(req.user.role)) {
-        return res.status(403).json({
-          success: false,
-          message: '无审批权限'
-        });
+      const denial = getApprovalDenial(req.user, leave);
+      if (denial) {
+        return res.status(denial.status).json({ success: false, message: denial.message });
       }
-      if (req.user.role !== 'admin' && req.user.employee_id === leave.employee_id) {
-        return res.status(403).json({ success: false, message: '不能审批自己的申请' });
-      }
-      if (leave.status !== 'pending') {
-        return res.status(400).json({ success: false, message: '仅待审批申请可审批' });
-      }
-      const isDepartmentStage = leave.approval_stage === 'department';
-      const allowedRoles = isDepartmentStage
-        ? ['admin', 'department_manager']
-        : ['admin', 'hr_admin'];
-      if (!allowedRoles.includes(req.user.role)) {
-        return res.status(403).json({
-          success: false,
-          message: isDepartmentStage ? '当前需部门负责人审批' : '当前需HR审批'
-        });
-      }
-      if (isDepartmentStage && updateData.status === 'approved') {
+      if (leave.approval_stage === 'department' && updateData.status === 'approved') {
         await leave.update({
           approval_stage: 'hr',
           manager_approver_id: req.user.user_id,
           manager_approved_at: new Date(),
           manager_approval_notes: updateData.approval_notes || null
         });
-        const hrApproverIds = await inAppNotification.getHrApproverUserIds();
-        await inAppNotification.sendToMany(hrApproverIds, {
-          senderUserId: req.user.user_id,
-          type: inAppNotification.NotificationTypes.LEAVE_SUBMITTED,
-          title: '请假申请待HR复核',
-          content: `请假申请 ${leave.start_date} 至 ${leave.end_date} 已通过部门审批。`,
-          relatedResource: 'leave',
-          relatedId: leave.leave_id,
-          linkUrl: `/leaves?status=pending&highlight=${leave.leave_id}`
-        });
+        await notifyHrForReview(leave, req.user.user_id);
         return res.json({
           success: true,
           message: '部门审批已通过，等待HR复核',
@@ -424,26 +415,12 @@ const updateLeave = async (req, res) => {
 
     // 审批通过/拒绝 → 通知申请人
     if (isApproval) {
-      try {
-        const recipientUserId = await findUserIdForEmployee(leave.employee_id);
-        if (recipientUserId) {
-          const approved = updateData.status === 'approved';
-          await inAppNotification.send({
-            recipientUserId,
-            senderUserId: req.user.user_id,
-            type: approved
-              ? inAppNotification.NotificationTypes.LEAVE_APPROVED
-              : inAppNotification.NotificationTypes.LEAVE_REJECTED,
-            title: approved ? '请假申请已批准' : '请假申请被拒绝',
-            content: `请假时间 ${leave.start_date} 至 ${leave.end_date}（${leave.days}天）${approved ? '已批准。' : '被拒绝。'}${updateData.approval_notes ? `\n审批意见：${updateData.approval_notes}` : ''}`,
-            relatedResource: 'leave',
-            relatedId: leave.leave_id,
-            linkUrl: `/leaves?highlight=${leave.leave_id}`
-          });
-        }
-      } catch (notifyErr) {
-        console.error('[leave.update notify] failed:', notifyErr.message);
-      }
+      await notifyApplicantOnLeaveDecision(
+        leave,
+        updateData.status === 'approved',
+        updateData.approval_notes,
+        req.user.user_id
+      );
     }
 
     return res.json({
