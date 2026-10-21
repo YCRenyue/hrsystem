@@ -170,6 +170,10 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      # ACR Personal Edition rejects buildx provenance/SBOM attestation manifests
+      # (application/vnd.oci.empty.v1+json), so push plain single-platform images.
+      BUILDX_NO_DEFAULT_ATTESTATIONS: 1
     outputs:
       backend_image: ${{ steps.image_info.outputs.backend_image }}
       frontend_image: ${{ steps.image_info.outputs.frontend_image }}
