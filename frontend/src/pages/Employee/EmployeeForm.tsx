@@ -467,7 +467,9 @@ const EmployeeForm: React.FC = () => {
                 <Select disabled={!canEditField('status')}>
                   <Option value="pending">待入职</Option>
                   <Option value="active">在职</Option>
-                  <Option value="inactive">离职</Option>
+                  <Option value="inactive" disabled>
+                    离职（请在员工详情中办理）
+                  </Option>
                 </Select>
               </Form.Item>
             </Col>

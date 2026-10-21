@@ -56,10 +56,14 @@ export const employeeService = {
   },
 
   /**
-   * Delete employee
+   * Offboard employee: mark as resigned with a leave date (records are never deleted)
    */
-  async deleteEmployee(employeeId: string): Promise<void> {
-    await apiClient.delete(`/employees/${employeeId}`);
+  async offboardEmployee(employeeId: string, leaveDate: string): Promise<Employee> {
+    const response = await apiClient.post<ApiResponse<Employee>>(
+      `/employees/${employeeId}/offboard`,
+      { leave_date: leaveDate }
+    );
+    return response.data.data!;
   },
 
   /**

@@ -37,6 +37,7 @@ import { employeeService } from '../../services/employeeService';
 import { uploadService, FileUrls } from '../../services/uploadService';
 import { usePermission } from '../../hooks/usePermission';
 import DocumentConfirmationStatus from './DocumentConfirmationStatus';
+import OffboardButton from './OffboardButton';
 import './EmployeeDetail.css';
 
 const EmployeeDetail: React.FC = () => {
@@ -178,13 +179,22 @@ const EmployeeDetail: React.FC = () => {
         </Button>
 
         {canUpdateEmployee() && (
-          <Button
-            type="primary"
-            icon={<EditOutlined />}
-            onClick={() => navigate(`/employees/${id}/edit`)}
-          >
-            编辑信息
-          </Button>
+          <Space>
+            {employee.status !== 'inactive' && (
+              <OffboardButton
+                employeeId={employee.employee_id}
+                employeeName={employee.name}
+                onDone={fetchEmployee}
+              />
+            )}
+            <Button
+              type="primary"
+              icon={<EditOutlined />}
+              onClick={() => navigate(`/employees/${id}/edit`)}
+            >
+              编辑信息
+            </Button>
+          </Space>
         )}
       </div>
 
@@ -288,6 +298,14 @@ const EmployeeDetail: React.FC = () => {
               {formatDate(employee.entry_date)}
             </Space>
           </Descriptions.Item>
+          {employee.status === 'inactive' && (
+            <Descriptions.Item label="离职日期">
+              <Space>
+                <CalendarOutlined />
+                {formatDate(employee.leave_date)}
+              </Space>
+            </Descriptions.Item>
+          )}
           <Descriptions.Item label="试用期结束日期">
             <Space>
               <CalendarOutlined />

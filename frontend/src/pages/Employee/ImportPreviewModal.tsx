@@ -97,6 +97,14 @@ const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
           </Col>
         </Row>
 
+        {preview.new_departments?.length > 0 && (
+          <Alert
+            type="info"
+            message={`确认导入后将新建部门：${preview.new_departments.join("、")}`}
+            showIcon
+          />
+        )}
+
         {preview.valid_count > 0 && (
           <>
             <div style={{ fontWeight: 500 }}>

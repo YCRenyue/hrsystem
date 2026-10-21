@@ -6,6 +6,7 @@ const {
   Employee, Department, User, TrainingPledge, EmploymentContract
 } = require('../models');
 const employeeImportService = require('../services/employeeImportService');
+const EmployeeStatusService = require('../services/EmployeeStatusService');
 const {
   NotFoundError, ValidationError, ForbiddenError
 } = require('../middleware/errorHandler');
@@ -402,6 +403,11 @@ const updateEmployee = async (req, res) => {
   // Don't allow updating employee_number
   delete updateData.employee_number;
 
+  // 离职只能走“办理离职”接口，确保同时记录离职日期、停用账号、结算年假
+  if (updateData.status === 'inactive' && employee.status !== 'inactive') {
+    throw new ValidationError('请在员工详情中使用“办理离职”');
+  }
+
   // Update non-encrypted fields directly
   const directFields = [
     'email', 'department_id', 'position', 'employment_type',
@@ -456,34 +462,33 @@ const updateEmployee = async (req, res) => {
 };
 
 /**
- * Delete employee
+ * Offboard employee: mark as inactive, record leave date, disable login, settle annual leave.
+ * Employees are never deleted.
  */
-const deleteEmployee = async (req, res) => {
+const offboardEmployee = async (req, res) => {
   const { id } = req.params;
+  const { leave_date: leaveDate } = req.body;
 
-  const employee = await Employee.findByPk(id);
-
-  if (!employee) {
-    throw new NotFoundError('Employee', id);
+  if (!leaveDate || !/^\d{4}-\d{2}-\d{2}$/.test(leaveDate)) {
+    throw new ValidationError('请选择离职日期');
   }
 
-  await employee.destroy();
+  const statusService = new EmployeeStatusService();
+  const { employee, oldStatus } = await statusService.deactivate(id, leaveDate);
 
   await recordOperation({
     req,
-    operationType: 'delete',
+    operationType: 'update',
     tableName: 'employees',
     recordId: id,
-    oldValues: {
-      employee_number: employee.employee_number,
-      department_id: employee.department_id,
-      status: employee.status
-    }
+    oldValues: { status: oldStatus },
+    newValues: { status: employee.status, leave_date: leaveDate }
   });
 
   res.json({
     success: true,
-    message: '员工删除成功'
+    data: employee.toSafeObject(true),
+    message: '已办理离职，该员工的登录账号已停用'
   });
 };
 
@@ -495,7 +500,9 @@ const previewImport = async (req, res) => {
   if (!req.file) throw new ValidationError('请选择要上传的文件');
 
   const { parsedRows, parseErrors } = await employeeImportService.parseExcelFile(req.file.buffer);
-  const { validRows, businessErrors } = await employeeImportService.validateRows(parsedRows);
+  const {
+    validRows, businessErrors, newDepartments
+  } = await employeeImportService.validateRows(parsedRows);
 
   const sampleRows = validRows.slice(0, 5).map((r) => ({
     row: r.row,
@@ -516,6 +523,7 @@ const previewImport = async (req, res) => {
       business_error_count: businessErrors.length,
       parse_errors: parseErrors,
       business_errors: businessErrors,
+      new_departments: newDepartments,
       sample_rows: sampleRows
     }
   });
@@ -664,7 +672,7 @@ module.exports = {
   getEmployeeById,
   createEmployee,
   updateEmployee,
-  deleteEmployee,
+  offboardEmployee,
   previewImport,
   confirmImport,
   exportToExcel
