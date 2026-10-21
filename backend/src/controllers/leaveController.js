@@ -9,88 +9,66 @@ const {
 const permissionService = require('../services/PermissionService');
 const dataScopeService = require('../services/DataScopeService');
 const leaveWorkflowService = require('../services/LeaveWorkflowService');
-const ExcelService = require('../services/ExcelService');
-const inAppNotification = require('../services/InAppNotificationService');
+const { getInitialApprovalStage } = require('../services/approvalService');
+const {
+  notifyApproversOnLeaveSubmit,
+  notifyHrForReview,
+  notifyApplicantOnLeaveDecision
+} = require('../services/leaveNotifier');
 const { ValidationError } = require('../middleware/errorHandler');
-const { formatLocalDate } = require('../utils/dateUtils');
+const { applyEmployeeKeyword } = require('../utils/employeeSearch');
 
 const APPROVAL_ROLES = ['admin', 'hr_admin', 'department_manager'];
 
-const getInitialApprovalStage = async (departmentId) => {
-  if (!departmentId) return 'hr';
-  const count = await User.count({
-    where: {
-      role: 'department_manager',
-      department_id: departmentId,
-      status: 'active',
-      is_active: true
-    }
-  });
-  return count > 0 ? 'department' : 'hr';
+/**
+ * 检查该员工在指定日期内是否已有进行中的请假或出差
+ *
+ * @param {string} employeeId - 员工 ID
+ * @param {string} startDate - 开始日期 YYYY-MM-DD
+ * @param {string} endDate - 结束日期 YYYY-MM-DD
+ * @returns {Promise<boolean>} 是否冲突
+ */
+const hasScheduleConflict = async (employeeId, startDate, endDate) => {
+  const [leaveConflict, tripConflict] = await Promise.all([
+    Leave.count({
+      where: {
+        employee_id: employeeId,
+        status: { [Op.in]: ['pending', 'approved'] },
+        start_date: { [Op.lte]: endDate },
+        end_date: { [Op.gte]: startDate }
+      }
+    }),
+    BusinessTrip.count({
+      where: {
+        employee_id: employeeId,
+        status: { [Op.in]: ['pending', 'approved', 'in_progress'] },
+        start_datetime: { [Op.lte]: new Date(`${endDate}T23:59:59`) },
+        end_datetime: { [Op.gte]: new Date(`${startDate}T00:00:00`) }
+      }
+    })
+  ]);
+  return leaveConflict > 0 || tripConflict > 0;
 };
 
 /**
- * 找到指定员工对应的 user 账号（用于发通知给申请人）
+ * 检查当前用户能否审批该请假（角色、本人、状态、审批级别）
+ *
+ * @param {Object} user - 当前用户
+ * @param {Object} leave - 请假记录
+ * @returns {{status: number, message: string}|null} 不允许时返回错误，允许时返回 null
  */
-const findUserIdForEmployee = async (employeeId) => {
-  if (!employeeId) return null;
-  const u = await User.findOne({
-    where: { employee_id: employeeId },
-    attributes: ['user_id']
-  });
-  return u ? u.user_id : null;
-};
-
-/**
- * 请假类型映射
- */
-const leaveTypeMap = {
-  annual: '年假',
-  sick: '病假',
-  personal: '事假',
-  compensatory: '调休',
-  maternity: '产假',
-  paternity: '陪产假',
-  marriage: '婚假',
-  bereavement: '丧假',
-  unpaid: '无薪假',
-  other: '其他'
-};
-
-/**
- * 请假类型中文转英文
- */
-const leaveTypeReverseMap = {
-  年假: 'annual',
-  病假: 'sick',
-  事假: 'personal',
-  调休: 'compensatory',
-  产假: 'maternity',
-  陪产假: 'paternity',
-  婚假: 'marriage',
-  丧假: 'bereavement',
-  无薪假: 'unpaid',
-  其他: 'other'
-};
-
-/**
- * 审批状态映射
- */
-const statusMap = {
-  pending: '待审批',
-  approved: '已批准',
-  rejected: '已拒绝',
-  cancelled: '已取消'
-};
-
-/**
- * 审批状态中文转英文
- */
-const statusReverseMap = {
-  待审批: 'pending',
-  已批准: 'approved',
-  已拒绝: 'rejected',
-  已取消: 'cancelled'
+const getApprovalDenial = (user, leave) => {
+  if (!APPROVAL_ROLES.includes(user.role)) return { status: 403, message: '无审批权限' };
+  if (user.role !== 'admin' && user.employee_id === leave.employee_id) {
+    return { status: 403, message: '不能审批自己的申请' };
+  }
+  if (leave.status !== 'pending') return { status: 400, message: '仅待审批申请可审批' };
+  const isDepartmentStage = leave.approval_stage === 'department';
+  const allowedRoles = isDepartmentStage ? ['admin', 'department_manager'] : ['admin', 'hr_admin'];
+  if (!allowedRoles.includes(user.role)) {
+    return { status: 403, message: isDepartmentStage ? '当前需部门负责人审批' : '当前需HR审批' };
+  }
+  return null;
 };
 
 /**
@@ -144,25 +122,7 @@ const createLeave = async (req, res) => {
       return res.status(400).json({ success: false, message: '请假日期或天数无效' });
     }
 
-    const [leaveConflict, tripConflict] = await Promise.all([
-      Leave.count({
-        where: {
-          employee_id: employeeId,
-          status: { [Op.in]: ['pending', 'approved'] },
-          start_date: { [Op.lte]: end_date },
-          end_date: { [Op.gte]: start_date }
-        }
-      }),
-      BusinessTrip.count({
-        where: {
-          employee_id: employeeId,
-          status: { [Op.in]: ['pending', 'approved', 'in_progress'] },
-          start_datetime: { [Op.lte]: new Date(`${end_date}T23:59:59`) },
-          end_datetime: { [Op.gte]: new Date(`${start_date}T00:00:00`) }
-        }
-      })
-    ]);
-    if (leaveConflict || tripConflict) {
+    if (await hasScheduleConflict(employeeId, start_date, end_date)) {
       return res.status(409).json({ success: false, message: '该时段已有请假或出差申请' });
     }
 
@@ -178,26 +138,7 @@ const createLeave = async (req, res) => {
       attachment_url
     });
 
-    // 推送通知给所有审批人（admin）
-    try {
-      const employeeName = employee && typeof employee.getName === 'function'
-        ? employee.getName()
-        : '员工';
-      const approverIds = await inAppNotification.getApproverUserIds({
-        departmentId: employee.department_id
-      });
-      await inAppNotification.sendToMany(approverIds, {
-        senderUserId: req.user.user_id,
-        type: inAppNotification.NotificationTypes.LEAVE_SUBMITTED,
-        title: '新请假申请待审批',
-        content: `${employeeName} 提交了请假申请\n类型：${leave_type}\n时间：${start_date} 至 ${end_date}\n天数：${days}天\n${reason ? `事由：${reason}` : ''}`,
-        relatedResource: 'leave',
-        relatedId: leave.leave_id,
-        linkUrl: `/leaves?status=pending&highlight=${leave.leave_id}`
-      });
-    } catch (notifyErr) {
-      console.error('[leave.create notify] failed:', notifyErr.message);
-    }
+    await notifyApproversOnLeaveSubmit(employee, leave, req.user.user_id);
 
     return res.status(201).json({
       success: true,
@@ -225,7 +166,8 @@ const getLeaveList = async (req, res) => {
       leave_type,
       status,
       start_date,
-      end_date
+      end_date,
+      keyword
     } = req.query;
 
     const limit = parseInt(size, 10);
@@ -276,6 +218,8 @@ const getLeaveList = async (req, res) => {
       // employee: 只能查看自己的数据
       where.employee_id = req.user.employee_id;
     }
+
+    await applyEmployeeKeyword(include[0], keyword);
 
     const { count, rows } = await Leave.findAndCountAll({
       where,
@@ -426,45 +370,18 @@ const updateLeave = async (req, res) => {
     }
 
     if (isApproval) {
-      if (!APPROVAL_ROLES.includes(req.user.role)) {
-        return res.status(403).json({
-          success: false,
-          message: '无审批权限'
-        });
+      const denial = getApprovalDenial(req.user, leave);
+      if (denial) {
+        return res.status(denial.status).json({ success: false, message: denial.message });
       }
-      if (req.user.role !== 'admin' && req.user.employee_id === leave.employee_id) {
-        return res.status(403).json({ success: false, message: '不能审批自己的申请' });
-      }
-      if (leave.status !== 'pending') {
-        return res.status(400).json({ success: false, message: '仅待审批申请可审批' });
-      }
-      const isDepartmentStage = leave.approval_stage === 'department';
-      const allowedRoles = isDepartmentStage
-        ? ['admin', 'department_manager']
-        : ['admin', 'hr_admin'];
-      if (!allowedRoles.includes(req.user.role)) {
-        return res.status(403).json({
-          success: false,
-          message: isDepartmentStage ? '当前需部门负责人审批' : '当前需HR审批'
-        });
-      }
-      if (isDepartmentStage && updateData.status === 'approved') {
+      if (leave.approval_stage === 'department' && updateData.status === 'approved') {
         await leave.update({
           approval_stage: 'hr',
           manager_approver_id: req.user.user_id,
           manager_approved_at: new Date(),
           manager_approval_notes: updateData.approval_notes || null
         });
-        const hrApproverIds = await inAppNotification.getHrApproverUserIds();
-        await inAppNotification.sendToMany(hrApproverIds, {
-          senderUserId: req.user.user_id,
-          type: inAppNotification.NotificationTypes.LEAVE_SUBMITTED,
-          title: '请假申请待HR复核',
-          content: `请假申请 ${leave.start_date} 至 ${leave.end_date} 已通过部门审批。`,
-          relatedResource: 'leave',
-          relatedId: leave.leave_id,
-          linkUrl: `/leaves?status=pending&highlight=${leave.leave_id}`
-        });
+        await notifyHrForReview(leave, req.user.user_id);
         return res.json({
           success: true,
           message: '部门审批已通过，等待HR复核',
@@ -502,26 +419,12 @@ const updateLeave = async (req, res) => {
 
     // 审批通过/拒绝 → 通知申请人
     if (isApproval) {
-      try {
-        const recipientUserId = await findUserIdForEmployee(leave.employee_id);
-        if (recipientUserId) {
-          const approved = updateData.status === 'approved';
-          await inAppNotification.send({
-            recipientUserId,
-            senderUserId: req.user.user_id,
-            type: approved
-              ? inAppNotification.NotificationTypes.LEAVE_APPROVED
-              : inAppNotification.NotificationTypes.LEAVE_REJECTED,
-            title: approved ? '请假申请已批准' : '请假申请被拒绝',
-            content: `请假时间 ${leave.start_date} 至 ${leave.end_date}（${leave.days}天）${approved ? '已批准。' : '被拒绝。'}${updateData.approval_notes ? `\n审批意见：${updateData.approval_notes}` : ''}`,
-            relatedResource: 'leave',
-            relatedId: leave.leave_id,
-            linkUrl: `/leaves?highlight=${leave.leave_id}`
-          });
-        }
-      } catch (notifyErr) {
-        console.error('[leave.update notify] failed:', notifyErr.message);
-      }
+      await notifyApplicantOnLeaveDecision(
+        leave,
+        updateData.status === 'approved',
+        updateData.approval_notes,
+        req.user.user_id
+      );
     }
 
     return res.json({
@@ -570,212 +473,10 @@ const deleteLeave = async (req, res) => {
   }
 };
 
-/**
- * Download leave Excel template
- */
-const downloadTemplate = async (req, res) => {
-  const columns = [
-    { header: '员工编号', key: 'employee_number', width: 15 },
-    {
-      header: '请假类型',
-      key: 'leave_type',
-      width: 12,
-      note: '可选值: 年假, 病假, 事假, 调休, 产假, 陪产假, 婚假, 丧假, 无薪假, 其他'
-    },
-    {
-      header: '开始日期', key: 'start_date', width: 15, note: '格式: YYYY-MM-DD'
-    },
-    {
-      header: '结束日期', key: 'end_date', width: 15, note: '格式: YYYY-MM-DD'
-    },
-    { header: '请假天数', key: 'days', width: 12 },
-    { header: '请假原因', key: 'reason', width: 30 },
-    {
-      header: '审批状态',
-      key: 'status',
-      width: 12,
-      note: '可选值: 待审批, 已批准, 已拒绝, 已取消 (默认: 待审批)'
-    },
-    { header: '审批意见', key: 'approval_notes', width: 30 }
-  ];
-
-  const sampleData = [
-    {
-      employee_number: 'EMP001',
-      leave_type: '年假',
-      start_date: '2025-01-15',
-      end_date: '2025-01-17',
-      days: 3,
-      reason: '个人事务',
-      status: '待审批',
-      approval_notes: ''
-    }
-  ];
-
-  const workbook = ExcelService.createTemplate(columns, sampleData);
-  const filename = `leave_template_${formatLocalDate(new Date())}.xlsx`;
-
-  await ExcelService.sendExcelResponse(res, workbook, filename);
-};
-
-/**
- * Import leave from Excel
- */
-const importFromExcel = async (req, res) => {
-  if (!req.file) {
-    throw new ValidationError('No file uploaded');
-  }
-
-  const results = await ExcelService.importFromBuffer(
-    req.file.buffer,
-    async (row, _rowNum) => {
-      const employeeNumber = ExcelService.getCellValue(row.getCell(1));
-      const leaveTypeText = ExcelService.getCellValue(row.getCell(2));
-      const startDate = ExcelService.parseExcelDate(row.getCell(3).value);
-      const endDate = ExcelService.parseExcelDate(row.getCell(4).value);
-      const days = ExcelService.getCellValue(row.getCell(5));
-      const reason = ExcelService.getCellValue(row.getCell(6));
-      const statusText = ExcelService.getCellValue(row.getCell(7));
-      const approvalNotes = ExcelService.getCellValue(row.getCell(8));
-
-      if (!employeeNumber) {
-        throw new Error('员工编号为必填项');
-      }
-
-      if (!leaveTypeText) {
-        throw new Error('请假类型为必填项');
-      }
-
-      if (!startDate || !endDate) {
-        throw new Error('开始日期和结束日期为必填项');
-      }
-
-      if (!days) {
-        throw new Error('请假天数为必填项');
-      }
-
-      // Find employee
-      const employee = await Employee.findOne({
-        where: { employee_number: employeeNumber }
-      });
-
-      if (!employee) {
-        throw new Error(`员工 ${employeeNumber} 不存在`);
-      }
-
-      // Convert type and status text to enum values
-      const leaveType = leaveTypeReverseMap[leaveTypeText] || 'other';
-      const status = statusReverseMap[statusText] || 'pending';
-
-      const data = {
-        employee_id: employee.employee_id,
-        leave_type: leaveType,
-        start_date: startDate,
-        end_date: endDate,
-        days: parseFloat(days),
-        reason: reason || null,
-        status,
-        approval_notes: approvalNotes || null,
-        approved_at: (status === 'approved' || status === 'rejected') ? new Date() : null
-      };
-
-      await Leave.create(data);
-    }
-  );
-
-  res.json({
-    success: true,
-    data: results
-  });
-};
-
-/**
- * Export leave to Excel
- */
-const exportToExcel = async (req, res) => {
-  const {
-    start_date, end_date, leave_type, status
-  } = req.query;
-
-  const where = {};
-  if (leave_type) where.leave_type = leave_type;
-  if (status) where.status = status;
-  if (start_date && end_date) {
-    where.start_date = { [Op.between]: [start_date, end_date] };
-  }
-
-  const include = [
-    {
-      model: Employee,
-      as: 'employee',
-      attributes: ['employee_number', 'name_encrypted', 'department_id'],
-      include: [
-        {
-          model: Department,
-          as: 'department',
-          attributes: ['name']
-        }
-      ]
-    },
-    {
-      model: User,
-      as: 'approver',
-      attributes: ['username'],
-      required: false
-    }
-  ];
-
-  const records = await Leave.findAll({
-    where,
-    include,
-    order: [['created_at', 'DESC']]
-  });
-
-  const data = records.map((record) => ({
-    employee_number: record.employee?.employee_number || '',
-    employee_name: record.employee?.getName() || '',
-    department_name: record.employee?.department?.name || '',
-    leave_type: leaveTypeMap[record.leave_type] || record.leave_type,
-    start_date: record.start_date,
-    end_date: record.end_date,
-    days: record.days,
-    reason: record.reason || '',
-    status: statusMap[record.status] || record.status,
-    approver_name: record.approver?.username || '',
-    approval_notes: record.approval_notes || '',
-    approved_at: record.approved_at || '',
-    created_at: record.created_at
-  }));
-
-  const columns = [
-    { header: '员工编号', key: 'employee_number', width: 15 },
-    { header: '姓名', key: 'employee_name', width: 12 },
-    { header: '部门', key: 'department_name', width: 15 },
-    { header: '请假类型', key: 'leave_type', width: 12 },
-    { header: '开始日期', key: 'start_date', width: 15 },
-    { header: '结束日期', key: 'end_date', width: 15 },
-    { header: '请假天数', key: 'days', width: 12 },
-    { header: '请假原因', key: 'reason', width: 30 },
-    { header: '审批状态', key: 'status', width: 12 },
-    { header: '审批人', key: 'approver_name', width: 12 },
-    { header: '审批意见', key: 'approval_notes', width: 30 },
-    { header: '审批时间', key: 'approved_at', width: 20 },
-    { header: '申请时间', key: 'created_at', width: 20 }
-  ];
-
-  const workbook = await ExcelService.exportToExcel(data, columns, '请假记录');
-  const filename = `leave_${formatLocalDate(new Date())}.xlsx`;
-
-  await ExcelService.sendExcelResponse(res, workbook, filename);
-};
-
 module.exports = {
   createLeave,
   getLeaveList,
   getLeaveStats,
   updateLeave,
-  deleteLeave,
-  downloadTemplate,
-  importFromExcel,
-  exportToExcel
+  deleteLeave
 };

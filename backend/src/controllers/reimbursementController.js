@@ -20,6 +20,7 @@ const {
 const reimbursementService = require('../services/ReimbursementService');
 const dataScopeService = require('../services/DataScopeService');
 const inAppNotification = require('../services/InAppNotificationService');
+const { findUserIdForEmployee } = require('../services/approvalService');
 const { findEmployeeIdsByName } = require('../utils/employeeSearch');
 const {
   ValidationError,
@@ -56,15 +57,6 @@ const canAccessRecord = (user, record) => (
 const canModifyRecord = (user, record) => {
   if (user?.role === 'finance') return user.employee_id === record.employee_id;
   return canAccessRecord(user, record);
-};
-
-const findUserIdForEmployee = async (employeeId) => {
-  if (!employeeId) return null;
-  const u = await User.findOne({
-    where: { employee_id: employeeId },
-    attributes: ['user_id']
-  });
-  return u ? u.user_id : null;
 };
 
 const notifyFinanceOnSubmit = async (record, employeeName, submitterUserId) => {

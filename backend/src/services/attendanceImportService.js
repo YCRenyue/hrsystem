@@ -18,6 +18,7 @@ const { matchEmployees, findPunchesAfterLeave } = require('./punch/employeeMatch
 const {
   upsertEmployeeAttendances, selectImportDates, isWeekend
 } = require('./punch/attendancePunchImport');
+const { applyEmployeeKeyword } = require('../utils/employeeSearch');
 
 const BLOCK_BASES = [0, 15, 30];
 const DEVICE = 'attendance';
@@ -162,6 +163,7 @@ async function importCardWorkbook(buffer, sourceFile = null) {
 
   await sequelize.transaction(async (transaction) => {
     for (const { entry, employee } of matched) {
+      // eslint-disable-next-line no-await-in-loop -- queries share one transaction connection and must run in order
       const stats = await upsertEmployeeAttendances(employee.employee_id, entry, dates, transaction);
       result.daily_created += stats.created;
       result.daily_updated += stats.updated;
@@ -171,6 +173,7 @@ async function importCardWorkbook(buffer, sourceFile = null) {
       if (summary) {
         const warning = checkSummaryAbsence(entry, summary, dates);
         if (warning) result.summary_warnings.push(warning);
+        // eslint-disable-next-line no-await-in-loop -- queries share one transaction connection and must run in order
         const wasCreated = await upsertSummary({
           employeeId: employee.employee_id,
           period: parsed.period,
@@ -195,7 +198,9 @@ async function importCardWorkbook(buffer, sourceFile = null) {
  * @param {string} [options.period_end]
  * @param {string} [options.department_id]
  */
-async function getAttendanceReport({ period_start, period_end, department_id } = {}) {
+async function getAttendanceReport({
+  period_start, period_end, department_id, keyword
+} = {}) {
   const where = {};
   if (period_start) where.period_start = { [Op.gte]: period_start };
   if (period_end) where.period_end = { [Op.lte]: period_end };
@@ -210,6 +215,8 @@ async function getAttendanceReport({ period_start, period_end, department_id } =
     include[0].where = { department_id };
     include[0].required = true;
   }
+  await applyEmployeeKeyword(include[0], keyword);
+  if (include[0].where) include[0].required = true;
 
   const summaries = await AttendanceSummary.findAll({
     where,

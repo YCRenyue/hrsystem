@@ -2,7 +2,6 @@
  * Social Security Controller
  * Handles social security and housing fund management operations
  */
-const { Op } = require('sequelize');
 const SocialSecurity = require('../models/SocialSecurity');
 const Employee = require('../models/Employee');
 const ExcelService = require('../services/ExcelService');
@@ -12,6 +11,7 @@ const {
   NotFoundError
 } = require('../middleware/errorHandler');
 const { formatLocalDate } = require('../utils/dateUtils');
+const { buildEmployeeKeywordWhere } = require('../utils/employeeSearch');
 
 // Payment status mapping: Chinese to English
 const PAYMENT_STATUS_CHINESE_TO_ENGLISH = {
@@ -71,11 +71,7 @@ const getSocialSecurities = async (req, res) => {
   };
 
   if (search) {
-    queryOptions.include[0].where = {
-      [Op.or]: [
-        { employee_number: { [Op.like]: `%${search}%` } }
-      ]
-    };
+    queryOptions.include[0].where = await buildEmployeeKeywordWhere(search);
   }
 
   const { count, rows } = await SocialSecurity.findAndCountAll(queryOptions);
@@ -406,11 +402,7 @@ const exportToExcel = async (req, res) => {
   };
 
   if (search) {
-    queryOptions.include[0].where = {
-      [Op.or]: [
-        { employee_number: { [Op.like]: `%${search}%` } }
-      ]
-    };
+    queryOptions.include[0].where = await buildEmployeeKeywordWhere(search);
   }
 
   const records = await SocialSecurity.findAll(queryOptions);

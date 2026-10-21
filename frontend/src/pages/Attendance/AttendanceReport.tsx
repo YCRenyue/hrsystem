@@ -14,6 +14,7 @@ import {
   Statistic,
   DatePicker,
   Select,
+  Input,
   App,
   Tag,
   Upload,
@@ -32,6 +33,7 @@ import { attendanceService, AttendanceSummaryRow, AttendanceReport as ReportData
 import apiClient from '../../services/api';
 import { AttendanceImportResult } from '../../services/punchService';
 import { usePermission } from '../../hooks/usePermission';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import PunchImportResultModal from '../../components/PunchImport/PunchImportResultModal';
 import PunchMappingModal from '../../components/PunchImport/PunchMappingModal';
 
@@ -47,6 +49,8 @@ const AttendanceReportPage: React.FC = () => {
   const [report, setReport] = useState<ReportData | null>(null);
   const [range, setRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [departmentId, setDepartmentId] = useState<string | undefined>(undefined);
+  const [keywordInput, setKeywordInput] = useState('');
+  const keyword = useDebouncedValue(keywordInput.trim(), 300);
   const [departments, setDepartments] = useState<Array<{ department_id: string; name: string }>>([]);
   const [importResult, setImportResult] = useState<AttendanceImportResult | null>(null);
   const [mappingOpen, setMappingOpen] = useState(false);
@@ -60,6 +64,7 @@ const AttendanceReportPage: React.FC = () => {
         params.period_end = range[1].format('YYYY-MM-DD');
       }
       if (departmentId) params.department_id = departmentId;
+      if (keyword) params.keyword = keyword;
       const data = await attendanceService.getReport(params);
       setReport(data);
     } catch (e) {
@@ -68,7 +73,7 @@ const AttendanceReportPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [range, departmentId, message]);
+  }, [range, departmentId, keyword, message]);
 
   useEffect(() => {
     fetchReport();
@@ -231,6 +236,13 @@ const AttendanceReportPage: React.FC = () => {
             }}
             format="YYYY-MM-DD"
             placeholder={['周期开始', '周期结束']}
+          />
+          <Input.Search
+            placeholder="按姓名或工号搜索"
+            allowClear
+            style={{ width: 200 }}
+            value={keywordInput}
+            onChange={(e) => setKeywordInput(e.target.value)}
           />
           {dataScope === 'all' && (
             <Select

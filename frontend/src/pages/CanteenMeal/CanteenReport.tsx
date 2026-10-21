@@ -14,6 +14,7 @@ import {
   Statistic,
   DatePicker,
   Select,
+  Input,
   App,
   Upload,
   Modal,
@@ -39,6 +40,7 @@ import {
 import apiClient from '../../services/api';
 import { CanteenImportResult } from '../../services/punchService';
 import { usePermission } from '../../hooks/usePermission';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import PunchImportResultModal from '../../components/PunchImport/PunchImportResultModal';
 import PunchAnomalyPanel from '../../components/PunchImport/PunchAnomalyPanel';
 import PunchMappingModal from '../../components/PunchImport/PunchMappingModal';
@@ -55,6 +57,8 @@ const CanteenReportPage: React.FC = () => {
   const [report, setReport] = useState<ReportData | null>(null);
   const [range, setRange] = useState<[Dayjs, Dayjs] | null>(null);
   const [departmentId, setDepartmentId] = useState<string | undefined>(undefined);
+  const [keywordInput, setKeywordInput] = useState('');
+  const keyword = useDebouncedValue(keywordInput.trim(), 300);
   const [departments, setDepartments] = useState<Array<{ department_id: string; name: string }>>([]);
 
   const [detailEmployee, setDetailEmployee] = useState<CanteenPerEmployee | null>(null);
@@ -73,6 +77,7 @@ const CanteenReportPage: React.FC = () => {
         params.end_date = range[1].format('YYYY-MM-DD');
       }
       if (departmentId) params.department_id = departmentId;
+      if (keyword) params.keyword = keyword;
       const data = await canteenService.getReport(params);
       setReport(data);
     } catch (e) {
@@ -81,7 +86,7 @@ const CanteenReportPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [range, departmentId, message]);
+  }, [range, departmentId, keyword, message]);
 
   useEffect(() => {
     fetchReport();
@@ -237,6 +242,13 @@ const CanteenReportPage: React.FC = () => {
             }}
             format="YYYY-MM-DD"
             placeholder={['开始日期', '结束日期']}
+          />
+          <Input.Search
+            placeholder="按姓名或工号搜索"
+            allowClear
+            style={{ width: 200 }}
+            value={keywordInput}
+            onChange={(e) => setKeywordInput(e.target.value)}
           />
           {dataScope === 'all' && (
             <Select

@@ -73,6 +73,7 @@ export const canteenService = {
     start_date?: string;
     end_date?: string;
     department_id?: string;
+    keyword?: string;
   }): Promise<CanteenReport> {
     const response = await apiClient.get<ApiResponse<CanteenReport>>(
       '/canteen-meals/report',

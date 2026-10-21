@@ -2,7 +2,6 @@
  * Annual Leave Controller
  * Handles annual leave management operations
  */
-const { Op } = require('sequelize');
 const AnnualLeave = require('../models/AnnualLeave');
 const Employee = require('../models/Employee');
 const ExcelService = require('../services/ExcelService');
@@ -13,6 +12,7 @@ const {
   ForbiddenError
 } = require('../middleware/errorHandler');
 const { formatLocalDate } = require('../utils/dateUtils');
+const { buildEmployeeKeywordWhere } = require('../utils/employeeSearch');
 
 /**
  * Get annual leave records with pagination and filtering
@@ -51,11 +51,7 @@ const getAnnualLeaves = async (req, res) => {
 
   // Search by employee number or name
   if (search) {
-    queryOptions.include[0].where = {
-      [Op.or]: [
-        { employee_number: { [Op.like]: `%${search}%` } }
-      ]
-    };
+    queryOptions.include[0].where = await buildEmployeeKeywordWhere(search);
   }
   if (!dataScopeService.applyResourceScope(where, queryOptions.include[0], req.user)) {
     return res.json({
@@ -82,7 +78,7 @@ const getAnnualLeaves = async (req, res) => {
     return obj;
   });
 
-  res.json({
+  return res.json({
     success: true,
     data,
     pagination: {
@@ -383,11 +379,7 @@ const exportToExcel = async (req, res) => {
   };
 
   if (search) {
-    queryOptions.include[0].where = {
-      [Op.or]: [
-        { employee_number: { [Op.like]: `%${search}%` } }
-      ]
-    };
+    queryOptions.include[0].where = await buildEmployeeKeywordWhere(search);
   }
   dataScopeService.applyResourceScope(where, queryOptions.include[0], req.user);
 

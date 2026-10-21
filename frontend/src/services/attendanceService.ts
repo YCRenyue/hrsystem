@@ -238,6 +238,7 @@ export const attendanceService = {
     period_start?: string;
     period_end?: string;
     department_id?: string;
+    keyword?: string;
   }): Promise<AttendanceReport> {
     const response = await apiClient.get<ApiResponse<AttendanceReport>>(
       '/attendances/report',

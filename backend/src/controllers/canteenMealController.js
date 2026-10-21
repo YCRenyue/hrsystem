@@ -12,6 +12,7 @@ const {
   NotFoundError
 } = require('../middleware/errorHandler');
 const { formatLocalDate } = require('../utils/dateUtils');
+const { buildEmployeeKeywordWhere } = require('../utils/employeeSearch');
 
 // Meal type mapping: Chinese to English
 const MEAL_TYPE_CHINESE_TO_ENGLISH = {
@@ -116,11 +117,7 @@ const getCanteenMeals = async (req, res) => {
 
   // Search by employee number
   if (search) {
-    queryOptions.include[0].where = {
-      [Op.or]: [
-        { employee_number: { [Op.like]: `%${search}%` } }
-      ]
-    };
+    queryOptions.include[0].where = await buildEmployeeKeywordWhere(search);
   }
 
   const { count, rows } = await CanteenMeal.findAndCountAll(queryOptions);
@@ -520,11 +517,7 @@ const exportToExcel = async (req, res) => {
   };
 
   if (search) {
-    queryOptions.include[0].where = {
-      [Op.or]: [
-        { employee_number: { [Op.like]: `%${search}%` } }
-      ]
-    };
+    queryOptions.include[0].where = await buildEmployeeKeywordWhere(search);
   }
 
   const records = await CanteenMeal.findAll(queryOptions);
@@ -585,7 +578,9 @@ const importCardExcel = async (req, res) => {
  * 食堂报表：每日/每周中餐晚餐人数 + 每人汇总
  */
 const getCanteenReport = async (req, res) => {
-  const { start_date, end_date, department_id } = req.query;
+  const {
+    start_date, end_date, department_id, keyword
+  } = req.query;
 
   let effectiveDepartmentId = department_id;
   if (req.user.data_scope === 'department') {
@@ -600,7 +595,8 @@ const getCanteenReport = async (req, res) => {
   const data = await canteenImportService.getCanteenReport({
     start_date,
     end_date,
-    department_id: effectiveDepartmentId
+    department_id: effectiveDepartmentId,
+    keyword
   });
 
   return res.json({ success: true, data });

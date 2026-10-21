@@ -1,6 +1,6 @@
 # Build stage
 ARG DOCKER_REGISTRY=docker.io
-FROM ${DOCKER_REGISTRY}/library/node:18-alpine AS build
+FROM ${DOCKER_REGISTRY}/library/node:22-alpine AS build
 
 WORKDIR /app
 

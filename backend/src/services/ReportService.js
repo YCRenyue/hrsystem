@@ -11,6 +11,7 @@ const {
 } = require('../models');
 const logger = require('../utils/logger');
 const permissionService = require('./PermissionService');
+const { applyEmployeeKeyword } = require('../utils/employeeSearch');
 
 class ReportService {
   /**
@@ -27,6 +28,7 @@ class ReportService {
       leave_type,
       department_id,
       employee_id,
+      keyword,
       status = 'approved' // 默认只统计已批准的假期
     } = filters;
 
@@ -67,23 +69,26 @@ class ReportService {
       );
 
       // 查询假期记录
+      const include = [
+        {
+          model: Employee,
+          as: 'employee',
+          where: employeeWhere,
+          attributes: ['employee_id', 'employee_number', 'name_encrypted', 'department_id'],
+          include: [
+            {
+              model: Department,
+              as: 'department',
+              attributes: ['department_id', 'name']
+            }
+          ]
+        }
+      ];
+      await applyEmployeeKeyword(include[0], keyword);
+
       const leaves = await Leave.findAll({
         where: whereClause,
-        include: [
-          {
-            model: Employee,
-            as: 'employee',
-            where: employeeWhere,
-            attributes: ['employee_id', 'employee_number', 'name_encrypted', 'department_id'],
-            include: [
-              {
-                model: Department,
-                as: 'department',
-                attributes: ['department_id', 'name']
-              }
-            ]
-          }
-        ],
+        include,
         order: [['start_date', 'DESC']]
       });
 
@@ -124,6 +129,7 @@ class ReportService {
       end_date,
       department_id,
       employee_id,
+      keyword,
       status
     } = filters;
 
@@ -153,23 +159,26 @@ class ReportService {
       );
 
       // 查询考勤记录
+      const include = [
+        {
+          model: Employee,
+          as: 'employee',
+          where: employeeWhere,
+          attributes: ['employee_id', 'employee_number', 'name_encrypted', 'department_id'],
+          include: [
+            {
+              model: Department,
+              as: 'department',
+              attributes: ['department_id', 'name']
+            }
+          ]
+        }
+      ];
+      await applyEmployeeKeyword(include[0], keyword);
+
       const attendances = await Attendance.findAll({
         where: whereClause,
-        include: [
-          {
-            model: Employee,
-            as: 'employee',
-            where: employeeWhere,
-            attributes: ['employee_id', 'employee_number', 'name_encrypted', 'department_id'],
-            include: [
-              {
-                model: Department,
-                as: 'department',
-                attributes: ['department_id', 'name']
-              }
-            ]
-          }
-        ],
+        include,
         order: [['date', 'DESC']]
       });
 

@@ -7,6 +7,63 @@ const {
 } = require('../models');
 
 /**
+ * 统计指定期间的考勤状态分布和正常出勤率
+ *
+ * @param {Date} periodStart - 期间开始
+ * @param {Date} periodEnd - 期间结束
+ * @returns {Promise<{attendanceStats: Array, attendanceRate: number}>}
+ */
+const getMonthlyAttendanceSummary = async (periodStart, periodEnd) => {
+  const attendanceStats = await Attendance.findAll({
+    attributes: [
+      'status',
+      [sequelize.fn('COUNT', sequelize.col('attendance_id')), 'count']
+    ],
+    where: {
+      date: {
+        [Op.between]: [periodStart, periodEnd]
+      }
+    },
+    group: ['status'],
+    raw: true
+  });
+
+  const totalAttendance = attendanceStats.reduce((sum, s) => sum + parseInt(s.count, 10), 0);
+  const normalAttendance = attendanceStats.find((s) => s.status === 'normal')?.count || 0;
+  const attendanceRate = totalAttendance > 0
+    ? Math.round((normalAttendance / totalAttendance) * 100)
+    : 0;
+  return { attendanceStats, attendanceRate };
+};
+
+/**
+ * 统计指定期间的请假数量和待审批数量
+ *
+ * @param {Date} periodStart - 期间开始
+ * @param {Date} periodEnd - 期间结束
+ * @returns {Promise<{leaveStats: Array, pendingLeaves: number|string, totalLeaves: number}>}
+ */
+const getMonthlyLeaveSummary = async (periodStart, periodEnd) => {
+  const leaveStats = await Leave.findAll({
+    attributes: [
+      'status',
+      [sequelize.fn('COUNT', sequelize.col('leave_id')), 'count']
+    ],
+    where: {
+      start_date: {
+        [Op.between]: [periodStart, periodEnd]
+      }
+    },
+    group: ['status'],
+    raw: true
+  });
+
+  const pendingLeaves = leaveStats.find((s) => s.status === 'pending')?.count || 0;
+  const totalLeaves = leaveStats.reduce((sum, s) => sum + parseInt(s.count, 10), 0);
+  return { leaveStats, pendingLeaves, totalLeaves };
+};
+
+/**
  * Get dashboard statistics
  */
 const getDashboardStats = async (req, res) => {
@@ -69,43 +126,16 @@ const getDashboardStats = async (req, res) => {
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-    const attendanceStats = await Attendance.findAll({
-      attributes: [
-        'status',
-        [sequelize.fn('COUNT', sequelize.col('attendance_id')), 'count']
-      ],
-      where: {
-        date: {
-          [Op.between]: [firstDayOfMonth, lastDayOfMonth]
-        }
-      },
-      group: ['status'],
-      raw: true
-    });
-
-    const totalAttendance = attendanceStats.reduce((sum, s) => sum + parseInt(s.count, 10), 0);
-    const normalAttendance = attendanceStats.find((s) => s.status === 'normal')?.count || 0;
-    const attendanceRate = totalAttendance > 0
-      ? Math.round((normalAttendance / totalAttendance) * 100)
-      : 0;
+    const { attendanceStats, attendanceRate } = await getMonthlyAttendanceSummary(
+      firstDayOfMonth,
+      lastDayOfMonth
+    );
 
     // Leave statistics (current month)
-    const leaveStats = await Leave.findAll({
-      attributes: [
-        'status',
-        [sequelize.fn('COUNT', sequelize.col('leave_id')), 'count']
-      ],
-      where: {
-        start_date: {
-          [Op.between]: [firstDayOfMonth, lastDayOfMonth]
-        }
-      },
-      group: ['status'],
-      raw: true
-    });
-
-    const pendingLeaves = leaveStats.find((s) => s.status === 'pending')?.count || 0;
-    const totalLeaves = leaveStats.reduce((sum, s) => sum + parseInt(s.count, 10), 0);
+    const { leaveStats, pendingLeaves, totalLeaves } = await getMonthlyLeaveSummary(
+      firstDayOfMonth,
+      lastDayOfMonth
+    );
 
     res.json({
       success: true,

@@ -498,7 +498,9 @@ const importCardExcel = async (req, res) => {
  * 考勤报表：聚合每位员工的迟到/早退/请假等统计
  */
 const getAttendanceReport = async (req, res) => {
-  const { period_start, period_end, department_id } = req.query;
+  const {
+    period_start, period_end, department_id, keyword
+  } = req.query;
 
   let effectiveDepartmentId = department_id;
   if (req.user.data_scope === 'department') {
@@ -513,7 +515,8 @@ const getAttendanceReport = async (req, res) => {
   const report = await attendanceImportService.getAttendanceReport({
     period_start,
     period_end,
-    department_id: effectiveDepartmentId
+    department_id: effectiveDepartmentId,
+    keyword
   });
 
   return res.json({

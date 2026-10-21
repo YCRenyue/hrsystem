@@ -9,6 +9,7 @@ const router = express.Router();
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 const leaveController = require('../controllers/leaveController');
+const leaveExcelController = require('../controllers/leaveExcelController');
 
 // Configure multer for file upload
 const upload = multer({
@@ -51,7 +52,7 @@ router.get('/stats', asyncHandler(leaveController.getLeaveStats));
 router.get(
   '/template',
   requireRole('admin', 'hr_admin', 'department_manager'),
-  asyncHandler(leaveController.downloadTemplate)
+  asyncHandler(leaveExcelController.downloadTemplate)
 );
 
 /**
@@ -62,7 +63,7 @@ router.get(
 router.get(
   '/export',
   requireRole('admin', 'hr_admin', 'department_manager'),
-  asyncHandler(leaveController.exportToExcel)
+  asyncHandler(leaveExcelController.exportToExcel)
 );
 
 /**
@@ -74,15 +75,8 @@ router.post(
   '/import',
   requireRole('admin', 'hr_admin', 'department_manager'),
   upload.single('file'),
-  asyncHandler(leaveController.importFromExcel)
+  asyncHandler(leaveExcelController.importFromExcel)
 );
-
-/**
- * @route   GET /api/leaves/:id
- * @desc    Get single leave record
- * @access  Private
- */
-router.get('/:id', asyncHandler(leaveController.getLeaveById));
 
 /**
  * @route   POST /api/leaves

@@ -237,17 +237,13 @@ class OSSService {
    * @returns {Promise<Object>} Object with objectKey as key and signed URL as value
    */
   async getSignedUrls(objectKeys, expires = SIGNED_URL_EXPIRES) {
+    const keys = objectKeys.filter(Boolean);
+    const signed = await Promise.all(keys.map((key) => this.getSignedUrl(key, expires)));
+
     const result = {};
-
-    for (const key of objectKeys) {
-      if (key) {
-        const signedResult = await this.getSignedUrl(key, expires);
-        if (signedResult.success) {
-          result[key] = signedResult.url;
-        }
-      }
-    }
-
+    keys.forEach((key, i) => {
+      if (signed[i].success) result[key] = signed[i].url;
+    });
     return result;
   }
 
