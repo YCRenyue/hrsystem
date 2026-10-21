@@ -14,6 +14,7 @@ const { encryptionService } = require('../utils/encryption');
 const { recordOperation } = require('../utils/audit');
 const { findEmployeeIdsByName } = require('../utils/employeeSearch');
 const { sequelize } = require('../config/database');
+const { formatLocalDate } = require('../utils/dateUtils');
 
 // 无法匹配任何 UUID 的哨兵值，用于数据范围为空时返回空集
 const NO_MATCH = '__no_match__';
@@ -662,7 +663,7 @@ const exportToExcel = async (req, res) => {
   );
   res.setHeader(
     'Content-Disposition',
-    `attachment; filename=employees_${new Date().toISOString().split('T')[0]}.xlsx`
+    `attachment; filename=employees_${formatLocalDate(new Date())}.xlsx`
   );
 
   // Write to response

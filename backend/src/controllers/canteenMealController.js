@@ -11,6 +11,7 @@ const {
   ValidationError,
   NotFoundError
 } = require('../middleware/errorHandler');
+const { formatLocalDate } = require('../utils/dateUtils');
 
 // Meal type mapping: Chinese to English
 const MEAL_TYPE_CHINESE_TO_ENGLISH = {
@@ -383,7 +384,7 @@ const downloadTemplate = async (req, res) => {
 
   const workbook = ExcelService.createTemplate(columns, sampleData);
   const filename = `canteen_meal_template_${
-    new Date().toISOString().split('T')[0]
+    formatLocalDate(new Date())
   }.xlsx`;
 
   await ExcelService.sendExcelResponse(res, workbook, filename);
@@ -558,7 +559,7 @@ const exportToExcel = async (req, res) => {
     'Canteen Meal'
   );
 
-  const filename = `canteen_meal_${new Date().toISOString().split('T')[0]}.xlsx`;
+  const filename = `canteen_meal_${formatLocalDate(new Date())}.xlsx`;
   await ExcelService.sendExcelResponse(res, workbook, filename);
 };
 

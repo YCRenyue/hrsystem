@@ -21,6 +21,7 @@ const businessTripService = require('../services/BusinessTripService');
 const dataScopeService = require('../services/DataScopeService');
 const inAppNotification = require('../services/InAppNotificationService');
 const { findEmployeeIdsByName } = require('../utils/employeeSearch');
+const { formatLocalDateTime } = require('../utils/dateUtils');
 const {
   ValidationError,
   NotFoundError,
@@ -73,7 +74,7 @@ const notifyApproversOnSubmit = async (trip, employee, submitterUserId) => {
       senderUserId: submitterUserId,
       type: inAppNotification.NotificationTypes.BUSINESS_TRIP_SUBMITTED,
       title: '新出差申请待审批',
-      content: `${employeeName} 提交了出差申请 ${trip.trip_number}\n目的地：${trip.destination}\n时间：${trip.start_datetime.toISOString().slice(0, 16).replace('T', ' ')} 至 ${trip.end_datetime.toISOString().slice(0, 16).replace('T', ' ')}`,
+      content: `${employeeName} 提交了出差申请 ${trip.trip_number}\n目的地：${trip.destination}\n时间：${formatLocalDateTime(trip.start_datetime)} 至 ${formatLocalDateTime(trip.end_datetime)}`,
       relatedResource: 'business_trip',
       relatedId: trip.trip_id,
       linkUrl: `/business-trips/${trip.trip_id}`

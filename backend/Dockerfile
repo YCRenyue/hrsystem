@@ -3,6 +3,10 @@ FROM ${DOCKER_REGISTRY}/library/node:18-alpine
 
 WORKDIR /app
 
+# All backend logic runs in Beijing time (see CLAUDE.md "time conventions")
+RUN apk add --no-cache tzdata
+ENV TZ=Asia/Shanghai
+
 # Copy package files
 COPY package*.json ./
 

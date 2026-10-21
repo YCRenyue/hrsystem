@@ -12,6 +12,7 @@ const leaveWorkflowService = require('../services/LeaveWorkflowService');
 const ExcelService = require('../services/ExcelService');
 const inAppNotification = require('../services/InAppNotificationService');
 const { ValidationError } = require('../middleware/errorHandler');
+const { formatLocalDate } = require('../utils/dateUtils');
 
 const APPROVAL_ROLES = ['admin', 'hr_admin', 'department_manager'];
 
@@ -612,7 +613,7 @@ const downloadTemplate = async (req, res) => {
   ];
 
   const workbook = ExcelService.createTemplate(columns, sampleData);
-  const filename = `leave_template_${new Date().toISOString().split('T')[0]}.xlsx`;
+  const filename = `leave_template_${formatLocalDate(new Date())}.xlsx`;
 
   await ExcelService.sendExcelResponse(res, workbook, filename);
 };
@@ -763,7 +764,7 @@ const exportToExcel = async (req, res) => {
   ];
 
   const workbook = await ExcelService.exportToExcel(data, columns, '请假记录');
-  const filename = `leave_${new Date().toISOString().split('T')[0]}.xlsx`;
+  const filename = `leave_${formatLocalDate(new Date())}.xlsx`;
 
   await ExcelService.sendExcelResponse(res, workbook, filename);
 };

@@ -10,6 +10,8 @@ const sequelize = new Sequelize({
   database: process.env.DB_NAME || 'hr_system',
   charset: 'utf8mb4',
   collate: 'utf8mb4_unicode_ci',
+  // 系统统一北京时间：库里 DATETIME 直接存北京时间，与后端 TZ、MySQL default-time-zone 一致
+  timezone: '+08:00',
   logging: process.env.NODE_ENV === 'development' ? console.log : false,
   pool: {
     max: 10,

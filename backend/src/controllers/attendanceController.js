@@ -10,6 +10,7 @@ const permissionService = require('../services/PermissionService');
 const ExcelService = require('../services/ExcelService');
 const attendanceImportService = require('../services/attendanceImportService');
 const { ValidationError } = require('../middleware/errorHandler');
+const { formatLocalDate } = require('../utils/dateUtils');
 
 /**
  * 考勤状态映射
@@ -388,7 +389,7 @@ const downloadTemplate = async (req, res) => {
   ];
 
   const workbook = ExcelService.createTemplate(columns, sampleData);
-  const filename = `attendance_template_${new Date().toISOString().split('T')[0]}.xlsx`;
+  const filename = `attendance_template_${formatLocalDate(new Date())}.xlsx`;
 
   await ExcelService.sendExcelResponse(res, workbook, filename);
 };
@@ -593,7 +594,7 @@ const exportToExcel = async (req, res) => {
   ];
 
   const workbook = await ExcelService.exportToExcel(data, columns, '考勤记录');
-  const filename = `attendance_${new Date().toISOString().split('T')[0]}.xlsx`;
+  const filename = `attendance_${formatLocalDate(new Date())}.xlsx`;
 
   await ExcelService.sendExcelResponse(res, workbook, filename);
 };
