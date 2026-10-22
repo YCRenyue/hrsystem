@@ -126,11 +126,41 @@ describe('attendance punch planning', () => {
     expect(record.punches.afternoon_check_out).toBe('19:15:00');
   });
 
-  test('统一按 08:00 / 17:00 判断迟到早退', () => {
+  test('冬令时按 08:00 上班、18:00 下班判断迟到早退', () => {
     expect(buildDailyRecord('2026-03-12', ['08:25', '18:17']).derived)
       .toEqual({ status: 'late', late_minutes: 25, early_leave_minutes: 0 });
     expect(buildDailyRecord('2026-03-04', ['07:58', '16:01']).derived.status)
       .toBe('early_leave');
+  });
+
+  test('冬令时 08:00-11:30、13:30-18:00：算工作时长、加班和下午迟到', () => {
+    // 上午 08:25-11:30 = 185 分钟，下午 13:30-18:00 = 270 分钟；18:00-19:17 加班
+    expect(buildDailyRecord('2026-03-12', ['08:25', '11:40', '13:10', '19:17']).hours)
+      .toEqual({ work_hours: 7.6, overtime_hours: 1.3 });
+    // 下午 13:45 才打卡，迟到 15 分钟
+    expect(buildDailyRecord('2026-03-12', ['08:00', '11:35', '13:45', '18:00']).derived)
+      .toEqual({ status: 'late', late_minutes: 15, early_leave_minutes: 0 });
+    // 早到不算加班，17:30 走算早退
+    const early = buildDailyRecord('2026-03-12', ['07:10', '17:30']);
+    expect(early.hours).toEqual({ work_hours: 7.5, overtime_hours: 0 });
+    expect(early.derived.early_leave_minutes).toBe(30);
+  });
+
+  test('夏令时下午 14:00-18:30；生产部 07:30 上班、18:00 下班', () => {
+    expect(buildDailyRecord('2026-06-10', ['08:00', '18:30']).hours)
+      .toEqual({ work_hours: 8, overtime_hours: 0 });
+    const production = buildDailyRecord('2026-06-10', ['07:25', '18:30'], '生产部');
+    expect(production.derived.status).toBe('normal');
+    expect(production.hours).toEqual({ work_hours: 8, overtime_hours: 0.5 });
+    expect(buildDailyRecord('2026-03-12', ['07:40', '18:00'], '生产部').derived)
+      .toEqual({ status: 'late', late_minutes: 10, early_leave_minutes: 0 });
+  });
+
+  test('周末打卡时长扣午休后全部算加班，只有一次打卡不计时长', () => {
+    expect(buildDailyRecord('2026-03-08', ['08:00', '18:00']).hours)
+      .toEqual({ work_hours: 0, overtime_hours: 8 });
+    expect(buildDailyRecord('2026-03-09', ['19:15']).hours)
+      .toEqual({ work_hours: 0, overtime_hours: 0 });
   });
 
   test('工作日无打卡为缺勤，周末为 weekend', () => {

@@ -85,11 +85,10 @@ const AttendanceReport: React.FC = () => {
     if (shouldShowDepartmentFilter()) {
       fetchDepartments();
     }
-    // Load default report (last 30 days)
-    handleSearch({
-      start_date: dayjs().subtract(30, 'days').format('YYYY-MM-DD'),
-      end_date: dayjs().format('YYYY-MM-DD')
-    });
+    // Load default report (last 30 days) and show the period in the filters
+    const defaults = { dateRange: [dayjs().subtract(30, 'days'), dayjs()] };
+    form.setFieldsValue(defaults);
+    handleSearch(defaults);
     // The initial report should run once with the default period.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

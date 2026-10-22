@@ -81,12 +81,13 @@ const LeaveReport: React.FC = () => {
     if (shouldShowDepartmentFilter()) {
       fetchDepartments();
     }
-    // Load default report (last 30 days, approved leaves)
-    handleSearch({
-      start_date: dayjs().subtract(30, 'days').format('YYYY-MM-DD'),
-      end_date: dayjs().format('YYYY-MM-DD'),
+    // Load default report (last 30 days, approved leaves) and show it in the filters
+    const defaults = {
+      dateRange: [dayjs().subtract(30, 'days'), dayjs()],
       status: 'approved'
-    });
+    };
+    form.setFieldsValue(defaults);
+    handleSearch(defaults);
     // The initial report should run once with the default period.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -74,12 +74,10 @@ const OnboardingOffboardingReport: React.FC = () => {
     if (shouldShowDepartmentFilter()) {
       fetchDepartments();
     }
-    // Load default report (last 12 months)
-    handleSearch({
-      start_date: dayjs().subtract(12, 'months').format('YYYY-MM-DD'),
-      end_date: dayjs().format('YYYY-MM-DD'),
-      report_type: 'both'
-    });
+    // Load default report (last 12 months) and show the period in the filters
+    const defaults = { dateRange: [dayjs().subtract(12, 'months'), dayjs()] };
+    form.setFieldsValue(defaults);
+    handleSearch({ ...defaults, report_type: 'both' });
     // The initial report should run once with the default period.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

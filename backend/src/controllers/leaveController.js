@@ -102,12 +102,15 @@ const createLeave = async (req, res) => {
       employeeId = req.user.employee_id;
     } else if (!employeeId) {
       employeeId = req.user.employee_id;
+      if (!employeeId) {
+        return res.status(400).json({ success: false, message: '请选择请假员工' });
+      }
     }
 
     if (!employeeId || !leave_type || !start_date || !end_date || !days) {
       return res.status(400).json({
         success: false,
-        message: '员工ID、请假类型、日期和天数为必填项'
+        message: '请假类型、日期和天数为必填项'
       });
     }
 

@@ -39,6 +39,7 @@ import { leaveService, Leave, LeaveStats } from '../../services/leaveService';
 import { usePermission } from '../../hooks/usePermission';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import EmployeeSelect from '../../components/Common/EmployeeSelect';
 import { canApproveStage } from '../../utils/approvalWorkflow';
 
 const { RangePicker } = DatePicker;
@@ -107,7 +108,7 @@ const LeaveList: React.FC = () => {
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs]>(
     highlightId || initialStatus
       ? [dayjs().subtract(180, 'days'), dayjs().add(60, 'days')]
-      : [dayjs().subtract(30, 'days'), dayjs()]
+      : [dayjs().subtract(30, 'days'), dayjs().add(60, 'days')]
   );
   const [statusFilter, setStatusFilter] = useState<string | undefined>(initialStatus);
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
@@ -228,7 +229,7 @@ const LeaveList: React.FC = () => {
   };
 
   /**
-   * Submit a new leave application (employee self-service)
+   * Submit a new leave application (self-service, or HR on behalf of an employee)
    */
   const handleCreateLeave = async () => {
     try {
@@ -240,6 +241,7 @@ const LeaveList: React.FC = () => {
       const days = values.days
         || range[1].diff(range[0], 'day') + 1;
       await leaveService.create({
+        employee_id: values.employee_id,
         leave_type: values.leave_type,
         start_date: startDate,
         end_date: endDate,
@@ -709,6 +711,15 @@ const LeaveList: React.FC = () => {
         cancelText="取消"
       >
         <Form form={createForm} layout="vertical">
+          {canSearchEmployees && (
+            <Form.Item
+              name="employee_id"
+              label="请假员工"
+              rules={[{ required: true, message: '请选择请假员工' }]}
+            >
+              <EmployeeSelect />
+            </Form.Item>
+          )}
           <Form.Item
             name="leave_type"
             label="请假类型"
