@@ -150,6 +150,7 @@ const UserSettings: React.FC = () => {
       admin: '超级管理员',
       hr_admin: 'HR管理员',
       department_manager: '部门经理',
+      finance: '财务',
       employee: '员工'
     };
     return roleMap[role] || role;

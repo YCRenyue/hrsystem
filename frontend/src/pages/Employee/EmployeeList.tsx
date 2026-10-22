@@ -389,7 +389,7 @@ const EmployeeList: React.FC = () => {
       <Card className="employee-filter-card" title={<><FilterOutlined /> 筛选条件</>}>
         <Space size="middle" wrap style={{ width: '100%' }}>
           <Search
-            placeholder="按姓名、邮箱或员工编号搜索"
+            placeholder="按姓名或工号搜索"
             allowClear
             enterButton={<SearchOutlined />}
             value={keywordInput}

@@ -9,22 +9,21 @@ import {
   Form,
   DatePicker,
   Select,
-  Input,
-  Button,
   Table,
   Card,
   Row,
   Col,
   Statistic,
-  Space,
   Tag,
   App
 } from 'antd';
-import { SearchOutlined, DownloadOutlined, WarningOutlined } from '@ant-design/icons';
+import { WarningOutlined } from '@ant-design/icons';
 import { Column, Pie } from '@ant-design/plots';
 import dayjs from 'dayjs';
 import apiClient from '../../services/api';
 import { usePermission } from '../../hooks/usePermission';
+import ReportFilterBar, { EmployeeFilterFields, FilterField } from '../../components/Reports/ReportFilterBar';
+import { exportCsv } from '../../utils/exportCsv';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
@@ -86,12 +85,17 @@ const AttendanceReport: React.FC = () => {
       fetchDepartments();
     }
     // Load default report (last 30 days) and show the period in the filters
-    const defaults = { dateRange: [dayjs().subtract(30, 'days'), dayjs()] };
-    form.setFieldsValue(defaults);
-    handleSearch(defaults);
+    handleReset();
     // The initial report should run once with the default period.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleReset = () => {
+    const defaults = { dateRange: [dayjs().subtract(30, 'days'), dayjs()] };
+    form.resetFields();
+    form.setFieldsValue(defaults);
+    handleSearch(defaults);
+  };
 
   const fetchDepartments = async () => {
     try {
@@ -119,7 +123,8 @@ const AttendanceReport: React.FC = () => {
 
       if (filters.department_id) params.department_id = filters.department_id;
       if (filters.status) params.status = filters.status;
-      if (filters.keyword?.trim()) params.keyword = filters.keyword.trim();
+      if (filters.employee_number?.trim()) params.employee_number = filters.employee_number.trim();
+      if (filters.name?.trim()) params.name = filters.name.trim();
 
       const response = await apiClient.get('/reports/attendance', { params });
 
@@ -186,9 +191,18 @@ const AttendanceReport: React.FC = () => {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: getStatusTag
+      render: getStatusTag,
+      exportValue: (status: string) => statusOptions.find(opt => opt.value === status)?.label || status
     }
   ];
+
+  const handleExport = () => {
+    exportCsv(
+      `考勤报表_${dayjs().format('YYYYMMDD')}.csv`,
+      columns,
+      reportData?.attendances || []
+    );
+  };
 
   const abnormalColumns = [
     ...columns,
@@ -208,53 +222,36 @@ const AttendanceReport: React.FC = () => {
 
   return (
     <div className="attendance-report">
-      {/* 筛选表单 */}
-      <Card style={{ marginBottom: 16 }}>
-        <Form
-          form={form}
-          layout="inline"
-          onFinish={handleSearch}
-        >
-          <Form.Item name="keyword" label="员工">
-            <Input placeholder="姓名或工号" allowClear style={{ width: 140 }} />
-          </Form.Item>
-
-          <Form.Item name="dateRange" label="日期范围">
-            <RangePicker />
-          </Form.Item>
-
-          {shouldShowDepartmentFilter() && (
-            <Form.Item name="department_id" label="部门">
-              <Select style={{ width: 150 }} placeholder="全部" allowClear>
-                {departments.map(dept => (
-                  <Option key={dept.department_id} value={dept.department_id}>
-                    {dept.name}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          )}
-
-          <Form.Item name="status" label="状态">
-            <Select style={{ width: 120 }} placeholder="全部" allowClear>
-              {statusOptions.map(opt => (
-                <Option key={opt.value} value={opt.value}>{opt.label}</Option>
+      <ReportFilterBar
+        form={form}
+        onSearch={handleSearch}
+        onReset={handleReset}
+        onExport={handleExport}
+        exportDisabled={!reportData?.attendances?.length}
+      >
+        <EmployeeFilterFields />
+        <FilterField name="dateRange" label="日期范围" wide>
+          <RangePicker style={{ width: '100%' }} />
+        </FilterField>
+        {shouldShowDepartmentFilter() && (
+          <FilterField name="department_id" label="部门">
+            <Select placeholder="全部" allowClear>
+              {departments.map(dept => (
+                <Option key={dept.department_id} value={dept.department_id}>
+                {dept.name}
+                </Option>
               ))}
             </Select>
-          </Form.Item>
-
-          <Form.Item>
-            <Space>
-              <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
-                查询
-              </Button>
-              <Button icon={<DownloadOutlined />}>
-                导出
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Card>
+          </FilterField>
+        )}
+        <FilterField name="status" label="状态">
+          <Select placeholder="全部" allowClear>
+            {statusOptions.map(opt => (
+              <Option key={opt.value} value={opt.value}>{opt.label}</Option>
+            ))}
+          </Select>
+        </FilterField>
+      </ReportFilterBar>
 
       {/* 统计卡片 */}
       {reportData && (

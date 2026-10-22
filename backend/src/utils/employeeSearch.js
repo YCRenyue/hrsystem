@@ -54,22 +54,47 @@ const buildEmployeeKeywordWhere = async (keyword) => {
 };
 
 /**
+ * 给关联员工的 include 追加搜索条件，保留原有条件（如数据范围）
+ *
+ * @param {Object} employeeInclude - Sequelize include 中的 Employee 项
+ * @param {Object} criteria - 搜索条件，全部为空时不做任何事
+ * @param {string} [criteria.keyword] - 工号或姓名关键字
+ * @param {string} [criteria.employeeNumber] - 工号（模糊匹配）
+ * @param {string} [criteria.name] - 姓名（模糊匹配）
+ * @returns {Promise<void>}
+ */
+const applyEmployeeFilters = async (employeeInclude, { keyword, employeeNumber, name } = {}) => {
+  const conditions = [];
+  if (keyword && String(keyword).trim()) {
+    conditions.push(await buildEmployeeKeywordWhere(keyword));
+  }
+  if (employeeNumber && String(employeeNumber).trim()) {
+    conditions.push({ employee_number: { [Op.like]: `%${String(employeeNumber).trim()}%` } });
+  }
+  if (name && String(name).trim()) {
+    conditions.push({ employee_id: { [Op.in]: await findEmployeeIdsByName(String(name)) } });
+  }
+  if (conditions.length === 0) return;
+  const existing = employeeInclude.where;
+  const all = existing ? [existing, ...conditions] : conditions;
+  // eslint-disable-next-line no-param-reassign
+  employeeInclude.where = all.length === 1 ? all[0] : { [Op.and]: all };
+};
+
+/**
  * 给关联员工的 include 追加“工号或姓名”搜索条件，保留原有条件（如数据范围）
  *
  * @param {Object} employeeInclude - Sequelize include 中的 Employee 项
  * @param {string} keyword - 搜索关键字，为空时不做任何事
  * @returns {Promise<void>}
  */
-const applyEmployeeKeyword = async (employeeInclude, keyword) => {
-  if (!keyword || !String(keyword).trim()) return;
-  const keywordWhere = await buildEmployeeKeywordWhere(keyword);
-  const existing = employeeInclude.where;
-  // eslint-disable-next-line no-param-reassign
-  employeeInclude.where = existing ? { [Op.and]: [existing, keywordWhere] } : keywordWhere;
-};
+const applyEmployeeKeyword = (employeeInclude, keyword) => (
+  applyEmployeeFilters(employeeInclude, { keyword })
+);
 
 module.exports = {
   findEmployeeIdsByName,
   buildEmployeeKeywordWhere,
-  applyEmployeeKeyword
+  applyEmployeeKeyword,
+  applyEmployeeFilters
 };

@@ -281,7 +281,11 @@ const importFromExcel = async (req, res) => {
     req.file.buffer,
     async (row) => {
       const employeeNumber = ExcelService.getCellValue(row.getCell(1));
-      const yearMonth = ExcelService.getCellValue(row.getCell(2));
+      // Excel 会把手输的 2026-09 自动转成日期单元格，这里统一还原为 YYYY-MM
+      const yearMonthCell = row.getCell(2).value;
+      const yearMonth = yearMonthCell instanceof Date
+        ? ExcelService.parseExcelDate(yearMonthCell).slice(0, 7)
+        : ExcelService.getCellValue(row.getCell(2));
 
       if (!employeeNumber || !yearMonth) {
         throw new Error('Employee number and year_month are required');

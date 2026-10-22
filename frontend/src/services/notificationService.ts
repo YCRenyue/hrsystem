@@ -23,6 +23,11 @@ export interface NotificationListResponse {
   pagination: { total: number; page: number; size: number; totalPages: number };
 }
 
+/** 已读状态变化时派发的窗口事件，右上角铃铛据此刷新未读数 */
+export const NOTIFICATIONS_CHANGED_EVENT = 'notifications:changed';
+
+const emitChanged = () => window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
+
 export const notificationService = {
   async list(params: {
     page?: number;
@@ -41,10 +46,12 @@ export const notificationService = {
 
   async markRead(id: string): Promise<void> {
     await api.post(`/notifications/${id}/read`);
+    emitChanged();
   },
 
   async markAllRead(): Promise<number> {
     const res = await api.post('/notifications/read-all');
+    emitChanged();
     return res.data?.data?.affected || 0;
   },
 };

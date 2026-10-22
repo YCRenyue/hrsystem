@@ -23,7 +23,9 @@ async function getLeaveReport(req, res) {
       department_id: req.query.department_id,
       employee_id: req.query.employee_id,
       status: req.query.status,
-      keyword: req.query.keyword
+      keyword: req.query.keyword,
+      employee_number: req.query.employee_number,
+      name: req.query.name
     };
 
     logger.info('Generating leave report', {
@@ -62,7 +64,9 @@ async function getAttendanceReport(req, res) {
       department_id: req.query.department_id,
       employee_id: req.query.employee_id,
       status: req.query.status,
-      keyword: req.query.keyword
+      keyword: req.query.keyword,
+      employee_number: req.query.employee_number,
+      name: req.query.name
     };
 
     logger.info('Generating attendance report', {
