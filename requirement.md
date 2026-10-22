@@ -2303,6 +2303,7 @@ const NotificationService = {
 - [x] 阿里云 ECS 公网部署打通并完成线上测试 (已完成 - 2026-10-21)
   - 修复 ACR 个人版拒收 buildx 证明清单导致的镜像推送失败
   - 种子脚本重置管理员密码时清零失败次数，并回读校验密码哈希
+  - [x] 未设置 SEED_ADMIN_RESET_PASSWORD 时跳过管理员密码校验，管理员自行改密后部署不再失败 (已完成 - 2026-10-22)
   - 线上分模块测试用例与截图见 `docs/test-cases/`，HR 使用手册见 `docs/user-guide/`
 - [ ] 修复线上测试发现的问题（详见 `docs/test-cases/README.md`）
   - [x] 综合报表三个接口 500 (已完成 - 2026-10-21)
