@@ -35,7 +35,7 @@ const Login: React.FC = () => {
 
   return (
     <div className="login-container">
-      <Card className="login-card" title="越祥生物科技人事管理平台">
+      <Card className="login-card" title="仁越生物科技人事管理平台">
         <Form name="login" onFinish={onFinish} size="large" autoComplete="on">
           <Form.Item
             name="username"

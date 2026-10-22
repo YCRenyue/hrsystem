@@ -226,7 +226,7 @@ const MainLayout: React.FC = () => {
             fontWeight: 'bold',
           }}
         >
-          {collapsed ? '越祥' : '越祥生物科技'}
+          {collapsed ? '仁越' : '仁越生物科技'}
         </div>
         <Menu
           theme="dark"
@@ -237,7 +237,7 @@ const MainLayout: React.FC = () => {
       </Sider>
       )}
       <Drawer
-        title="越祥生物科技"
+        title="仁越生物科技"
         placement="left"
         open={isMobile && mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
