@@ -33,6 +33,11 @@ export interface UserProfile {
   };
 }
 
+interface ProfileResponse {
+  user: UserProfile;
+  employee: (NonNullable<UserProfile['employee']> & { phone?: string }) | null;
+}
+
 export interface UserListResponse {
   items: UserProfile[];
   total: number;
@@ -77,8 +82,14 @@ export const userService = {
    * Get current user profile
    */
   async getProfile(): Promise<UserProfile> {
-    const response = await apiClient.get<ApiResponse<UserProfile>>('/users/profile');
-    return response.data.data!;
+    // 后端返回 { user, employee }，这里合并成页面使用的扁平结构
+    const response = await apiClient.get<ApiResponse<ProfileResponse>>('/users/profile');
+    const { user, employee } = response.data.data!;
+    if (!employee) return user;
+    return {
+      ...user,
+      employee: { ...employee, phone_masked: employee.phone_masked || employee.phone },
+    };
   },
 
   /**

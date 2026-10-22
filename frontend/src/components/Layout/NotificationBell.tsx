@@ -18,6 +18,7 @@ import dayjs from 'dayjs';
 import {
   notificationService,
   NotificationItem,
+  NOTIFICATIONS_CHANGED_EVENT,
 } from '../../services/notificationService';
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
@@ -71,7 +72,12 @@ const NotificationBell: React.FC = () => {
   useEffect(() => {
     refreshUnread();
     const timer = setInterval(refreshUnread, POLL_INTERVAL_MS);
-    return () => clearInterval(timer);
+    // 通知中心等页面标记已读后立即同步徽章
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, refreshUnread);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, refreshUnread);
+    };
   }, [refreshUnread]);
 
   // 打开抽屉时拉最新 10 条
