@@ -76,6 +76,8 @@ async function seedDepartments() {
 /**
  * Re-read the admin row and check the stored hash matches the seed password,
  * so a broken reset fails the deploy instead of surfacing as a login 401.
+ * Only meaningful when this run wrote the password (new admin or reset); otherwise
+ * the admin may have changed it since, and a mismatch is expected.
  *
  * @param {string} username - Admin username
  * @param {string} password - Expected plain password
@@ -123,6 +125,7 @@ async function seed() {
     };
 
     const existingAdmin = await User.findOne({ where: { username } });
+    const passwordWritten = !existingAdmin || resetPassword;
 
     if (existingAdmin) {
       const updates = { ...adminDefaults };
@@ -153,7 +156,12 @@ async function seed() {
       }
     }
 
-    await verifyAdminPassword(username, password);
+    if (passwordWritten) {
+      await verifyAdminPassword(username, password);
+    } else {
+      console.log('Admin password check skipped: existing password kept '
+        + '(set SEED_ADMIN_RESET_PASSWORD=true to reset it).');
+    }
     console.log('Database seed completed successfully.');
   } catch (error) {
     console.error('Database seed failed:', error);
