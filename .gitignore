@@ -52,3 +52,8 @@ coverage/
 .claude/.state/
 
 /.github/secrets.env
+
+# Company documents with employee data, keep local only
+CommunicationDocs/
+sample_data/员工信息表.xlsx
+sample_data/花名册.xlsx
