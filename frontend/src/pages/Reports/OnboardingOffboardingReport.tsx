@@ -9,21 +9,21 @@ import {
   Form,
   DatePicker,
   Select,
-  Button,
   Table,
   Card,
   Row,
   Col,
   Statistic,
-  Space,
   Radio,
   App
 } from 'antd';
-import { SearchOutlined, DownloadOutlined, UserAddOutlined, UserDeleteOutlined } from '@ant-design/icons';
+import { UserAddOutlined, UserDeleteOutlined } from '@ant-design/icons';
 import { Line, Column } from '@ant-design/plots';
 import dayjs from 'dayjs';
 import apiClient from '../../services/api';
 import { usePermission } from '../../hooks/usePermission';
+import ReportFilterBar, { FilterField } from '../../components/Reports/ReportFilterBar';
+import { exportCsv } from '../../utils/exportCsv';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
@@ -75,12 +75,21 @@ const OnboardingOffboardingReport: React.FC = () => {
       fetchDepartments();
     }
     // Load default report (last 12 months) and show the period in the filters
-    const defaults = { dateRange: [dayjs().subtract(12, 'months'), dayjs()] };
-    form.setFieldsValue(defaults);
-    handleSearch({ ...defaults, report_type: 'both' });
+    handleReset();
     // The initial report should run once with the default period.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleReset = () => {
+    const defaults = {
+      dateRange: [dayjs().subtract(12, 'months'), dayjs()],
+      report_type: 'both' as const
+    };
+    form.resetFields();
+    form.setFieldsValue(defaults);
+    setReportType('both');
+    handleSearch(defaults);
+  };
 
   const fetchDepartments = async () => {
     try {
@@ -186,52 +195,50 @@ const OnboardingOffboardingReport: React.FC = () => {
     }
   ];
 
+  const handleExport = () => {
+    const rows = [
+      ...(reportData?.onboarding?.employees || []).map(e => ({ ...e, record_type: '入职' })),
+      ...(reportData?.offboarding?.employees || []).map(e => ({ ...e, record_type: '离职' }))
+    ];
+    exportCsv(
+      `入离职报表_${dayjs().format('YYYYMMDD')}.csv`,
+      [{ title: '类型', dataIndex: 'record_type' }, ...offboardingColumns],
+      rows
+    );
+  };
+
   return (
     <div className="onboarding-offboarding-report">
-      {/* 筛选表单 */}
-      <Card style={{ marginBottom: 16 }}>
-        <Form
-          form={form}
-          layout="inline"
-          onFinish={handleSearch}
-          initialValues={{ report_type: 'both' }}
-        >
-          <Form.Item name="report_type" label="报表类型">
-            <Radio.Group onChange={(e) => handleReportTypeChange(e.target.value)}>
-              <Radio.Button value="onboarding">入职</Radio.Button>
-              <Radio.Button value="offboarding">离职</Radio.Button>
-              <Radio.Button value="both">入职+离职</Radio.Button>
-            </Radio.Group>
-          </Form.Item>
-
-          <Form.Item name="dateRange" label="日期范围">
-            <RangePicker />
-          </Form.Item>
-
-          {shouldShowDepartmentFilter() && (
-            <Form.Item name="department_id" label="部门">
-              <Select style={{ width: 150 }} placeholder="全部" allowClear>
-                {departments.map(dept => (
-                  <Option key={dept.department_id} value={dept.department_id}>
-                    {dept.name}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          )}
-
-          <Form.Item>
-            <Space>
-              <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
-                查询
-              </Button>
-              <Button icon={<DownloadOutlined />}>
-                导出
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Card>
+      <ReportFilterBar
+        form={form}
+        onSearch={handleSearch}
+        onReset={handleReset}
+        onExport={handleExport}
+        exportDisabled={!reportData?.onboarding?.employees?.length
+          && !reportData?.offboarding?.employees?.length}
+      >
+        <FilterField name="report_type" label="报表类型" wide xl={6}>
+          <Radio.Group onChange={(e) => handleReportTypeChange(e.target.value)}>
+            <Radio.Button value="onboarding">入职</Radio.Button>
+            <Radio.Button value="offboarding">离职</Radio.Button>
+            <Radio.Button value="both">入职+离职</Radio.Button>
+          </Radio.Group>
+        </FilterField>
+        <FilterField name="dateRange" label="日期范围" wide xl={6}>
+          <RangePicker style={{ width: '100%' }} />
+        </FilterField>
+        {shouldShowDepartmentFilter() && (
+          <FilterField name="department_id" label="部门">
+            <Select placeholder="全部" allowClear>
+              {departments.map(dept => (
+                <Option key={dept.department_id} value={dept.department_id}>
+                  {dept.name}
+                </Option>
+              ))}
+            </Select>
+          </FilterField>
+        )}
+      </ReportFilterBar>
 
       {reportData && (
         <>

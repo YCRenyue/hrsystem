@@ -11,7 +11,7 @@ const {
 } = require('../models');
 const logger = require('../utils/logger');
 const permissionService = require('./PermissionService');
-const { applyEmployeeKeyword } = require('../utils/employeeSearch');
+const { applyEmployeeFilters } = require('../utils/employeeSearch');
 
 class ReportService {
   /**
@@ -29,6 +29,8 @@ class ReportService {
       department_id,
       employee_id,
       keyword,
+      employee_number: employeeNumber,
+      name,
       status = 'approved' // 默认只统计已批准的假期
     } = filters;
 
@@ -84,7 +86,7 @@ class ReportService {
           ]
         }
       ];
-      await applyEmployeeKeyword(include[0], keyword);
+      await applyEmployeeFilters(include[0], { keyword, employeeNumber, name });
 
       const leaves = await Leave.findAll({
         where: whereClause,
@@ -130,6 +132,8 @@ class ReportService {
       department_id,
       employee_id,
       keyword,
+      employee_number: employeeNumber,
+      name,
       status
     } = filters;
 
@@ -174,7 +178,7 @@ class ReportService {
           ]
         }
       ];
-      await applyEmployeeKeyword(include[0], keyword);
+      await applyEmployeeFilters(include[0], { keyword, employeeNumber, name });
 
       const attendances = await Attendance.findAll({
         where: whereClause,

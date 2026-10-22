@@ -1,7 +1,6 @@
 /**
  * Employee Controller
  */
-const { Op } = require('sequelize');
 const {
   Employee, Department, User, TrainingPledge, EmploymentContract
 } = require('../models');
@@ -12,7 +11,7 @@ const {
 } = require('../middleware/errorHandler');
 const { encryptionService } = require('../utils/encryption');
 const { recordOperation } = require('../utils/audit');
-const { findEmployeeIdsByName } = require('../utils/employeeSearch');
+const { buildEmployeeKeywordWhere } = require('../utils/employeeSearch');
 const { sequelize } = require('../config/database');
 const { formatLocalDate } = require('../utils/dateUtils');
 
@@ -92,13 +91,8 @@ const buildEmployeeWhere = async (query, user) => {
   const where = {};
 
   if (keyword) {
-    // 姓名是密文，先在内存中解密匹配，再与工号、邮箱的模糊匹配合并
-    const nameMatchedIds = await findEmployeeIdsByName(keyword);
-    where[Op.or] = [
-      { employee_number: { [Op.like]: `%${keyword}%` } },
-      { email: { [Op.like]: `%${keyword}%` } },
-      ...(nameMatchedIds.length > 0 ? [{ employee_id: { [Op.in]: nameMatchedIds } }] : [])
-    ];
+    // 只按工号或姓名搜索（姓名是密文，在内存中解密匹配）
+    Object.assign(where, await buildEmployeeKeywordWhere(keyword));
   }
 
   if (department_id) {
