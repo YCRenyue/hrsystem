@@ -9,22 +9,7 @@ const {
 const ExcelService = require('../services/ExcelService');
 const { ValidationError } = require('../middleware/errorHandler');
 const { formatLocalDate } = require('../utils/dateUtils');
-
-/**
- * 请假类型映射
- */
-const leaveTypeMap = {
-  annual: '年假',
-  sick: '病假',
-  personal: '事假',
-  compensatory: '调休',
-  maternity: '产假',
-  paternity: '陪产假',
-  marriage: '婚假',
-  bereavement: '丧假',
-  unpaid: '无薪假',
-  other: '其他'
-};
+const { getLeaveTypeLabel } = require('../constants/leaveTypes');
 
 /**
  * 请假类型中文转英文
@@ -227,7 +212,7 @@ const exportToExcel = async (req, res) => {
     employee_number: record.employee?.employee_number || '',
     employee_name: record.employee?.getName() || '',
     department_name: record.employee?.department?.name || '',
-    leave_type: leaveTypeMap[record.leave_type] || record.leave_type,
+    leave_type: getLeaveTypeLabel(record.leave_type),
     start_date: record.start_date,
     end_date: record.end_date,
     days: record.days,

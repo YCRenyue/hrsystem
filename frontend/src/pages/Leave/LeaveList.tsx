@@ -101,15 +101,14 @@ const LeaveList: React.FC = () => {
     total: 0
   });
 
-  // Filter states - default to last 30 days, but if a notification deep-links with
-  // ?status=pending or ?highlight=xxx, expand the date range so the record shows up.
+  // Filter states - no date range by default so every application shows up, including
+  // leave filed for earlier dates; a notification may deep-link with ?status=pending.
   const initialStatus = searchParams.get('status') || undefined;
   const highlightId = searchParams.get('highlight') || undefined;
-  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs]>(
-    highlightId || initialStatus
-      ? [dayjs().subtract(180, 'days'), dayjs().add(60, 'days')]
-      : [dayjs().subtract(30, 'days'), dayjs().add(60, 'days')]
-  );
+  const [dateRange, setDateRange] = useState<[Dayjs, Dayjs] | null>(null);
+  const rangeParams = dateRange
+    ? { start_date: dateRange[0].format('YYYY-MM-DD'), end_date: dateRange[1].format('YYYY-MM-DD') }
+    : {};
   const [statusFilter, setStatusFilter] = useState<string | undefined>(initialStatus);
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
   const [keywordInput, setKeywordInput] = useState('');
@@ -144,16 +143,12 @@ const LeaveList: React.FC = () => {
         leaveService.getList({
           page: pagination.current,
           size: pagination.pageSize,
-          start_date: dateRange[0].format('YYYY-MM-DD'),
-          end_date: dateRange[1].format('YYYY-MM-DD'),
+          ...rangeParams,
           status: statusFilter,
           leave_type: typeFilter,
           keyword: keyword || undefined
         }),
-        leaveService.getStats({
-          start_date: dateRange[0].format('YYYY-MM-DD'),
-          end_date: dateRange[1].format('YYYY-MM-DD')
-        })
+        leaveService.getStats(rangeParams)
       ]);
 
       setDataSource(listResponse.rows);
@@ -194,10 +189,8 @@ const LeaveList: React.FC = () => {
    * Handle date range change
    */
   const handleDateRangeChange = (dates: null | [Dayjs | null, Dayjs | null]) => {
-    if (dates && dates[0] && dates[1]) {
-      setDateRange([dates[0], dates[1]]);
-      setPagination(prev => ({ ...prev, current: 1 }));
-    }
+    setDateRange(dates && dates[0] && dates[1] ? [dates[0], dates[1]] : null);
+    setPagination(prev => ({ ...prev, current: 1 }));
   };
 
   /**
@@ -357,8 +350,7 @@ const LeaveList: React.FC = () => {
   const handleExport = async () => {
     try {
       const blob = await leaveService.exportToExcel({
-        start_date: dateRange[0].format('YYYY-MM-DD'),
-        end_date: dateRange[1].format('YYYY-MM-DD'),
+        ...rangeParams,
         leave_type: typeFilter,
         status: statusFilter
       });

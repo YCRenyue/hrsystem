@@ -21,6 +21,7 @@ const {
   sequelize
 } = require('../models');
 const { ValidationError } = require('../middleware/errorHandler');
+const { formatLocalDateTime } = require('../utils/dateUtils');
 
 // 默认每日工时基准（与考勤模块保持一致）
 const STANDARD_WORK_HOURS_PER_DAY = 8;
@@ -436,7 +437,10 @@ const addWatermarkPhoto = async (trip, photo) => {
   const start = toDate(trip.start_datetime);
   const end = toDate(trip.end_datetime);
   if (takenAt.getTime() < start.getTime() || takenAt.getTime() > end.getTime()) {
-    throw new ValidationError(`照片拍摄时间 ${takenAt.toISOString()} 不在出差期间 ${start.toISOString()} ~ ${end.toISOString()}`);
+    throw new ValidationError(
+      `照片拍摄时间 ${formatLocalDateTime(takenAt)} 不在出差期间 `
+      + `${formatLocalDateTime(start)} ~ ${formatLocalDateTime(end)}`
+    );
   }
 
   const list = parseAttachments(trip);

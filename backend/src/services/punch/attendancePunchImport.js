@@ -124,46 +124,67 @@ function selectImportDates(allDates, exportDate) {
   };
 }
 
+const isLeave = (record) => !!record.leave_id || record.status === 'leave';
+
 const isProtected = (record) => !!record.leave_id || !!record.business_trip_id
   || PROTECTED_STATUSES.includes(record.status);
 
 /**
+ * 写入一天的考勤，返回处理方式：created / updated / leave / protected / manual
+ * 请假、出差的记录受保护，只补打卡时间；手工录入的记录保持不变
+ */
+async function writeDailyRecord(employeeId, daily, transaction) {
+  const existing = await Attendance.findOne({
+    where: { employee_id: employeeId, date: daily.date },
+    transaction
+  });
+  if (!existing) {
+    await Attendance.create({
+      employee_id: employeeId,
+      date: daily.date,
+      ...daily.punches,
+      ...daily.derived,
+      ...daily.hours,
+      notes: daily.notes,
+      source: SOURCE_TAG
+    }, { transaction });
+    return 'created';
+  }
+  if (isProtected(existing)) {
+    await existing.update(daily.punches, { transaction });
+    return isLeave(existing) ? 'leave' : 'protected';
+  }
+  if (existing.source !== SOURCE_TAG) return 'manual';
+  await existing.update({
+    ...daily.punches, ...daily.derived, ...daily.hours, notes: daily.notes
+  }, { transaction });
+  return 'updated';
+}
+
+/**
  * 写入一位员工的每日考勤
  * @param {Object} employee - 含 employee_id 与 department（name）
- * @returns {Promise<{created:number, updated:number, manual_kept:number}>}
+ * @returns {Promise<{created:number, updated:number, manual_kept:number,
+ *   leave_punch_dates:string[], absent_dates:string[]}>} 另含两类需提醒 HR 的日期：
+ *   已请假但当天有打卡、未请假且工作日没有打卡（旷工）
  */
 async function upsertEmployeeAttendances(employee, entry, dates, transaction) {
   const employeeId = employee.employee_id;
   const departmentName = employee.department && employee.department.name;
-  const stats = { created: 0, updated: 0, manual_kept: 0 };
+  const stats = {
+    created: 0, updated: 0, manual_kept: 0, leave_punch_dates: [], absent_dates: []
+  };
   for (const date of dates) {
     const daily = buildDailyRecord(date, entry.days[date] || [], departmentName);
-    const existing = await Attendance.findOne({
-      where: { employee_id: employeeId, date },
-      transaction
-    });
-    if (!existing) {
-      await Attendance.create({
-        employee_id: employeeId,
-        date,
-        ...daily.punches,
-        ...daily.derived,
-        ...daily.hours,
-        notes: daily.notes,
-        source: SOURCE_TAG
-      }, { transaction });
-      stats.created += 1;
-    } else if (isProtected(existing)) {
-      await existing.update(daily.punches, { transaction });
-      stats.updated += 1;
-    } else if (existing.source === SOURCE_TAG) {
-      await existing.update({
-        ...daily.punches, ...daily.derived, ...daily.hours, notes: daily.notes
-      }, { transaction });
-      stats.updated += 1;
-    } else {
-      stats.manual_kept += 1;
+    // eslint-disable-next-line no-await-in-loop -- queries share one transaction connection and must run in order
+    const outcome = await writeDailyRecord(employeeId, daily, transaction);
+    if (outcome === 'manual') stats.manual_kept += 1;
+    else stats[outcome === 'created' ? 'created' : 'updated'] += 1;
+    if (outcome === 'leave' && (entry.days[date] || []).length > 0) {
+      stats.leave_punch_dates.push(date);
     }
+    const derivedWritten = outcome === 'created' || outcome === 'updated';
+    if (derivedWritten && daily.derived.status === 'absent') stats.absent_dates.push(date);
   }
   return stats;
 }

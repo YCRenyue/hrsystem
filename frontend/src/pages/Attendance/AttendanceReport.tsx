@@ -18,6 +18,7 @@ import {
   App,
   Tag,
   Upload,
+  Tooltip,
 } from 'antd';
 import {
   ReloadOutlined,
@@ -36,6 +37,7 @@ import { usePermission } from '../../hooks/usePermission';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import PunchImportResultModal from '../../components/PunchImport/PunchImportResultModal';
 import PunchMappingModal from '../../components/PunchImport/PunchMappingModal';
+import AttendanceAlertsCard from '../../components/Attendance/AttendanceAlertsCard';
 
 
 const { RangePicker } = DatePicker;
@@ -148,7 +150,11 @@ const AttendanceReportPage: React.FC = () => {
       key: 'leave_days',
       width: 90,
       sorter: (a, b) => Number(a.leave_days) - Number(b.leave_days),
-      render: (v) => (Number(v) > 0 ? <Tag color="orange">{v}</Tag> : v),
+      render: (v, row) => (
+        <Tooltip title={`打卡机 ${row.machine_leave_days} 天，系统已批准 ${row.system_leave_days} 天`}>
+          {Number(v) > 0 ? <Tag color="orange">{v}</Tag> : v}
+        </Tooltip>
+      ),
     },
     {
       title: '旷工天数',
@@ -377,6 +383,8 @@ const AttendanceReportPage: React.FC = () => {
           </Card>
         </Col>
       </Row>
+
+      <AttendanceAlertsCard rows={report?.rows || []} loading={loading} />
 
       <Card title="考勤汇总明细">
         <Table<AttendanceSummaryRow>

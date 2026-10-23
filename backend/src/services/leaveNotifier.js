@@ -6,6 +6,7 @@
 
 const inAppNotification = require('./InAppNotificationService');
 const { findUserIdForEmployee } = require('./approvalService');
+const { getLeaveTypeLabel } = require('../constants/leaveTypes');
 
 /**
  * 通知审批人：有新的请假申请
@@ -25,7 +26,7 @@ const notifyApproversOnLeaveSubmit = async (employee, leave, senderUserId) => {
       senderUserId,
       type: inAppNotification.NotificationTypes.LEAVE_SUBMITTED,
       title: '新请假申请待审批',
-      content: `${employeeName} 提交了请假申请\n类型：${leave.leave_type}\n时间：${leave.start_date} 至 ${leave.end_date}\n天数：${leave.days}天\n${reasonLine}`,
+      content: `${employeeName} 提交了请假申请\n类型：${getLeaveTypeLabel(leave.leave_type)}\n时间：${leave.start_date} 至 ${leave.end_date}\n天数：${leave.days}天\n${reasonLine}`,
       relatedResource: 'leave',
       relatedId: leave.leave_id,
       linkUrl: `/leaves?status=pending&highlight=${leave.leave_id}`

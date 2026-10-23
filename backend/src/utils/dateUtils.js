@@ -20,14 +20,17 @@ const formatLocalDate = (value) => {
 };
 
 /**
- * 格式化为本地日期时间 YYYY-MM-DD HH:mm
+ * 格式化为本地日期时间 YYYY-MM-DD HH:mm（withSeconds 时为 YYYY-MM-DD HH:mm:ss）
  *
  * @param {Date|string|number} value - 时间
+ * @param {Object} [options]
+ * @param {boolean} [options.withSeconds=false] - 是否带秒
  * @returns {string} 例如 2026-10-21 09:00
  */
-const formatLocalDateTime = (value) => {
+const formatLocalDateTime = (value, { withSeconds = false } = {}) => {
   const d = value instanceof Date ? value : new Date(value);
-  return `${formatLocalDate(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${formatLocalDate(d)} ${time}${withSeconds ? `:${pad(d.getSeconds())}` : ''}`;
 };
 
 module.exports = { formatLocalDate, formatLocalDateTime };

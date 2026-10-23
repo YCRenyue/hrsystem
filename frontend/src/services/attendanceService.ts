@@ -58,6 +58,16 @@ export interface AttendanceSummaryRow {
   early_leave_minutes: number;
   source_file: string | null;
   imported_at: string | null;
+  /** 打卡机汇总的原始请假天数 */
+  machine_leave_days: number;
+  /** 打卡机汇总的原始旷工天数 */
+  machine_absent_days: number;
+  /** 系统中已批准的请假天数 */
+  system_leave_days: number;
+  /** 已请假但当天有打卡的日期（异常） */
+  leave_punch_dates: string[];
+  /** 未请假且工作日没有打卡的日期（旷工） */
+  absent_dates: string[];
   employee?: {
     employee_id: string;
     employee_number: string;
@@ -80,6 +90,8 @@ export interface AttendanceReport {
     late_people_count: number;
     early_leave_people_count: number;
     leave_people_count: number;
+    absent_people_count: number;
+    leave_punch_count: number;
   };
 }
 

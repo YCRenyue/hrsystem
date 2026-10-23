@@ -7,6 +7,7 @@
 import React from 'react';
 import { Alert, Descriptions, Modal, Typography } from 'antd';
 import {
+  AttendanceDateNotice,
   AttendanceImportResult,
   CanteenImportResult,
   PunchDeviceType,
@@ -51,8 +52,30 @@ const buildStatItems = (deviceType: PunchDeviceType, result: PunchImportResultBa
   ];
 };
 
+const describeDates = (items: AttendanceDateNotice[]): string => items
+  .map((p) => `${p.name}：${p.dates.join('、')}`)
+  .join('；');
+
 const AttendanceNotices: React.FC<{ result: AttendanceImportResult }> = ({ result }) => (
   <>
+    {result.leave_with_punch.length > 0 && (
+      <Alert
+        type="error"
+        showIcon
+        style={{ marginTop: 12 }}
+        message="考勤异常：以下员工已请假，但请假当天有打卡，请核实请假或打卡"
+        description={describeDates(result.leave_with_punch)}
+      />
+    )}
+    {result.absent_without_leave.length > 0 && (
+      <Alert
+        type="warning"
+        showIcon
+        style={{ marginTop: 12 }}
+        message="旷工提醒：以下员工未请假，工作日也没有打卡"
+        description={describeDates(result.absent_without_leave)}
+      />
+    )}
     {result.skipped_dates.length > 0 && (
       <Alert
         type="info"
