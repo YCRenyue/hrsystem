@@ -33,7 +33,7 @@ import ImportPreviewModal from './ImportPreviewModal';
 import { departmentService } from '../../services/departmentService';
 import { usePermission } from '../../hooks/usePermission';
 import { Can } from '../../components/Permission';
-import { Dayjs } from 'dayjs';
+import dayjs, { Dayjs } from 'dayjs';
 import './EmployeeList.css';
 
 const { Search } = Input;
@@ -220,7 +220,7 @@ const EmployeeList: React.FC = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `员工列表_${new Date().toISOString().split('T')[0]}.xlsx`;
+      a.download = `员工列表_${dayjs().format('YYYY-MM-DD')}.xlsx`;
       a.click();
       window.URL.revokeObjectURL(url);
       message.success('员工数据导出成功');

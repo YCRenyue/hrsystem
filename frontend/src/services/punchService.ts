@@ -56,6 +56,13 @@ export interface CanteenImportResult extends PunchImportResultBase {
   }>;
 }
 
+/** 导入时需要提醒 HR 的考勤日期 */
+export interface AttendanceDateNotice {
+  external_id: string;
+  name: string;
+  dates: string[];
+}
+
 export interface AttendanceImportResult extends PunchImportResultBase {
   export_date: string | null;
   skipped_dates: string[];
@@ -69,6 +76,10 @@ export interface AttendanceImportResult extends PunchImportResultBase {
     machine_absent_days: number;
     workdays_without_punch: number;
   }>;
+  /** 已请假但当天有打卡 */
+  leave_with_punch: AttendanceDateNotice[];
+  /** 未请假且工作日没有打卡（旷工） */
+  absent_without_leave: AttendanceDateNotice[];
 }
 
 export interface PunchMapping {

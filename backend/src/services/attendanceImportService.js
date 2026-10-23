@@ -11,14 +11,12 @@
  */
 
 const XLSX = require('xlsx');
-const { Op } = require('sequelize');
 const { AttendanceSummary, sequelize } = require('../models');
 const { parsePunchWorkbook } = require('./punch/punchRecordParser');
 const { matchEmployees, findPunchesAfterLeave } = require('./punch/employeeMatcher');
 const {
   upsertEmployeeAttendances, selectImportDates, isWeekend
 } = require('./punch/attendancePunchImport');
-const { applyEmployeeKeyword } = require('../utils/employeeSearch');
 
 const BLOCK_BASES = [0, 15, 30];
 const DEVICE = 'attendance';
@@ -138,7 +136,9 @@ function createResult(parsed, sourceFile, skippedDates) {
     summaries_created: 0,
     summaries_updated: 0,
     summary_warnings: [],
-    punches_after_leave: []
+    punches_after_leave: [],
+    leave_with_punch: [],
+    absent_without_leave: []
   };
 }
 
@@ -168,6 +168,13 @@ async function importCardWorkbook(buffer, sourceFile = null) {
       result.daily_created += stats.created;
       result.daily_updated += stats.updated;
       result.manual_kept += stats.manual_kept;
+      const person = { external_id: entry.externalId, name: entry.name };
+      if (stats.leave_punch_dates.length > 0) {
+        result.leave_with_punch.push({ ...person, dates: stats.leave_punch_dates });
+      }
+      if (stats.absent_dates.length > 0) {
+        result.absent_without_leave.push({ ...person, dates: stats.absent_dates });
+      }
 
       const summary = summaries.get(entry.externalId);
       if (summary) {
@@ -191,99 +198,7 @@ async function importCardWorkbook(buffer, sourceFile = null) {
   return result;
 }
 
-/**
- * 报表：按周期查询每位员工的统计（考勤报表）
- * @param {Object} options
- * @param {string} [options.period_start]
- * @param {string} [options.period_end]
- * @param {string} [options.department_id]
- */
-async function getAttendanceReport({
-  period_start, period_end, department_id, keyword
-} = {}) {
-  const where = {};
-  if (period_start) where.period_start = { [Op.gte]: period_start };
-  if (period_end) where.period_end = { [Op.lte]: period_end };
-
-  const include = [{
-    association: 'employee',
-    attributes: ['employee_id', 'employee_number', 'name_encrypted', 'department_id'],
-    include: [{ association: 'department', attributes: ['department_id', 'name'] }]
-  }];
-
-  if (department_id) {
-    include[0].where = { department_id };
-    include[0].required = true;
-  }
-  await applyEmployeeKeyword(include[0], keyword);
-  if (include[0].where) include[0].required = true;
-
-  const summaries = await AttendanceSummary.findAll({
-    where,
-    include,
-    order: [['period_start', 'DESC']]
-  });
-
-  const rows = summaries.map((s) => {
-    const data = s.toJSON();
-    const name = s.employee && typeof s.employee.getName === 'function'
-      ? s.employee.getName()
-      : null;
-    if (data.employee) {
-      data.employee.name = name;
-      delete data.employee.name_encrypted;
-    }
-    return data;
-  });
-
-  const totals = rows.reduce((acc, r) => {
-    acc.total_late_count += Number(r.late_count) || 0;
-    acc.total_late_minutes += Number(r.late_minutes) || 0;
-    acc.total_early_leave_count += Number(r.early_leave_count) || 0;
-    acc.total_early_leave_minutes += Number(r.early_leave_minutes) || 0;
-    acc.total_leave_days += Number(r.leave_days) || 0;
-    acc.total_absent_days += Number(r.absent_days) || 0;
-    acc.total_business_trip_days += Number(r.business_trip_days) || 0;
-    acc.total_overtime_hours += (Number(r.overtime_normal_hours) || 0)
-      + (Number(r.overtime_holiday_hours) || 0);
-    if (Number(r.late_count) > 0) acc.late_people.add(r.employee_id);
-    if (Number(r.early_leave_count) > 0) acc.early_leave_people.add(r.employee_id);
-    if (Number(r.leave_days) > 0) acc.leave_people.add(r.employee_id);
-    return acc;
-  }, {
-    total_late_count: 0,
-    total_late_minutes: 0,
-    total_early_leave_count: 0,
-    total_early_leave_minutes: 0,
-    total_leave_days: 0,
-    total_absent_days: 0,
-    total_business_trip_days: 0,
-    total_overtime_hours: 0,
-    late_people: new Set(),
-    early_leave_people: new Set(),
-    leave_people: new Set()
-  });
-
-  return {
-    rows,
-    totals: {
-      total_late_count: totals.total_late_count,
-      total_late_minutes: totals.total_late_minutes,
-      total_early_leave_count: totals.total_early_leave_count,
-      total_early_leave_minutes: totals.total_early_leave_minutes,
-      total_leave_days: totals.total_leave_days,
-      total_absent_days: totals.total_absent_days,
-      total_business_trip_days: totals.total_business_trip_days,
-      total_overtime_hours: totals.total_overtime_hours,
-      late_people_count: totals.late_people.size,
-      early_leave_people_count: totals.early_leave_people.size,
-      leave_people_count: totals.leave_people.size
-    }
-  };
-}
-
 module.exports = {
   importCardWorkbook,
-  getAttendanceReport,
   _internal: { extractMachineSummaries, checkSummaryAbsence }
 };

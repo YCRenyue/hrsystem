@@ -9,6 +9,7 @@ const {
 const permissionService = require('../services/PermissionService');
 const ExcelService = require('../services/ExcelService');
 const attendanceImportService = require('../services/attendanceImportService');
+const attendanceReportService = require('../services/attendanceReportService');
 const { ValidationError } = require('../middleware/errorHandler');
 const { formatLocalDate } = require('../utils/dateUtils');
 
@@ -512,7 +513,7 @@ const getAttendanceReport = async (req, res) => {
     });
   }
 
-  const report = await attendanceImportService.getAttendanceReport({
+  const report = await attendanceReportService.getAttendanceReport({
     period_start,
     period_end,
     department_id: effectiveDepartmentId,

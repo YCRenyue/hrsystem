@@ -2369,6 +2369,19 @@ const NotificationService = {
   - 后端统一使用 `utils/employeeSearch.js` 的 `applyEmployeeKeyword`，保留原有数据范围条件；前端 300ms 防抖
 - [x] 删除 GET /api/leaves/:id（指向不存在的 getLeaveById，前端未使用） (已完成 - 2026-10-21)
 
+- [x] 员工端全流程测试问题修复 (已完成 - 2026-10-23，记录见 `docs/user-guide/employee-flow/README.md`)
+  - [x] 考勤报表结合打卡机汇总与系统请假：请假天数取两者较大值；打卡机不知道的请假不再算旷工
+    - 新增 `services/attendanceReportService.js`（报表逻辑从 attendanceImportService 移出）
+    - 已请假但当天有打卡标为考勤异常；未请假且工作日没有打卡列为旷工；报表新增“考勤提醒”卡片
+    - 导入考勤打卡后的结果弹窗同时列出上述两类提醒
+  - [x] 文件签署时间少 8 小时：Employee 的签署时间、created_at、updated_at 改为北京时间输出
+    - 全库扫描 toISOString：出差照片时间提示改为北京时间；年假、员工、社保导出文件名改用本地日期；
+      其余用法为传输绝对时刻或按 UTC 推算 YYYY-MM-DD，保持不变
+  - [x] 请假列表默认不按日期筛选，补请以往日期的请假提交后也能在列表和统计中看到
+  - [x] 请假待审批通知中的请假类型显示中文（新增 `constants/leaveTypes.js`）
+  - [ ] 承诺函模板中的培训名称和培训结束日期为固定文字，HR 无法配置，待确认
+  - [ ] 员工签署后 HR 仍可修改已签署承诺函的费用和年限，待确认
+
 ### 版本 2.3.1 (2026-10-20)
 - [x] 完成阿里云 ECS 生产部署配置
   - 新增生产环境 Docker Compose，数据库和后端仅在容器私网暴露

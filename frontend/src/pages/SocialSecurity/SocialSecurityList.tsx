@@ -169,7 +169,7 @@ const SocialSecurityList: React.FC = () => {
       const url = window.URL.createObjectURL(response.data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `社保公积金_${new Date().toISOString().split('T')[0]}.xlsx`;
+      a.download = `社保公积金_${dayjs().format('YYYY-MM-DD')}.xlsx`;
       a.click();
       window.URL.revokeObjectURL(url);
       message.success('社保数据导出成功');

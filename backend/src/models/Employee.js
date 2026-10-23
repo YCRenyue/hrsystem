@@ -13,6 +13,10 @@ const normalizeBooleanValue = (value) => {
   return Boolean(value);
 };
 const { encryptionService } = require('../utils/encryption');
+const { formatLocalDateTime } = require('../utils/dateUtils');
+
+// 后端进程为北京时间，输出不带时区的北京时间字符串，例如 2026-10-23 11:05:01
+const toBeijingDateTime = (value) => formatLocalDateTime(value, { withSeconds: true });
 
 /**
  * Decrypt (or mask) the `employee_id_card_encrypted` field on a related
@@ -303,21 +307,21 @@ class Employee extends Model {
       // Document confirmation fields
       policy_ack_status: normalizeBooleanValue(this.policy_ack_status),
       policy_ack_signed_at: this.policy_ack_signed_at
-        ? new Date(this.policy_ack_signed_at).toISOString().replace('T', ' ').split('.')[0]
+        ? toBeijingDateTime(this.policy_ack_signed_at)
         : null,
       has_policy_ack_file: !!this.policy_ack_file_key,
       training_pledge_status: normalizeBooleanValue(this.training_pledge_status),
       training_pledge_signed_at: this.training_pledge_signed_at
-        ? new Date(this.training_pledge_signed_at).toISOString().replace('T', ' ').split('.')[0]
+        ? toBeijingDateTime(this.training_pledge_signed_at)
         : null,
       has_training_pledge_file: !!this.training_pledge_file_key,
       employment_contract_status: normalizeBooleanValue(this.employment_contract_status),
       employment_contract_signed_at: this.employment_contract_signed_at
-        ? new Date(this.employment_contract_signed_at).toISOString().replace('T', ' ').split('.')[0]
+        ? toBeijingDateTime(this.employment_contract_signed_at)
         : null,
       has_employment_contract_file: !!this.employment_contract_file_key,
-      created_at: this.created_at ? new Date(this.created_at).toISOString().replace('T', ' ').split('.')[0] : null,
-      updated_at: this.updated_at ? new Date(this.updated_at).toISOString().replace('T', ' ').split('.')[0] : null
+      created_at: this.created_at ? toBeijingDateTime(this.created_at) : null,
+      updated_at: this.updated_at ? toBeijingDateTime(this.updated_at) : null
     };
 
     // Include department if loaded (convert to plain object)

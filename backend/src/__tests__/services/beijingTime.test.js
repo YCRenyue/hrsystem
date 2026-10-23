@@ -16,6 +16,12 @@ describe('dateUtils', () => {
     expect(formatLocalDate(instant)).toBe('2026-10-21');
     expect(formatLocalDateTime(instant)).toBe('2026-10-21 00:30');
   });
+
+  test('签署时间按北京时间输出（带秒）', () => {
+    // 2026-10-23 11:05:01 北京时间 = 2026-10-23 03:05:01 UTC
+    const signedAt = new Date('2026-10-23T03:05:01Z');
+    expect(formatLocalDateTime(signedAt, { withSeconds: true })).toBe('2026-10-23 11:05:01');
+  });
 });
 
 describe('business trip times', () => {
