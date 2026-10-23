@@ -201,7 +201,7 @@ export interface EmployeeCreateInput {
   gender: Gender;
   birth_date?: string;
   phone?: string;
-  email?: string;
+  email?: string | null;
   id_card?: string;
   hire_date: string;
   probation_end_date?: string;

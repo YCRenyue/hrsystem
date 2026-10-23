@@ -289,12 +289,6 @@ const EmployeeList: React.FC = () => {
       sorter: true, // Use server-side sorting
     },
     {
-      title: '邮箱',
-      dataIndex: 'email',
-      key: 'email',
-      width: 200,
-    },
-    {
       title: '手机号',
       dataIndex: 'phone',
       key: 'phone',

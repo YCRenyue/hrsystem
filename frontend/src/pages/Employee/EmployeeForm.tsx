@@ -236,6 +236,7 @@ const EmployeeForm: React.FC = () => {
     try {
       const formData: EmployeeCreateInput = {
         ...values,
+        email: values.email || null,
         entry_date: values.entry_date?.format('YYYY-MM-DD'),
         probation_end_date: values.probation_end_date?.format('YYYY-MM-DD'),
         birth_date: values.birth_date?.format('YYYY-MM-DD'),
@@ -392,13 +393,10 @@ const EmployeeForm: React.FC = () => {
               <Form.Item
                 label="邮箱"
                 name="email"
-                rules={[
-                  { required: true, message: '请输入邮箱地址！' },
-                  { type: 'email', message: '邮箱格式不正确' }
-                ]}
-                tooltip="用于发送入职登记表链接"
+                rules={[{ type: 'email', message: '邮箱格式不正确' }]}
+                tooltip="选填，用于发送入职登记表链接"
               >
-                <Input placeholder="email@example.com" disabled={!canEditField('email')} />
+                <Input placeholder="选填" disabled={!canEditField('email')} />
               </Form.Item>
             </Col>
           </Row>
