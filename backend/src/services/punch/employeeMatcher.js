@@ -53,7 +53,9 @@ function resolveFileDuplicates(entries, mappingByExternalId) {
  */
 async function loadEmployeeIndex() {
   const employees = await Employee.findAll({
-    attributes: ['employee_id', 'employee_number', 'name_encrypted', 'status', 'leave_date'],
+    attributes: [
+      'employee_id', 'employee_number', 'department_id', 'name_encrypted', 'status', 'leave_date'
+    ],
     include: [{ association: 'department', attributes: ['name'] }]
   });
   const byName = new Map();

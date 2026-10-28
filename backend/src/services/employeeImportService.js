@@ -8,6 +8,7 @@ const { Employee, Department, User } = require('../models');
 const { encryptionService } = require('../utils/encryption');
 const { sequelize } = require('../config/database');
 const { ValidationError } = require('../middleware/errorHandler');
+const { notifyDocumentToSign } = require('./documentNotifier');
 
 const DEFAULT_PASSWORD = '123456';
 const RESIGNED_KEYWORD = '离职';
@@ -386,7 +387,7 @@ async function insertRows(validRows, userId) {
       await employee.save({ transaction });
 
       // eslint-disable-next-line no-await-in-loop -- queries share one transaction connection and must run in order
-      await User.create({
+      const user = await User.create({
         employee_id: employee.employee_id,
         username: employee.employee_number,
         password_hash: passwordHash,
@@ -398,6 +399,14 @@ async function insertRows(validRows, userId) {
         status: 'active',
         is_active: true,
         must_change_password: true
+      }, { transaction });
+
+      // eslint-disable-next-line no-await-in-loop -- queries share one transaction connection and must run in order
+      await notifyDocumentToSign({
+        employeeId: employee.employee_id,
+        documentType: 'policy_ack',
+        recipientUserId: user.user_id,
+        senderUserId: userId
       }, { transaction });
     }
 

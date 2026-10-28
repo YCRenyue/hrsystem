@@ -12,24 +12,8 @@ import dayjs from 'dayjs';
 import {
   notificationService,
   NotificationItem,
+  NOTIFICATION_TYPE_LABELS,
 } from '../../services/notificationService';
-
-const TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  leave_submitted: { label: '请假待审批', color: 'orange' },
-  leave_approved: { label: '请假已批准', color: 'blue' },
-  leave_rejected: { label: '请假被拒绝', color: 'red' },
-  leave_cancelled: { label: '请假已撤销', color: 'default' },
-  business_trip_submitted: { label: '出差待审批', color: 'orange' },
-  business_trip_approved: { label: '出差已批准', color: 'blue' },
-  business_trip_rejected: { label: '出差被拒绝', color: 'red' },
-  business_trip_cancelled: { label: '出差已撤销', color: 'default' },
-  reimbursement_submitted: { label: '报销待审核', color: 'orange' },
-  reimbursement_approved: { label: '报销已通过', color: 'blue' },
-  reimbursement_rejected: { label: '报销被驳回', color: 'red' },
-  reimbursement_paid: { label: '报销已发放', color: 'green' },
-  reimbursement_cancelled: { label: '报销已撤销', color: 'default' },
-  watermark_missing: { label: '缺打卡提醒', color: 'gold' },
-};
 
 const NotificationCenter: React.FC = () => {
   const navigate = useNavigate();
@@ -119,7 +103,8 @@ const NotificationCenter: React.FC = () => {
             showSizeChanger: false,
           }}
           renderItem={(item) => {
-            const meta = TYPE_LABELS[item.type] || { label: item.type, color: 'default' };
+            const meta = NOTIFICATION_TYPE_LABELS[item.type]
+              || { label: item.type, color: 'default' };
             return (
               <List.Item
                 style={{

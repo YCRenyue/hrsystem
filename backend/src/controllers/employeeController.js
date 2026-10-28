@@ -14,6 +14,7 @@ const { recordOperation } = require('../utils/audit');
 const { buildEmployeeKeywordWhere } = require('../utils/employeeSearch');
 const { sequelize } = require('../config/database');
 const { formatLocalDate } = require('../utils/dateUtils');
+const { notifyDocumentToSign } = require('../services/documentNotifier');
 
 // 无法匹配任何 UUID 的哨兵值，用于数据范围为空时返回空集
 const NO_MATCH = '__no_match__';
@@ -316,6 +317,11 @@ const createUserForEmployee = async (employee, employeeName, transaction) => {
     status: 'active',
     is_active: true,
     must_change_password: true
+  }, { transaction });
+  await notifyDocumentToSign({
+    employeeId: employee.employee_id,
+    documentType: 'policy_ack',
+    recipientUserId: user.user_id
   }, { transaction });
 
   return user;
