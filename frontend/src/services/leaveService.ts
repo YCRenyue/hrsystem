@@ -7,7 +7,17 @@ import { ApiResponse } from '../types';
 export interface Leave {
   leave_id: string;
   employee_id: string;
-  leave_type: 'annual' | 'sick' | 'personal' | 'compensatory' | 'unpaid';
+  leave_type:
+    | 'annual'
+    | 'sick'
+    | 'personal'
+    | 'compensatory'
+    | 'maternity'
+    | 'paternity'
+    | 'marriage'
+    | 'bereavement'
+    | 'unpaid'
+    | 'other';
   start_date: string;
   end_date: string;
   days: number;

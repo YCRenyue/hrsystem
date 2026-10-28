@@ -65,6 +65,7 @@ const LeaveReport: React.FC = () => {
     { value: 'paternity', label: '陪产假' },
     { value: 'marriage', label: '婚假' },
     { value: 'bereavement', label: '丧假' },
+    { value: 'unpaid', label: '无薪假' },
     { value: 'other', label: '其他' }
   ];
 
