@@ -36,6 +36,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { calculateTripDurations } from '../../utils/tripDurations';
 
 const { TextArea } = Input;
 const { RangePicker } = DatePicker;
@@ -162,42 +163,8 @@ const BusinessTripForm: React.FC = () => {
       setDurations({ duration_hours: 0, work_hours: 0, span_days: 0 });
       return;
     }
-    const [start, end] = range;
-    if (!end.isAfter(start)) return;
-
-    const totalMinutes = end.diff(start, 'minute');
-    const durationHours = Number((totalMinutes / 60).toFixed(2));
-
-    let workHours = 0;
-    let spanDays = 0;
-    let cursor = start.startOf('day');
-    const lastDay = end.startOf('day');
-    let safety = 0;
-
-    while (cursor.isBefore(lastDay) || cursor.isSame(lastDay, 'day')) {
-      safety += 1;
-      if (safety > 366) break;
-
-      const segStart = cursor.isSame(start, 'day') ? start : cursor;
-      const segEndCandidate = cursor.endOf('day');
-      const segEnd = segEndCandidate.isAfter(end) ? end : segEndCandidate;
-      const minutes = segEnd.diff(segStart, 'minute');
-      const hours = minutes / 60;
-      spanDays += Math.min(hours / 24, 1);
-
-      const day = cursor.day();
-      const isWeekend = day === 0 || day === 6;
-      if (!isWeekend) {
-        workHours += Math.min(hours, 8);
-      }
-      cursor = cursor.add(1, 'day');
-    }
-
-    setDurations({
-      duration_hours: durationHours,
-      work_hours: Number(workHours.toFixed(2)),
-      span_days: Number(spanDays.toFixed(2)),
-    });
+    const result = calculateTripDurations(range[0], range[1]);
+    if (result) setDurations(result);
   }, []);
 
   const checkConflicts = useCallback(async () => {

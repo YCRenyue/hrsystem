@@ -17,10 +17,29 @@
     "db:migrate": "node src/db/migrate.js",
     "db:seed": "node src/db/seed.js",
     "lint": "eslint src/**/*.js",
-    "lint:fix": "eslint src/**/*.js --fix"
+    "lint:fix": "eslint src/**/*.js --fix",
+    "test:mutation": "stryker run"
   },
   "jest": {
-    "globalSetup": "<rootDir>/jest.setup.js"
+    "globalSetup": "<rootDir>/jest.setup.js",
+    "setupFiles": [
+      "<rootDir>/jest.env.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/helpers/",
+      "/.stryker-tmp/",
+      "/reports/"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/__tests__/**",
+      "!src/db/**"
+    ],
+    "testTimeout": 30000,
+    "modulePathIgnorePatterns": [
+      "<rootDir>/.stryker-tmp/"
+    ]
   },
   "keywords": [],
   "author": "",
@@ -48,6 +67,8 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "^8.7.1",
+    "@stryker-mutator/jest-runner": "^8.7.1",
     "eslint": "^8.57.1",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-plugin-import": "^2.32.0",
