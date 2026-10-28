@@ -47,23 +47,31 @@ const { Option } = Select;
 const { TextArea } = Input;
 
 /**
+ * Leave types in display order, matching leaves.leave_type in the database
+ */
+const LEAVE_TYPE_TEXT: Record<string, string> = {
+  annual: '年假',
+  sick: '病假',
+  personal: '事假',
+  compensatory: '调休',
+  maternity: '产假',
+  paternity: '陪产假',
+  marriage: '婚假',
+  bereavement: '丧假',
+  unpaid: '无薪假',
+  other: '其他'
+};
+
+const LEAVE_TYPE_OPTIONS = Object.entries(LEAVE_TYPE_TEXT).map(([value, text]) => (
+  <Option key={value} value={value}>
+    {text}
+  </Option>
+));
+
+/**
  * Get leave type display text
  */
-const getLeaveTypeText = (type: string): string => {
-  const texts: Record<string, string> = {
-    annual: '年假',
-    sick: '病假',
-    personal: '事假',
-    compensatory: '调休',
-    maternity: '产假',
-    paternity: '陪产假',
-    marriage: '婚假',
-    bereavement: '丧假',
-    unpaid: '无薪假',
-    other: '其他'
-  };
-  return texts[type] || type;
-};
+const getLeaveTypeText = (type: string): string => LEAVE_TYPE_TEXT[type] || type;
 
 /**
  * Get status tag color
@@ -618,11 +626,7 @@ const LeaveList: React.FC = () => {
             value={typeFilter}
             onChange={handleTypeChange}
           >
-            <Option value="annual">年假</Option>
-            <Option value="sick">病假</Option>
-            <Option value="personal">事假</Option>
-            <Option value="compensatory">调休</Option>
-            <Option value="unpaid">无薪假</Option>
+            {LEAVE_TYPE_OPTIONS}
           </Select>
           <Select
             placeholder="审批状态"
@@ -723,11 +727,7 @@ const LeaveList: React.FC = () => {
             rules={[{ required: true, message: '请选择请假类型' }]}
           >
             <Select placeholder="请选择">
-              <Option value="annual">年假</Option>
-              <Option value="sick">病假</Option>
-              <Option value="personal">事假</Option>
-              <Option value="compensatory">调休</Option>
-              <Option value="unpaid">无薪假</Option>
+              {LEAVE_TYPE_OPTIONS}
             </Select>
           </Form.Item>
           <Form.Item

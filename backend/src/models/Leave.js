@@ -24,9 +24,9 @@ const Leave = sequelize.define('Leave', {
     }
   },
   leave_type: {
-    type: DataTypes.ENUM('annual', 'sick', 'personal', 'compensatory', 'maternity', 'paternity', 'marriage', 'bereavement', 'other'),
+    type: DataTypes.ENUM('annual', 'sick', 'personal', 'compensatory', 'maternity', 'paternity', 'marriage', 'bereavement', 'unpaid', 'other'),
     allowNull: false,
-    comment: '假期类型：annual-年假, sick-病假, personal-事假, compensatory-调休, maternity-产假, paternity-陪产假, marriage-婚假, bereavement-丧假, other-其他'
+    comment: '假期类型：annual-年假, sick-病假, personal-事假, compensatory-调休, maternity-产假, paternity-陪产假, marriage-婚假, bereavement-丧假, unpaid-无薪假, other-其他'
   },
   start_date: {
     type: DataTypes.DATEONLY,

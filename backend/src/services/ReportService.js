@@ -12,6 +12,7 @@ const {
 const logger = require('../utils/logger');
 const permissionService = require('./PermissionService');
 const { applyEmployeeFilters } = require('../utils/employeeSearch');
+const { getLeaveTypeLabel } = require('../constants/leaveTypes');
 
 class ReportService {
   /**
@@ -363,24 +364,13 @@ class ReportService {
    */
   _groupLeavesByType(leaves) {
     const grouped = {};
-    const typeNames = {
-      annual: '年假',
-      sick: '病假',
-      personal: '事假',
-      compensatory: '调休',
-      maternity: '产假',
-      paternity: '陪产假',
-      marriage: '婚假',
-      bereavement: '丧假',
-      other: '其他'
-    };
 
     leaves.forEach((leave) => {
       const type = leave.leave_type;
       if (!grouped[type]) {
         grouped[type] = {
           type,
-          name: typeNames[type] || type,
+          name: getLeaveTypeLabel(type),
           count: 0,
           total_days: 0
         };
