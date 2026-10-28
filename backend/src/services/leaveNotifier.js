@@ -7,6 +7,7 @@
 const inAppNotification = require('./InAppNotificationService');
 const { findUserIdForEmployee } = require('./approvalService');
 const { getLeaveTypeLabel } = require('../constants/leaveTypes');
+const { Employee } = require('../models');
 
 /**
  * 通知审批人：有新的请假申请
@@ -85,8 +86,51 @@ const notifyApplicantOnLeaveDecision = async (leave, approved, notes, senderUser
   }
 };
 
+/**
+ * 请假撤销：申请人自己撤销时通知审批人，HR 或负责人撤销时通知申请人
+ *
+ * @param {Object} leave - 请假记录（撤销前已为待审批或已批准）
+ * @param {string} cancellerUserId - 撤销人 user_id
+ * @param {boolean} byApplicant - 是否申请人本人撤销
+ */
+const notifyOnLeaveCancelled = async (leave, cancellerUserId, byApplicant) => {
+  try {
+    const payload = {
+      senderUserId: cancellerUserId,
+      type: inAppNotification.NotificationTypes.LEAVE_CANCELLED,
+      relatedResource: 'leave',
+      relatedId: leave.leave_id,
+      linkUrl: `/leaves?highlight=${leave.leave_id}`
+    };
+    const period = `${leave.start_date} 至 ${leave.end_date}（${leave.days}天）`;
+    if (!byApplicant) {
+      const recipientUserId = await findUserIdForEmployee(leave.employee_id);
+      if (!recipientUserId) return;
+      await inAppNotification.send({
+        ...payload, recipientUserId, title: '请假已被撤销', content: `你的请假 ${period} 已被撤销。`
+      });
+      return;
+    }
+    const employee = await Employee.findByPk(leave.employee_id);
+    const employeeName = employee && typeof employee.getName === 'function'
+      ? employee.getName()
+      : '员工';
+    const approverIds = await inAppNotification.getApproverUserIds({
+      departmentId: employee ? employee.department_id : null
+    });
+    await inAppNotification.sendToMany(approverIds.filter((id) => id !== cancellerUserId), {
+      ...payload,
+      title: '请假已撤销',
+      content: `${employeeName} 撤销了请假 ${period}\n类型：${getLeaveTypeLabel(leave.leave_type)}`
+    });
+  } catch (err) {
+    console.error('[leave.cancel notify] failed:', err.message);
+  }
+};
+
 module.exports = {
   notifyApproversOnLeaveSubmit,
+  notifyOnLeaveCancelled,
   notifyHrForReview,
   notifyApplicantOnLeaveDecision
 };

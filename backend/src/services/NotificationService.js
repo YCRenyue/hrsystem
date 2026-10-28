@@ -404,7 +404,7 @@ class NotificationService {
 
 您的劳动合同将在 ${daysUntilExpiry} 天后到期。
 
-**到期日期**：${employee.contract_end_date}
+**到期日期**：${employee.contract_expiry_date}
 
 请及时与 HR 部门联系，办理续签手续。
 
