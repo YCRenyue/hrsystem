@@ -330,11 +330,15 @@ const getLeaveStats = async (req, res) => {
       raw: true
     });
 
+    const countOf = (status) => Number(byStatus.find((s) => s.status === status)?.count) || 0;
+
     res.json({
       success: true,
       data: {
         totalApplications,
         pendingCount,
+        approvedCount: countOf('approved'),
+        rejectedCount: countOf('rejected'),
         byType,
         byStatus
       }

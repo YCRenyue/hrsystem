@@ -37,7 +37,7 @@ const getMonthlyAttendanceSummary = async (periodStart, periodEnd) => {
 };
 
 /**
- * 统计指定期间的请假数量和待审批数量
+ * 统计指定期间的请假数量，以及全部待审批数量（补请以前日期的假也要提醒 HR 审批）
  *
  * @param {Date} periodStart - 期间开始
  * @param {Date} periodEnd - 期间结束
@@ -58,7 +58,7 @@ const getMonthlyLeaveSummary = async (periodStart, periodEnd) => {
     raw: true
   });
 
-  const pendingLeaves = leaveStats.find((s) => s.status === 'pending')?.count || 0;
+  const pendingLeaves = await Leave.count({ where: { status: 'pending' } });
   const totalLeaves = leaveStats.reduce((sum, s) => sum + parseInt(s.count, 10), 0);
   return { leaveStats, pendingLeaves, totalLeaves };
 };
