@@ -1,6 +1,7 @@
 const { DataTypes, Model } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { encryptionService } = require('../utils/encryption');
+const { ROLE_PERMISSIONS_MAP } = require('../constants/permissions');
 
 /**
  * User Model
@@ -235,7 +236,10 @@ class User extends Model {
       email: this.email,
       phone: this.phone,
       role: this.role,
-      permissions: this.permissions,
+      // 没有单独配置权限时返回角色默认权限，前端按钮（导入、导出等）据此显示
+      permissions: Array.isArray(this.permissions) && this.permissions.length > 0
+        ? this.permissions
+        : (ROLE_PERMISSIONS_MAP[this.role] || []),
       department_id: this.department_id,
       data_scope: this.data_scope,
       can_view_sensitive: this.can_view_sensitive,
