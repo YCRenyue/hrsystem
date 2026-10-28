@@ -3,7 +3,7 @@
   "testRunner": "jest",
   "jest": { "projectType": "custom", "enableFindRelatedTests": true },
   "coverageAnalysis": "perTest",
-  "concurrency": 3,
+  "concurrency": 2,
   "timeoutMS": 60000,
   "reporters": ["clear-text", "progress", "html", "json"],
   "htmlReporter": { "fileName": "reports/mutation/index.html" },

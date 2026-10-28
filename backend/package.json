@@ -28,9 +28,7 @@
     ],
     "testPathIgnorePatterns": [
       "/node_modules/",
-      "/helpers/",
-      "/.stryker-tmp/",
-      "/reports/"
+      "/helpers/"
     ],
     "collectCoverageFrom": [
       "src/**/*.js",
@@ -38,8 +36,8 @@
       "!src/db/**"
     ],
     "testTimeout": 30000,
-    "modulePathIgnorePatterns": [
-      "<rootDir>/.stryker-tmp/"
+    "roots": [
+      "<rootDir>/src"
     ]
   },
   "keywords": [],
