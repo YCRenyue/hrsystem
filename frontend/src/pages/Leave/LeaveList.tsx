@@ -55,7 +55,12 @@ const getLeaveTypeText = (type: string): string => {
     sick: '病假',
     personal: '事假',
     compensatory: '调休',
-    unpaid: '无薪假'
+    maternity: '产假',
+    paternity: '陪产假',
+    marriage: '婚假',
+    bereavement: '丧假',
+    unpaid: '无薪假',
+    other: '其他'
   };
   return texts[type] || type;
 };
