@@ -18,7 +18,8 @@
     "db:seed": "node src/db/seed.js",
     "lint": "eslint src/**/*.js",
     "lint:fix": "eslint src/**/*.js --fix",
-    "test:mutation": "stryker run"
+    "test:mutation": "stryker run",
+    "test:mutation:rules": "stryker run stryker.rules.config.json"
   },
   "jest": {
     "globalSetup": "<rootDir>/jest.setup.js",
