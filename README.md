@@ -1,310 +1,242 @@
-# 企业人事管理系统 (HR Management System)
+<p align="center">
+  <img src="docs/images/logo.png" width="96" alt="logo">
+</p>
 
-[![GitHub Stars](https://img.shields.io/github/stars/ZixunHuangUPenn/hrsystem?style=flat-square)](https://github.com/ZixunHuangUPenn/hrsystem/stargazers)
-[![GitHub Issues](https://img.shields.io/github/issues/ZixunHuangUPenn/hrsystem?style=flat-square)](https://github.com/ZixunHuangUPenn/hrsystem/issues)
-[![License](https://img.shields.io/github/license/ZixunHuangUPenn/hrsystem?style=flat-square)](LICENSE)
-[![CI Pipeline](https://github.com/ZixunHuangUPenn/hrsystem/actions/workflows/ci.yml/badge.svg)](https://github.com/ZixunHuangUPenn/hrsystem/actions/workflows/ci.yml)
+<h1 align="center">仁越生物科技人事管理平台</h1>
 
-## 📋 项目概述
+<p align="center">
+  一套给中小企业 HR 用的人事系统：员工档案、考勤、请假、年假、社保、出差报销和制度签署放在一个地方。
+</p>
 
-基于云端部署的企业人事管理系统，深度集成钉钉平台，支持智能问答、流程自动化以及多维度报表统计。系统具备完整的员工信息管理、考勤管理、薪酬管理等功能，提供语音/文字交互体验和智能化权限管理。
+<p align="center">
+  <a href="https://github.com/YCRenyue/hrsystem/actions/workflows/ci.yml"><img src="https://github.com/YCRenyue/hrsystem/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT"></a>
+</p>
 
-## 🎯 项目目标
+<p align="center">
+  中文 | <a href="#english">English</a>
+</p>
 
-- 🌐 **云端部署**：基于云服务的人事管理平台，支持高可用和可扩展
-- 🔗 **钉钉深度集成**：消息推送、OAuth认证、组织架构同步
-- 🤖 **智能体问答**：支持语音与文字交互的AI助手
-- 📊 **数据管理与分析**：员工信息、考勤、假期、薪酬等全方位管理
+---
 
-## ✨ 核心功能
+## 当前状态
 
-### 👥 员工信息管理
+截至 2026 年 10 月，系统已部署在阿里云 ECS 测试服务器上，`main` 分支合并后由 GitHub Actions 自动构建并发布。目前在做交付 HR 试用前的回归测试，测试记录见 [docs/test-cases](docs/test-cases/README.md)。
 
-- **多渠道录入**：Excel批量导入、在线表单录入、员工自助完善
-- **入职流程自动化**：入职当日自动推送登记表，多渠道通知
-- **三级权限体系**：管理员、HR、员工分级权限控制
-- **数据安全保障**：敏感信息AES-256加密存储
+可以用的：
 
-### 🤖 智能体问答服务
+- 员工档案：在线录入、花名册 Excel 导入导出、办理离职（员工不删除，只停用登录）
+- 考勤：直接导入打卡机的刷卡记录，自动判断迟到、早退、缺卡，合并已批准的请假，生成考勤报表和异常提醒
+- 食堂：按刷卡时间统计午餐、晚餐人数，不在饭点的刷卡进入待复核
+- 请假：部门经理和 HR 两级审批，批准后自动扣年假并写入考勤
+- 年假按工龄自动生成和结转；社保公积金按配置比例计算
+- 出差和差旅报销：部门审批、HR 复核、财务发放
+- 制度确认：规章制度分页阅读后签署、培训承诺函、劳动合同在线签署
+- 员工自助服务、站内通知、综合报表
+- 五种角色（管理员、HR、部门经理、财务、员工），按全部 / 本部门 / 本人限制数据范围
 
-- **多模态交互**：支持语音和文字输入
-- **知识库覆盖**：
-  - 考勤制度和规章
-  - 社保与公积金政策
-  - 假期规则和流程
-  - 薪酬发放制度
-  - 公司规章制度
+还没做或没做完的：
 
-### 🔄 自动化流程
+- 智能问答助手（尚未开始）
+- 钉钉扫码登录和组织架构同步（目前只接了消息推送）
+- 节假日和调休日历，非工作日的打卡暂时都进待复核
+- 劳动合同正文还是草案，上线前需要法务审定
+- 前端自动化测试很少，主要靠手工回归
 
-- **入职流程**：
-  - 入职前邮件/钉钉提醒
-  - 入职当天推送登记表链接
-  - 入职一周后欢迎消息
-  - 新员工培训日程提醒
-- **日常管理**：
-  - 社保缴纳情况推送
-  - 劳动合同到期提醒
-  - 月度出差补助统计
-  - 食堂就餐费用统计
+详细进度在 [requirement.md](requirement.md)。
 
-### 📈 报表与分析
+## 页面截图
 
-- **假期管理**：年假、调休、事假等多维度统计
-- **考勤分析**：迟到、早退、缺勤情况报表
-- **人员变动**：入职/离职人员统计分析
-- **权限控制**：基于角色的报表访问权限
+截图来自本地演示库，人员和手机号均为虚构数据。
 
-## 🏗️ 系统架构
+| 登录 | 系统概览 |
+| --- | --- |
+| ![登录](docs/images/login.png) | ![系统概览](docs/images/dashboard.png) |
+| **员工管理** | **员工自助服务** |
+| ![员工管理](docs/images/employees.png) | ![员工自助服务](docs/images/self-service.png) |
 
-### 技术栈
+HR 操作手册（带截图）：[docs/user-guide/HR-USER-GUIDE.md](docs/user-guide/HR-USER-GUIDE.md)
 
-- **前端**：React + Ant Design(antd v5)
-- **后端**：Node.js + Express
-- **数据库**：MySQL
-- **文件存储**：阿里云OSS
-- **部署**：阿里云ACR(Docker)
+## 技术栈
 
-### 核心服务
+| 部分 | 选型 |
+| --- | --- |
+| 前端 | React 19、TypeScript、Ant Design 5 |
+| 后端 | Node.js 20、Express 5、Sequelize 6 |
+| 数据库 | MySQL 8.0 |
+| 文件存储 | 阿里云 OSS |
+| 部署 | Docker、阿里云容器镜像服务 ACR、ECS，GitHub Actions 发布 |
 
-```
-┌─────────────────┬─────────────────┬─────────────────┐
-│   前端应用      │   移动端适配    │   钉钉小程序      │
-├─────────────────┼─────────────────┼─────────────────┤
-│            	 API 网关 (Nginx)                     │
-├─────────────────┼─────────────────┼─────────────────┤
-│  员工管理服务   │  智能问答服务   │  报表分析服务      │
-├─────────────────┼─────────────────┼─────────────────┤
-│  考勤管理服务   │  消息推送服务   │  文件管理服务      │
-├─────────────────┼─────────────────┼─────────────────┤
-│           	数据库集群 (MySQL)     		      │
-└─────────────────┴─────────────────┴─────────────────┘
-```
+身份证号、手机号、银行卡号等敏感字段用 AES-256 加密存储，另存哈希用于查询；没有权限的账号看到的是脱敏后的值。增删改员工、导出、改权限等操作都会写入 `operation_logs` 审计表。系统统一使用北京时间。
 
-## 🗄️ 数据库设计
+## 本地运行
 
-### 核心数据表
-
-- **员工表 (employees)**：员工基础信息，支持加密存储
-- **考勤表 (attendance)**：每日考勤记录
-- **年假表 (annual_leave)**：假期申请和统计
-- **社保公积金表 (social_insurance)**：缴纳情况记录
-- **出差补助表 (business_trip)**：出差费用明细
-- **就餐表 (dining_records)**：食堂消费记录
-- **入职流程表 (onboarding_process)**：入职流程跟踪
-- **权限管理表 (user_permissions)**：用户权限配置
-- **操作日志表 (operation_logs)**：系统操作审计
-
-## 🔐 安全特性
-
-### 数据安全
-
-- **敏感信息加密**：身份证号码、银行卡号AES-256加密
-- **数据脱敏显示**：手机号中间位脱敏显示
-- **HTTPS传输**：全站SSL加密传输
-- **定期备份**：自动化数据备份策略
-
-### 权限控制
-
-- **三级权限体系**：
-  - 🔴 **管理员**：系统全局管理、用户权限配置
-  - 🟡 **HR人事**：员工信息管理、报表查看导出
-  - 🟢 **员工**：个人信息查看编辑、自助服务
-
-### 审计日志
-
-- **操作记录**：所有敏感操作完整日志
-- **数据变更追踪**：修改前后数据对比
-- **异常监控**：异常操作实时告警
-
-## 📱 支持平台
-
-- 🖥️ **PC网页端**：完整功能体验
-- 📱 **移动端H5**：响应式适配
-- 💬 **钉钉工作台**：原生集成体验
-- 🎤 **语音交互**：智能语音问答
-
-## 🚀 快速开始
-
-### 环境要求
-
-- Node.js 20.19.6
-- MySQL >= 8.0 或 PostgreSQL >= 12
-- Redis >= 6.0
-- Docker >= 20.0 (可选)
-
-### 安装部署
+需要 Node.js 20 和 MySQL 8.0。
 
 ```bash
-# 1. 克隆项目
-git clone https://github.com/ZixunHuangUPenn/hrsystem.git
+git clone https://github.com/YCRenyue/hrsystem.git
 cd hrsystem
-
-# 2. 安装全部依赖（根目录、backend、frontend）
 npm run install:all
 
-# 3. 配置环境变量
-cp .env.example .env
-# 编辑 .env，配置数据库连接、JWT_SECRET、ENCRYPTION_KEY、钉钉 API 等
-# 年假结转上限和社保公积金比例可按 backend/.env.example 中的计算变量覆盖
+# 配置数据库连接、JWT_SECRET、ENCRYPTION_KEY（32 位）等
+cp backend/.env.example backend/.env
 
-# 4. 初始化数据库（必须依次执行）
-npm run db:migrate    # 创建表结构
-npm run db:seed       # 注入初始化种子数据（默认部门、admin 账号、测试数据等）
+npm run db:migrate   # 建表，包含全部增量迁移
+npm run db:seed      # 默认部门和管理员账号
+
+npm run dev          # 前端 http://localhost:3000，后端 http://localhost:3001
 ```
 
-#### 启动开发服务
+种子脚本创建的管理员首次登录后会被要求修改密码。管理员用户名和初始密码可以用 `SEED_ADMIN_USERNAME`、`SEED_ADMIN_PASSWORD` 覆盖，生产环境请务必设置。
+
+常用命令：
 
 ```bash
-# 方式一：根目录一键并行启动前后端
-npm run dev
-
-# 方式二：分别在两个终端启动
-# 终端 1：启动后端 (http://localhost:3001)
-cd backend
-npm run dev          # 开发模式（nodemon 热重载）
-# 或 npm start       # 生产模式
-
-# 终端 2：启动前端 (http://localhost:3000)
-cd frontend
-npm start            # 开发模式（CRA 开发服务器）
+npm test               # 前后端测试
+npm run lint           # 前后端 ESLint
+cd frontend && npx tsc --noEmit
 ```
 
-#### 生产环境构建
+## Docker 部署
 
 ```bash
-# 构建前端静态资源
-cd frontend && npm run build
-
-# 启动后端
-cd backend && npm start
-```
-
-### Docker 部署
-
-```bash
-# 构建镜像并启动所有服务（前端 / 后端 / MySQL / Redis / Nginx）
+cp docker/.env.example docker/.env   # 填写数据库密码和各项密钥
 npm run docker:build
 npm run docker:up
-
-# 首次启动后仍需进入后端容器执行迁移和种子
-docker exec -it hrsystem-backend npm run db:migrate
-docker exec -it hrsystem-backend npm run db:seed
-
-# 查看日志 / 关闭服务
-npm run docker:logs
-npm run docker:down
+docker exec -it hr_backend npm run db:migrate
+docker exec -it hr_backend npm run db:seed
 ```
 
-## 📖 开发文档
+线上环境使用 `docker/docker-compose.production.yml`，由 `.github/workflows/deploy.yml` 构建镜像推送到阿里云 ACR 后，在 ECS 上拉取并启动，健康检查失败会自动回滚。
 
-- [📋 需求分析文档](./analysis.md)
-- [📝 详细开发需求与进度](./requirement.md)
-- [🛠️ 开发指南与代码规范（CLAUDE.md）](./CLAUDE.md)
-- [📦 测试数据说明](./sample_data/import_template_guide.md)
+## 目录结构
 
-## 🛣️ 开发路线图
+```
+backend/    Express API：路由、控制器、服务、Sequelize 模型和迁移
+frontend/   React 前端
+docker/     Docker Compose 配置
+docs/       客户需求、测试记录、HR 操作手册
+sample_data/ 各类导入模板（不含真实员工数据）
+```
 
-> 整体完成度：**约 80%** ｜ 当前阶段：**阶段十三 - 数据整合 Dashboard 增强**
-> 详细进度请参阅 [requirement.md](./requirement.md)
+## 文档
 
-### 阶段一：基础环境搭建 ✅ 已完成
+- [requirement.md](requirement.md)：开发进度
+- [docs/ProjectRequirement.md](docs/ProjectRequirement.md)：客户原始需求
+- [docs/test-cases](docs/test-cases/README.md)：线上测试记录
+- [docs/user-guide](docs/user-guide/HR-USER-GUIDE.md)：HR 操作手册
+- [CLAUDE.md](CLAUDE.md)：代码规范和架构说明
 
-- [X] 项目架构设计
-- [X] 需求文档完善
-- [X] 前后端框架初始化（React 19 + Express 5）
-- [X] 数据库设计与建表（Sequelize 迁移 + 种子数据）
-- [ ] 钉钉开发环境配置（暂缓，已在阶段四接入）
+## 许可证
 
-### 阶段二：数据安全和权限系统 🟡 进行中（约 80%）
+[MIT](LICENSE)
 
-- [X] AES-256 数据加密与字段哈希搜索
-- [X] JWT 鉴权与基础角色验证中间件
-- [X] 用户管理 API（admin 调整权限 / 重置密码）
-- [ ] 数据范围（all/department/self）细粒度过滤
-- [X] 操作审计日志（基础完成，敏感操作拦截待补）
-- [X] 敏感数据中间件保留 Date 对象修复
+---
 
-### 阶段三：钉钉集成与通知系统 🟡 进行中（约 70%）
+<a id="english"></a>
 
-- [X] 钉钉 API 封装（access_token 缓存、用户查询）
-- [X] NotificationService 多渠道通知（钉钉 + 邮件 + 站内信）
-- [X] SchedulerService 定时任务（入职推送、合同到期、月度统计等 6 项）
-- [X] 站内通知中心（in-app notifications）
-- [ ] 钉钉 OAuth 登录与组织架构同步
+## English
 
-### 阶段四：员工信息管理 ✅ 已完成（约 90%）
+An HR system for small and mid-sized companies. Employee records, attendance, leave, annual leave, social insurance, business trips, expense claims and policy sign-off live in one place. The UI is in Chinese.
 
-- [X] Excel 批量导入 / 导出（87 个测试通过，覆盖率 85%+）
-- [X] 在线表单录入与员工信息编辑
-- [X] HR 管理界面（员工列表、搜索筛选、分页）
-- [X] 部门管理（树形结构、CRUD）
-- [X] 用户账号自动创建（手动 / 批量导入均支持）
-- [ ] 入职流程自动化（30%，待完成自助完善表单）
+### Status
 
-### 阶段五：制度确认模块 ✅ 已完成（2026-04-01）
+As of October 2026 the system runs on an Alibaba Cloud ECS test server. Every merge to `main` is built and deployed by GitHub Actions. We are doing regression testing before handing it to the HR team; test records are in [docs/test-cases](docs/test-cases/README.md) (Chinese).
 
-- [X] 公司管理规章制度 9 页分页阅读 + 末页签署
-- [X] 员工培训承诺函（法律版本 + 变量自动填充）
-- [X] 甲乙双方信息员工可编辑
-- [X] training_pledges 表存储费用 / 服务年限
+Working today:
 
-### 阶段六：考勤与请假 ✅ 已完成
+- Employee records: online entry, roster import and export via Excel, offboarding (employees are never deleted, their login is disabled)
+- Attendance: imports raw punch records from the time clock, flags late arrival, early leave and missing punches, merges approved leave, and produces reports and absence alerts
+- Canteen: counts lunch and dinner from punch times; punches outside meal hours go to a review queue
+- Leave: two-step approval (department manager, then HR); approval deducts annual leave and updates attendance
+- Annual leave is generated and carried over by length of service; social insurance and housing fund are calculated from configured rates
+- Business trips and expense claims: department approval, HR review, finance payout
+- Policy sign-off: paged reading of company rules before signing, training pledge, online employment contract signing
+- Employee self-service, in-app notifications, combined reports
+- Five roles (admin, HR, department manager, finance, employee) with data scoped to all, own department, or self
 
-- [X] 考勤打卡 CRUD 与统计 API
-- [X] 考勤卡表 Excel 导入（识别 1.3.4 / 5.6.7 等多 Sheet）
-- [X] 考勤报表页（迟到 / 早退 / 请假 / 加班 TOP 榜）
-- [X] 员工自助请假申请 + admin 审批 + 站内通知
+Not done yet:
 
-### 阶段七：业务数据模块 ✅ 已完成（2025-12-05）
+- AI Q&A assistant (not started)
+- DingTalk login and org sync (only DingTalk messaging is wired up)
+- Public holiday and make-up workday calendar; punches on non-working days all go to review for now
+- The employment contract text is a draft and needs legal review before go-live
+- Very little automated frontend testing; we rely on manual regression
 
-- [X] 年假管理（应休 / 已休 / 剩余自动计算）
-- [X] 社保公积金管理
-- [X] 出差补助管理（支持员工姓名搜索）
-- [X] 报销管理（admin/manager 代办时自动绑定员工）
-- [X] 食堂报表（每日 / 每周中晚餐人数 + 个人汇总）
-- [X] 各模块 Excel 导入导出 + 模板下载
+Detailed progress is tracked in [requirement.md](requirement.md) (Chinese).
 
-### 阶段八：智能问答系统 ⏳ 待开始
+### Screenshots
 
-- [ ] 知识库建设（考勤 / 社保 / 假期 / 薪酬等）
-- [ ] 关键词匹配问答引擎（一期）
-- [ ] LLM API 接入（二期）
-- [ ] 前端悬浮聊天窗口
-- [ ] 钉钉机器人群聊问答
+Taken from a local demo database. All names and phone numbers are made up.
 
-### 阶段九：Dashboard 数据整合 🟡 进行中
+| Login | Overview |
+| --- | --- |
+| ![Login](docs/images/login.png) | ![Overview](docs/images/dashboard.png) |
+| **Employees** | **Self-service** |
+| ![Employees](docs/images/employees.png) | ![Self-service](docs/images/self-service.png) |
 
-- [X] 基础统计卡片（员工总数、考勤率、请假等）
-- [X] 入职趋势图表
-- [ ] 部门分布、考勤异常、假期使用等可视化图表
-- [ ] 待审批 / 提醒事项面板
-- [ ] 个性化布局与移动端适配
+### Tech stack
 
-### 阶段十：测试与部署 🟡 进行中
+| Part | Choice |
+| --- | --- |
+| Frontend | React 19, TypeScript, Ant Design 5 |
+| Backend | Node.js 20, Express 5, Sequelize 6 |
+| Database | MySQL 8.0 |
+| File storage | Alibaba Cloud OSS |
+| Deployment | Docker, Alibaba Cloud Container Registry, ECS, released by GitHub Actions |
 
-- [X] 后端单元测试（87 个用例，覆盖率 85%+）
-- [ ] 前端单元测试（覆盖率 0%，待补充）
-- [ ] 端到端集成测试
-- [ ] 云端部署与监控告警
+ID numbers, phone numbers and bank card numbers are stored AES-256 encrypted, with a separate hash for lookups. Accounts without permission see masked values. Creating, editing or exporting employees and changing permissions are written to the `operation_logs` audit table. Everything runs in Beijing time (UTC+8).
 
-## 📊 性能指标
+### Run locally
 
-- **并发支持**：500+ 用户同时访问
-- **响应时间**：智能问答 < 2秒，页面加载 < 1秒
-- **可用性**：99.9% 系统可用率
-- **数据安全**：100% 敏感数据加密覆盖
+Requires Node.js 20 and MySQL 8.0.
 
-## 📄 许可证
+```bash
+git clone https://github.com/YCRenyue/hrsystem.git
+cd hrsystem
+npm run install:all
 
-本项目采用 MIT 许可证。详情请参阅 [LICENSE](LICENSE) 文件。
+# Set the database connection, JWT_SECRET, ENCRYPTION_KEY (32 chars), etc.
+cp backend/.env.example backend/.env
 
-## 👥 团队成员
+npm run db:migrate   # creates all tables, including incremental migrations
+npm run db:seed      # default departments and the admin account
 
-- **项目负责人**：[@yuhaoJQKA](https://github.com/yuhaoJQKA) [@ZixunHuangUPenn](https://github.com/ZixunHuangUPenn)
-- **产品设计**：[@yuhaoJQKA](https://github.com/yuhaoJQKA) [@ZixunHuangUPenn](https://github.com/ZixunHuangUPenn)
-- **前端开发**：[@ZixunHuangUPenn](https://github.com/ZixunHuangUPenn)
-- **后端开发**：[@ZixunHuangUPenn](https://github.com/ZixunHuangUPenn)
-- **测试工程师**：[@ZixunHuangUPenn](https://github.com/ZixunHuangUPenn)
+npm run dev          # frontend http://localhost:3000, backend http://localhost:3001
+```
 
-📈 查看项目进展：[项目看板](https://github.com/ZixunHuangUPenn/hrsystem/projects)
+The seeded admin must change its password on first login. Set `SEED_ADMIN_USERNAME` and `SEED_ADMIN_PASSWORD` to override the defaults, and always set them in production.
+
+Common commands:
+
+```bash
+npm test               # frontend and backend tests
+npm run lint           # ESLint for both
+cd frontend && npx tsc --noEmit
+```
+
+### Docker
+
+```bash
+cp docker/.env.example docker/.env   # fill in database password and secrets
+npm run docker:build
+npm run docker:up
+docker exec -it hr_backend npm run db:migrate
+docker exec -it hr_backend npm run db:seed
+```
+
+Production uses `docker/docker-compose.production.yml`. `.github/workflows/deploy.yml` builds the images, pushes them to Alibaba Cloud Container Registry, then pulls and starts them on ECS, rolling back automatically if the health check fails.
+
+### Layout
+
+```
+backend/    Express API: routes, controllers, services, Sequelize models and migrations
+frontend/   React app
+docker/     Docker Compose files
+docs/       Client requirements, test records, HR user guide
+sample_data/ Import templates (no real employee data)
+```
+
+### License
+
+[MIT](LICENSE)
