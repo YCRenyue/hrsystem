@@ -306,7 +306,7 @@ const createBusinessTrip = async (req, res) => {
     span_days: durations.span_days,
     attachments: attachments ? JSON.stringify(attachments) : null,
     status: submit ? 'pending' : 'draft',
-    approval_stage: await getInitialApprovalStage(employee.department_id),
+    approval_stage: await getInitialApprovalStage(employee.department_id, employee.employee_id),
     submitted_by: req.user.user_id,
     submitted_at: submit ? new Date() : null
   });
@@ -409,7 +409,7 @@ const submitBusinessTrip = async (req, res) => {
   await trip.save();
 
   const employee = await Employee.findByPk(trip.employee_id);
-  trip.approval_stage = await getInitialApprovalStage(employee?.department_id);
+  trip.approval_stage = await getInitialApprovalStage(employee?.department_id, trip.employee_id);
   trip.manager_approver_id = null;
   trip.manager_approved_at = null;
   trip.manager_approval_notes = null;

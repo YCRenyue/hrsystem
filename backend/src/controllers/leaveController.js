@@ -138,7 +138,7 @@ const createLeave = async (req, res) => {
       days,
       reason,
       status: 'pending',
-      approval_stage: await getInitialApprovalStage(employee.department_id),
+      approval_stage: await getInitialApprovalStage(employee.department_id, employee.employee_id),
       attachment_url
     });
 
@@ -468,7 +468,13 @@ const deleteLeave = async (req, res) => {
       });
     }
 
-    await leave.destroy();
+    // 已批准的请假先撤销（返还年假、恢复考勤），再删除记录
+    await sequelize.transaction(async (transaction) => {
+      if (leave.status === 'approved') {
+        await leaveWorkflowService.cancel(leave, transaction);
+      }
+      await leave.destroy({ transaction });
+    });
 
     return res.json({
       success: true,

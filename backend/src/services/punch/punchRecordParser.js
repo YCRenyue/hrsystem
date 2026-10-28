@@ -15,6 +15,7 @@
  */
 
 const XLSX = require('xlsx');
+const { ValidationError } = require('../../middleware/errorHandler');
 
 const RAW_SHEET_NAME = '刷卡记录';
 const HEADER_ROW = 2;
@@ -149,13 +150,13 @@ function parsePunchWorkbook(buffer) {
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   const sheet = workbook.Sheets[RAW_SHEET_NAME];
   if (!sheet) {
-    throw new Error(`未找到「${RAW_SHEET_NAME}」工作表，请导出时保留该表`);
+    throw new ValidationError(`未找到「${RAW_SHEET_NAME}」工作表，请导出时保留该表`);
   }
   const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
   const infoRow = matrix[1] || [];
   const period = parsePeriod(findValueAfterLabel(infoRow, '考勤日期'));
   if (!period) {
-    throw new Error('无法识别「刷卡记录」表中的考勤日期');
+    throw new ValidationError('无法识别「刷卡记录」表中的考勤日期');
   }
   const exportDate = parseDate(findValueAfterLabel(infoRow, '制表时间'));
   const dayColumns = buildDayColumns(matrix[HEADER_ROW] || [], period);

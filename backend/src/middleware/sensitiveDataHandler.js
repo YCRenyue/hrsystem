@@ -4,6 +4,7 @@
  * 自动处理API响应中的敏感数据，根据用户权限进行加密、解密或脱敏
  */
 
+const { Model } = require('sequelize');
 const permissionService = require('../services/PermissionService');
 const logger = require('../utils/logger');
 
@@ -78,6 +79,11 @@ function processSensitiveData(data, user, canViewSensitive) {
     || (typeof Buffer !== 'undefined' && Buffer.isBuffer(data))
   ) {
     return data;
+  }
+
+  // Sequelize 实例先转成普通对象，否则会把 dataValues 等内部字段原样发给前端
+  if (data instanceof Model) {
+    return processSensitiveData(data.toJSON(), user, canViewSensitive);
   }
 
   // 如果是数组，递归处理每个元素

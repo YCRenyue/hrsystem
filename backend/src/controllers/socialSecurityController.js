@@ -8,8 +8,10 @@ const ExcelService = require('../services/ExcelService');
 const calculationService = require('../services/SocialSecurityCalculationService');
 const {
   ValidationError,
-  NotFoundError
+  NotFoundError,
+  ForbiddenError
 } = require('../middleware/errorHandler');
+const dataScopeService = require('../services/DataScopeService');
 const { formatLocalDate } = require('../utils/dateUtils');
 const { buildEmployeeKeywordWhere } = require('../utils/employeeSearch');
 
@@ -73,6 +75,10 @@ const getSocialSecurities = async (req, res) => {
   if (search) {
     queryOptions.include[0].where = await buildEmployeeKeywordWhere(search);
   }
+  // 员工只看本人、部门负责人只看本部门；账号没有可用范围时不返回任何记录
+  if (!dataScopeService.applyResourceScope(where, queryOptions.include[0], req.user)) {
+    where.employee_id = null;
+  }
 
   const { count, rows } = await SocialSecurity.findAndCountAll(queryOptions);
 
@@ -115,6 +121,9 @@ const getSocialSecurityById = async (req, res) => {
 
   if (!record) {
     throw new NotFoundError('Social security record', id);
+  }
+  if (!(await dataScopeService.canAccessEmployee(req.user, record.employee_id))) {
+    throw new ForbiddenError('无权查看该记录');
   }
 
   const data = record.toJSON();

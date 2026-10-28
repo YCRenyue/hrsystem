@@ -195,6 +195,37 @@ const syncTripReimbursementStatus = async (tripId, transaction) => {
   await trip.save({ transaction });
 };
 
+// 仍占用额度的报销单状态（被拒绝的可以修改后重新提交，提交时再算）
+const ACTIVE_STATUSES = ['draft', 'pending', 'approved', 'paid'];
+
+/**
+ * 按天限额以出差单为单位：同一出差同一天，本单明细加上其他有效报销单的明细一起校验，
+ * 防止把住宿、餐费拆成多张报销单绕过限额
+ *
+ * @param {string} tripId - 出差单 ID
+ * @param {Object[]} items - 本单明细
+ * @param {string} [excludeId] - 编辑时排除本单原有明细
+ * @throws {ValidationError} 超过按天限额时
+ */
+const enforceTripDailyLimits = async (tripId, items, excludeId = null) => {
+  const others = await ReimbursementItem.findAll({
+    attributes: ['category', 'amount', 'occurred_on'],
+    include: [{
+      model: Reimbursement,
+      as: 'reimbursement',
+      attributes: [],
+      required: true,
+      where: {
+        trip_id: tripId,
+        status: { [Op.in]: ACTIVE_STATUSES },
+        ...(excludeId ? { reimbursement_id: { [Op.ne]: excludeId } } : {})
+      }
+    }],
+    raw: true
+  });
+  enforceDailyLimits([...others, ...items]);
+};
+
 const runInTransaction = (fn) => sequelize.transaction(fn);
 
 module.exports = {
@@ -204,6 +235,7 @@ module.exports = {
   ensureTripReimbursable,
   validateItem,
   enforceDailyLimits,
+  enforceTripDailyLimits,
   sumAmount,
   createItems,
   replaceItems,

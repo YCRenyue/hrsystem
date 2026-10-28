@@ -6,22 +6,28 @@
  *   - 员工对应的登录账号（用于给申请人发通知）
  */
 
+const { Op } = require('sequelize');
 const { User } = require('../models');
 
 /**
- * 计算初始审批级别：所在部门有在职的部门负责人则从部门审批开始，否则直接到 HR
+ * 计算初始审批级别：所在部门有在职的部门负责人则从部门审批开始，否则直接到 HR。
+ * 申请人本人就是部门负责人时不算（不能审批自己的申请），直接到 HR。
  *
  * @param {string|null} departmentId - 申请人所在部门
+ * @param {string|null} [applicantEmployeeId] - 申请人员工 ID
  * @returns {Promise<'department'|'hr'>} 初始审批级别
  */
-const getInitialApprovalStage = async (departmentId) => {
+const getInitialApprovalStage = async (departmentId, applicantEmployeeId = null) => {
   if (!departmentId) return 'hr';
   const count = await User.count({
     where: {
       role: 'department_manager',
       department_id: departmentId,
       status: 'active',
-      is_active: true
+      is_active: true,
+      ...(applicantEmployeeId
+        ? { [Op.or]: [{ employee_id: null }, { employee_id: { [Op.ne]: applicantEmployeeId } }] }
+        : {})
     }
   });
   return count > 0 ? 'department' : 'hr';

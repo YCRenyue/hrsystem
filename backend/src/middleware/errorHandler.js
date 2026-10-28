@@ -67,6 +67,15 @@ const errorHandler = (err, req, res, _next) => {
     });
   }
 
+  // 模型校验失败（如邮箱格式）、唯一键冲突属于输入问题，返回 400 和具体原因
+  if (err.name === 'SequelizeValidationError' || err.name === 'SequelizeUniqueConstraintError') {
+    return res.status(400).json({
+      success: false,
+      error: '数据验证失败',
+      message: (err.errors || []).map((e) => e.message).join('；') || err.message
+    });
+  }
+
   if (err instanceof NotFoundError) {
     return res.status(err.statusCode).json({
       success: false,
