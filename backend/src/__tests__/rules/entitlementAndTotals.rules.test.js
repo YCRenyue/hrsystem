@@ -163,3 +163,81 @@ describe('出差时长的输入校验', () => {
     });
   });
 });
+
+describe('社保比例可通过环境变量配置（requirement.md 12.2）', () => {
+  const KEYS = ['SOCIAL_RATE_PENSION_PERSONAL', 'SOCIAL_RATE_PENSION_COMPANY',
+    'SOCIAL_RATE_MEDICAL_PERSONAL', 'SOCIAL_RATE_MEDICAL_COMPANY',
+    'SOCIAL_RATE_UNEMPLOYMENT_PERSONAL', 'SOCIAL_RATE_UNEMPLOYMENT_COMPANY',
+    'SOCIAL_RATE_INJURY_COMPANY', 'SOCIAL_RATE_MATERNITY_COMPANY',
+    'HOUSING_FUND_RATE_PERSONAL', 'HOUSING_FUND_RATE_COMPANY'];
+  afterEach(() => KEYS.forEach((k) => { delete process.env[k]; }));
+
+  test('按手册样例的公司实际比例配置后，基数 8000：个人 1240、公司 2376', () => {
+    // eslint-disable-next-line global-require
+    const { calculate } = require('../../services/SocialSecurityCalculationService');
+    Object.assign(process.env, {
+      SOCIAL_RATE_PENSION_PERSONAL: '0.08',
+      SOCIAL_RATE_PENSION_COMPANY: '0.16',
+      SOCIAL_RATE_MEDICAL_PERSONAL: '0.02',
+      SOCIAL_RATE_MEDICAL_COMPANY: '0.07',
+      SOCIAL_RATE_UNEMPLOYMENT_PERSONAL: '0.005',
+      SOCIAL_RATE_UNEMPLOYMENT_COMPANY: '0.005',
+      SOCIAL_RATE_INJURY_COMPANY: '0.004',
+      SOCIAL_RATE_MATERNITY_COMPANY: '0.008',
+      HOUSING_FUND_RATE_PERSONAL: '0.05',
+      HOUSING_FUND_RATE_COMPANY: '0.05'
+    });
+    const r = calculate(8000, 8000);
+    expect(r).toMatchObject({
+      pension_personal: 640,
+      medical_personal: 160,
+      unemployment_personal: 40,
+      housing_fund_personal: 400,
+      pension_company: 1280,
+      medical_company: 560,
+      unemployment_company: 40,
+      injury_company: 32,
+      maternity_company: 64,
+      housing_fund_company: 400,
+      total_personal: 1240,
+      total_company: 2376
+    });
+  });
+
+  test.each(KEYS)('%s 单独调整只影响对应一项', (key) => {
+    // eslint-disable-next-line global-require
+    const { calculate } = require('../../services/SocialSecurityCalculationService');
+    const before = calculate(10000, 10000);
+    process.env[key] = '0.5';
+    const after = calculate(10000, 10000);
+    const changed = Object.keys(before)
+      .filter((k) => !k.startsWith('total_') && before[k] !== after[k]);
+    expect(changed).toHaveLength(1);
+    expect(after[changed[0]]).toBe(5000);
+  });
+});
+
+describe('报销明细校验（手册 13.6）', () => {
+  // eslint-disable-next-line global-require
+  const { validateItem } = require('../../services/ReimbursementService');
+  const trip = { start_datetime: new Date('2026-10-22T08:00:00'), end_datetime: new Date('2026-10-23T18:00:00') };
+
+  test('金额为 0 可以（非负数）', () => {
+    expect(() => validateItem({ category: 'meal', amount: 0, occurred_on: '2026-10-22' }, trip))
+      .not.toThrow();
+  });
+
+  test('出差首尾两天都在范围内，前一天和后一天不在', () => {
+    const ok = (d) => () => validateItem({ category: 'meal', amount: 1, occurred_on: d }, trip);
+    expect(ok('2026-10-22')).not.toThrow();
+    expect(ok('2026-10-23')).not.toThrow();
+    expect(ok('2026-10-21')).toThrow('出差期间');
+    expect(ok('2026-10-24')).toThrow('出差期间');
+  });
+
+  test('日期格式不合法、缺日期都报错', () => {
+    expect(() => validateItem({ category: 'meal', amount: 1, occurred_on: 'xx' }, trip))
+      .toThrow('格式不合法');
+    expect(() => validateItem({ category: 'meal', amount: 1 }, trip)).toThrow('必填');
+  });
+});
