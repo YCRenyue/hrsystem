@@ -5,6 +5,7 @@
   "coverageAnalysis": "perTest",
   "concurrency": 2,
   "timeoutMS": 60000,
+  "dryRunTimeoutMinutes": 30,
   "reporters": ["clear-text", "progress", "html", "json"],
   "htmlReporter": { "fileName": "reports/mutation/index.html" },
   "jsonReporter": { "fileName": "reports/mutation/mutation.json" },
