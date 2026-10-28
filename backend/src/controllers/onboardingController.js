@@ -120,8 +120,9 @@ const submitOnboardingForm = async (req, res) => {
   }
 
   // Validate required fields
-  if (!formData.phone || !formData.email || !formData.id_card) {
-    throw new ValidationError('电话、邮箱和身份证号为必填项');
+  // 邮箱选填（很多员工没有邮箱），填写时由模型校验格式
+  if (!formData.phone || !formData.id_card) {
+    throw new ValidationError('电话和身份证号为必填项');
   }
 
   // Update employee information using encryption methods
@@ -133,7 +134,7 @@ const submitOnboardingForm = async (req, res) => {
     process.employee.setBankCard(formData.bank_card);
   }
 
-  process.employee.email = formData.email;
+  process.employee.email = formData.email || null;
   process.employee.gender = formData.gender;
   process.employee.address = formData.address;
   process.employee.emergency_contact = formData.emergency_contact;

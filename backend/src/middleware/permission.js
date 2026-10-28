@@ -5,7 +5,17 @@
  * 包括：具体权限检查、数据范围过滤、部门访问控制
  */
 
-const { hasPermission: checkPermissionUtil } = require('../constants/permissions');
+const {
+  hasPermission: checkPermissionUtil,
+  ROLE_PERMISSIONS_MAP
+} = require('../constants/permissions');
+
+// 账号没有单独配置权限时按角色取默认权限（用户管理改角色只改 role，不写 permissions）
+const effectivePermissions = (user) => (
+  Array.isArray(user.permissions) && user.permissions.length > 0
+    ? user.permissions
+    : ROLE_PERMISSIONS_MAP[user.role] || []
+);
 
 /**
  * 检查用户是否有特定权限
@@ -28,7 +38,7 @@ exports.checkPermission = (requiredPermission) => async (req, res, next) => {
     }
 
     // 使用权限工具函数检查
-    const hasAccess = checkPermissionUtil(requiredPermission, user.permissions);
+    const hasAccess = checkPermissionUtil(requiredPermission, effectivePermissions(user));
 
     if (!hasAccess) {
       return res.status(403).json({

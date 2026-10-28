@@ -291,10 +291,7 @@ const OnboardingForm: React.FC = () => {
               <Form.Item
                 label="邮箱"
                 name="email"
-                rules={[
-                  { required: true, message: '请输入您的邮箱！' },
-                  { type: 'email', message: '邮箱格式不正确' },
-                ]}
+                rules={[{ type: 'email', message: '邮箱格式不正确' }]}
               >
                 <Input placeholder="email@example.com" />
               </Form.Item>

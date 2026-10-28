@@ -193,5 +193,6 @@ module.exports = {
   upsertEmployeeAttendances,
   selectImportDates,
   isWeekend,
+  buildDailyRecord,
   _internal: { assignSlots, deriveStatus, buildDailyRecord }
 };

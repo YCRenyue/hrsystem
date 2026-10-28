@@ -10,7 +10,10 @@ const permissionService = require('../services/PermissionService');
 const ExcelService = require('../services/ExcelService');
 const attendanceImportService = require('../services/attendanceImportService');
 const attendanceReportService = require('../services/attendanceReportService');
-const { ValidationError } = require('../middleware/errorHandler');
+const {
+  ValidationError, NotFoundError, ForbiddenError
+} = require('../middleware/errorHandler');
+const dataScopeService = require('../services/DataScopeService');
 const { formatLocalDate } = require('../utils/dateUtils');
 
 /**
@@ -217,6 +220,29 @@ const getAttendanceList = async (req, res) => {
       message: '获取考勤记录失败'
     });
   }
+};
+
+/**
+ * 单条考勤记录（员工只能看本人，部门负责人只能看本部门）
+ */
+const getAttendanceById = async (req, res) => {
+  const record = await Attendance.findByPk(req.params.id, {
+    include: [{
+      model: Employee,
+      as: 'employee',
+      attributes: ['employee_id', 'employee_number', 'name_encrypted', 'department_id']
+    }]
+  });
+  if (!record) throw new NotFoundError('考勤记录', req.params.id);
+  if (!(await dataScopeService.canAccessEmployee(req.user, record.employee_id))) {
+    throw new ForbiddenError('无权查看该考勤记录');
+  }
+  const data = record.toJSON();
+  if (data.employee) {
+    data.employee.name = record.employee.getName();
+    delete data.employee.name_encrypted;
+  }
+  res.json({ success: true, data });
 };
 
 /**
@@ -606,6 +632,7 @@ const exportToExcel = async (req, res) => {
 module.exports = {
   createAttendance,
   getAttendanceList,
+  getAttendanceById,
   getAttendanceStats,
   updateAttendance,
   deleteAttendance,

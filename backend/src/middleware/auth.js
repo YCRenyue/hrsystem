@@ -53,7 +53,8 @@ const authenticateToken = async (req, res, next) => {
 
     return next();
   } catch (error) {
-    return res.status(403).json({
+    // 令牌无效或过期返回 401，前端据此跳转登录页
+    return res.status(401).json({
       success: false,
       error: '登录已过期，请重新登录'
     });

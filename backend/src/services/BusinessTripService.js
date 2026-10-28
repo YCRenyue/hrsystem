@@ -22,6 +22,7 @@ const {
 } = require('../models');
 const { ValidationError } = require('../middleware/errorHandler');
 const { formatLocalDateTime } = require('../utils/dateUtils');
+const { buildDailyRecord } = require('./punch/attendancePunchImport');
 
 // 默认每日工时基准（与考勤模块保持一致）
 const STANDARD_WORK_HOURS_PER_DAY = 8;
@@ -293,9 +294,32 @@ const syncAttendanceOnApproval = async (trip, { transaction } = {}) => {
   return affected;
 };
 
+const PUNCH_SLOTS = [
+  'morning_check_in', 'morning_check_out', 'afternoon_check_in', 'afternoon_check_out'
+];
+
+/**
+ * 审批时迟到、早退清零、工时记 8 小时；撤销时对打卡导入的记录按原打卡重新计算这几项
+ *
+ * @param {Attendance} record - 含 employee.department 的考勤记录
+ */
+const restorePunchDerivedFields = (record) => {
+  if (record.source !== 'card_import') return;
+  const times = PUNCH_SLOTS.map((field) => record[field])
+    .filter(Boolean)
+    .map((time) => String(time).slice(0, 5))
+    .sort();
+  const department = record.employee && record.employee.department;
+  const daily = buildDailyRecord(record.date, times, department && department.name);
+  record.late_minutes = daily.derived.late_minutes;
+  record.early_leave_minutes = daily.derived.early_leave_minutes;
+  record.work_hours = daily.hours.work_hours;
+  record.overtime_hours = daily.hours.overtime_hours;
+};
+
 /**
  * 撤销出差时回溯考勤记录
- *  - previous_status 不为空：还原原状态
+ *  - previous_status 不为空：还原原状态；打卡导入的记录按打卡重新计算迟到、早退和工时
  *  - previous_status 为空：表示是审批时新建的记录，直接删除
  *
  * @param {BusinessTrip} trip
@@ -305,11 +329,17 @@ const syncAttendanceOnApproval = async (trip, { transaction } = {}) => {
 const rollbackAttendanceOnCancel = async (trip, { transaction } = {}) => {
   const linked = await Attendance.findAll({
     where: { business_trip_id: trip.trip_id },
+    include: [{
+      association: 'employee',
+      attributes: ['employee_id'],
+      include: [{ association: 'department', attributes: ['name'] }]
+    }],
     transaction
   });
 
   for (const record of linked) {
     if (record.previous_status) {
+      restorePunchDerivedFields(record);
       record.status = record.previous_status;
       record.previous_status = null;
       record.business_trip_id = null;

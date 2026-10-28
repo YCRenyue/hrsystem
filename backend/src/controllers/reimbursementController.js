@@ -59,10 +59,11 @@ const canModifyRecord = (user, record) => {
   return canAccessRecord(user, record);
 };
 
-const notifyFinanceOnSubmit = async (record, employeeName, submitterUserId) => {
+// 提交后通知审核人（HR/admin）；审核通过后再通知财务发放
+const notifyReviewersOnSubmit = async (record, employeeName, submitterUserId) => {
   try {
-    const financeIds = await inAppNotification.getFinanceUserIds();
-    await inAppNotification.sendToMany(financeIds, {
+    const reviewerIds = await inAppNotification.getHrApproverUserIds();
+    await inAppNotification.sendToMany(reviewerIds, {
       senderUserId: submitterUserId,
       type: inAppNotification.NotificationTypes.REIMBURSEMENT_SUBMITTED,
       title: '新报销单待审核',
@@ -73,7 +74,25 @@ const notifyFinanceOnSubmit = async (record, employeeName, submitterUserId) => {
     });
   } catch (e) {
     // eslint-disable-next-line no-console
-    console.error('[notifyFinanceOnSubmit] failed:', e.message);
+    console.error('[notifyReviewersOnSubmit] failed:', e.message);
+  }
+};
+
+const notifyFinanceToPay = async (record, approverUserId) => {
+  try {
+    const financeIds = await inAppNotification.getFinanceUserIds();
+    await inAppNotification.sendToMany(financeIds, {
+      senderUserId: approverUserId,
+      type: inAppNotification.NotificationTypes.REIMBURSEMENT_APPROVED,
+      title: '报销单待发放',
+      content: `报销单 ${record.reimbursement_number} 已审核通过，金额：¥${Number(record.total_amount).toFixed(2)}`,
+      relatedResource: 'reimbursement',
+      relatedId: record.reimbursement_id,
+      linkUrl: `/reimbursements/${record.reimbursement_id}`
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[notifyFinanceToPay] failed:', e.message);
   }
 };
 
@@ -292,7 +311,7 @@ const create = async (req, res) => {
 
   const trip = await reimbursementService.ensureTripReimbursable(tripId, employeeId);
   items.forEach((item) => reimbursementService.validateItem(item, trip));
-  reimbursementService.enforceDailyLimits(items);
+  await reimbursementService.enforceTripDailyLimits(tripId, items);
 
   const number = await reimbursementService.generateReimbursementNumber();
   const total = reimbursementService.sumAmount(items);
@@ -321,7 +340,7 @@ const create = async (req, res) => {
     const employeeName = employee && typeof employee.getName === 'function'
       ? employee.getName()
       : '员工';
-    await notifyFinanceOnSubmit(created, employeeName, req.user.user_id);
+    await notifyReviewersOnSubmit(created, employeeName, req.user.user_id);
   }
 
   return res.status(201).json({ success: true, data: serializeReimbursement(created) });
@@ -348,7 +367,7 @@ const update = async (req, res) => {
       throw new ValidationError('至少录入一条费用明细');
     }
     items.forEach((item) => reimbursementService.validateItem(item, trip));
-    reimbursementService.enforceDailyLimits(items);
+    await reimbursementService.enforceTripDailyLimits(record.trip_id, items, record.reimbursement_id);
   }
 
   await reimbursementService.runInTransaction(async (t) => {
@@ -378,6 +397,8 @@ const submit = async (req, res) => {
   if (!record.items || record.items.length === 0) {
     throw new ValidationError('请先录入费用明细再提交');
   }
+  // 被拒绝后重新提交时，其间可能已有同一出差的其他报销单占用了当天额度
+  await reimbursementService.enforceTripDailyLimits(record.trip_id, record.items.map((item) => item.toJSON()), record.reimbursement_id);
 
   await reimbursementService.runInTransaction(async (t) => {
     record.status = 'pending';
@@ -394,7 +415,7 @@ const submit = async (req, res) => {
   const employeeName = employee && typeof employee.getName === 'function'
     ? employee.getName()
     : '员工';
-  await notifyFinanceOnSubmit(record, employeeName, req.user.user_id);
+  await notifyReviewersOnSubmit(record, employeeName, req.user.user_id);
 
   return res.json({ success: true, data: serializeReimbursement(record) });
 };
@@ -426,6 +447,7 @@ const approve = async (req, res) => {
   });
 
   await notifyApplicantOnDecision(record, decision, req.user.user_id, notes);
+  if (decision === 'approved') await notifyFinanceToPay(record, req.user.user_id);
 
   return res.json({ success: true, data: serializeReimbursement(record) });
 };
