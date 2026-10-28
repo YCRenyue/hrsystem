@@ -6,6 +6,7 @@ const { NotFoundError, ValidationError } = require('../middleware/errorHandler')
 const notificationService = require('../services/NotificationService');
 const logger = require('../utils/logger');
 const { summarizeNotificationError } = require('../utils/notificationError');
+const { notifyHrOnboardingSubmitted } = require('../services/hrNotifier');
 
 /**
  * Get onboarding form by token
@@ -145,6 +146,7 @@ const submitOnboardingForm = async (req, res) => {
 
   // Update onboarding process status
   await process.markAsCompleted();
+  await notifyHrOnboardingSubmitted(process.employee);
 
   res.json({
     success: true,

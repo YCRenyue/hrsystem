@@ -23,6 +23,8 @@ const notificationService = require('./NotificationService');
 const annualLeaveService = require('./AnnualLeaveService');
 const logger = require('../utils/logger');
 const { formatLocalDate } = require('../utils/dateUtils');
+const tripReminderJobs = require('./tripReminderJobs');
+const { notifyHrContractExpiring } = require('./hrNotifier');
 
 const CRON_OPTIONS = { timezone: 'Asia/Shanghai' };
 
@@ -96,6 +98,12 @@ class SchedulerService {
       cron.schedule('0 * * * *', () => {
         this.runBusinessTripLifecycle();
       }, CRON_OPTIONS)
+    );
+
+    // Daily in-app reminders: 19:00 missing watermark photos, 10:00 trips not yet reimbursed
+    this.jobs.push(
+      cron.schedule('0 19 * * *', () => this.runTripReminder('watermark'), CRON_OPTIONS),
+      cron.schedule('0 10 * * *', () => this.runTripReminder('reimbursement'), CRON_OPTIONS)
     );
 
     this.isRunning = true;
@@ -307,13 +315,10 @@ class SchedulerService {
     try {
       const thirtyDaysFromNow = new Date();
       thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-      thirtyDaysFromNow.setHours(0, 0, 0, 0);
 
       const employees = await Employee.findAll({
         where: {
-          contract_end_date: {
-            [Op.eq]: thirtyDaysFromNow
-          },
+          contract_expiry_date: formatLocalDate(thirtyDaysFromNow),
           status: 'active'
         }
       });
@@ -321,6 +326,7 @@ class SchedulerService {
       logger.info(`Found ${employees.length} employees with contracts expiring in 30 days`);
 
       for (const employee of employees) {
+        await notifyHrContractExpiring(employee, 30);
         try {
           await notificationService.sendContractExpiryReminder(employee, 30);
           logger.info(`Contract expiry reminder sent to ${employee.name}`);
@@ -459,6 +465,22 @@ class SchedulerService {
   }
 
   /**
+   * Trip in-app reminders (missing watermark photos / trips not yet reimbursed)
+   *
+   * @param {'watermark'|'reimbursement'} kind
+   */
+  async runTripReminder(kind) {
+    try {
+      const sent = kind === 'watermark'
+        ? await tripReminderJobs.remindMissingWatermarks()
+        : await tripReminderJobs.remindUnreimbursedTrips();
+      logger.info(`Trip ${kind} reminders sent: ${sent}`);
+    } catch (error) {
+      logger.error(`Error in trip ${kind} reminders:`, error.message);
+    }
+  }
+
+  /**
    * Manually trigger a specific task (for testing)
    *
    * @param {string} taskName - Name of the task to run
@@ -472,7 +494,9 @@ class SchedulerService {
       'contract-expiry': () => this.runContractExpiryReminders(),
       statistics: () => this.runMonthlyStatistics(),
       'annual-leave-accrual': () => this.runAnnualLeaveAccrual(),
-      'business-trip-lifecycle': () => this.runBusinessTripLifecycle()
+      'business-trip-lifecycle': () => this.runBusinessTripLifecycle(),
+      'watermark-reminder': () => this.runTripReminder('watermark'),
+      'reimbursement-reminder': () => this.runTripReminder('reimbursement')
     };
 
     if (tasks[taskName]) {

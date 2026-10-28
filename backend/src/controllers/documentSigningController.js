@@ -15,6 +15,7 @@ const { encryptionService } = require('../utils/encryption');
 const { recordOperation } = require('../utils/audit');
 const { sequelize } = require('../config/database');
 const { ossService } = require('../services/OSSService');
+const { notifyDocumentToSign, notifyDocumentSigned } = require('../services/documentNotifier');
 
 /**
  * Persist the employee-fillable party info snapshot for a training pledge at
@@ -200,6 +201,7 @@ const signDocument = async (req, res) => {
     recordId: id,
     newValues: { documentType }
   });
+  await notifyDocumentSigned(employee, documentType, req.user?.user_id);
 
   res.json({
     success: true,
@@ -266,6 +268,11 @@ const saveTrainingPledge = async (req, res) => {
     },
     { conflictFields: ['employee_id'] }
   );
+  if (!employee.training_pledge_status) {
+    await notifyDocumentToSign({
+      employeeId: id, documentType: 'training_pledge', senderUserId: req.user?.user_id
+    });
+  }
 
   res.json({
     success: true,
@@ -351,6 +358,11 @@ const saveEmploymentContract = async (req, res) => {
     },
     { conflictFields: ['employee_id'] }
   );
+  if (!employee.employment_contract_status) {
+    await notifyDocumentToSign({
+      employeeId: id, documentType: 'employment_contract', senderUserId: req.user?.user_id
+    });
+  }
 
   res.json({
     success: true,

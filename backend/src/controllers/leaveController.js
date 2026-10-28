@@ -13,7 +13,8 @@ const { getInitialApprovalStage } = require('../services/approvalService');
 const {
   notifyApproversOnLeaveSubmit,
   notifyHrForReview,
-  notifyApplicantOnLeaveDecision
+  notifyApplicantOnLeaveDecision,
+  notifyOnLeaveCancelled
 } = require('../services/leaveNotifier');
 const { ValidationError } = require('../middleware/errorHandler');
 const { applyEmployeeKeyword } = require('../utils/employeeSearch');
@@ -413,6 +414,8 @@ const updateLeave = async (req, res) => {
       await sequelize.transaction((transaction) => (
         leaveWorkflowService.cancel(leave, transaction)
       ));
+      const byApplicant = req.user.employee_id === leave.employee_id;
+      await notifyOnLeaveCancelled(leave, req.user.user_id, byApplicant);
     } else {
       if (leave.status !== 'pending') {
         return res.status(400).json({ success: false, message: '仅待审批申请可修改' });

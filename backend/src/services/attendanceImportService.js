@@ -17,6 +17,7 @@ const { matchEmployees, findPunchesAfterLeave } = require('./punch/employeeMatch
 const {
   upsertEmployeeAttendances, selectImportDates, isWeekend
 } = require('./punch/attendancePunchImport');
+const { notifyAttendanceAlerts } = require('./hrNotifier');
 
 const BLOCK_BASES = [0, 15, 30];
 const DEVICE = 'attendance';
@@ -161,6 +162,7 @@ async function importCardWorkbook(buffer, sourceFile = null) {
     punches_after_leave: findPunchesAfterLeave(matched)
   });
 
+  const alerts = [];
   await sequelize.transaction(async (transaction) => {
     for (const { entry, employee } of matched) {
       // eslint-disable-next-line no-await-in-loop -- queries share one transaction connection and must run in order
@@ -174,6 +176,11 @@ async function importCardWorkbook(buffer, sourceFile = null) {
       }
       if (stats.absent_dates.length > 0) {
         result.absent_without_leave.push({ ...person, dates: stats.absent_dates });
+      }
+      if (stats.absent_dates.length > 0 || stats.leave_punch_dates.length > 0) {
+        alerts.push({
+          employee, absentDates: stats.absent_dates, leavePunchDates: stats.leave_punch_dates
+        });
       }
 
       const summary = summaries.get(entry.externalId);
@@ -194,6 +201,7 @@ async function importCardWorkbook(buffer, sourceFile = null) {
       }
     }
   });
+  await notifyAttendanceAlerts(alerts);
 
   return result;
 }

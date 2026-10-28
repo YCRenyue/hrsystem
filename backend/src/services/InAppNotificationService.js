@@ -35,7 +35,17 @@ const NotificationTypes = Object.freeze({
   REIMBURSEMENT_PAID: 'reimbursement_paid',
   REIMBURSEMENT_CANCELLED: 'reimbursement_cancelled',
   // 水印打卡
-  WATERMARK_MISSING: 'watermark_missing'
+  WATERMARK_MISSING: 'watermark_missing',
+  // 出差结束后提醒报销
+  REIMBURSEMENT_REMINDER: 'reimbursement_reminder',
+  // 制度确认 / 承诺函 / 劳动合同
+  DOCUMENT_TO_SIGN: 'document_to_sign',
+  DOCUMENT_SIGNED: 'document_signed',
+  // 入职与合同
+  ONBOARDING_SUBMITTED: 'onboarding_submitted',
+  CONTRACT_EXPIRING: 'contract_expiring',
+  // 考勤导入后的旷工、请假当天有打卡
+  ATTENDANCE_ALERT: 'attendance_alert'
 });
 
 /**
@@ -159,6 +169,26 @@ const getHrApproverUserIds = async () => {
 };
 
 /**
+ * 是否已有同类通知（用于去重，避免重复配置或定时任务反复提醒）
+ *
+ * @param {Object} criteria
+ * @param {string} criteria.recipientUserId
+ * @param {string} criteria.type
+ * @param {string} criteria.relatedId
+ * @param {string} [criteria.relatedResource] - 同一 relatedId 下再按资源类型区分
+ * @param {boolean} [criteria.unreadOnly=false] - 只看未读通知
+ * @returns {Promise<boolean>}
+ */
+const exists = async ({
+  recipientUserId, type, relatedId, relatedResource, unreadOnly = false
+}) => {
+  const where = { recipient_user_id: recipientUserId, type, related_id: relatedId };
+  if (relatedResource) where.related_resource = relatedResource;
+  if (unreadOnly) where.is_read = false;
+  return (await Notification.count({ where })) > 0;
+};
+
+/**
  * 查询当前用户的通知列表（分页）
  *
  * @param {string} userId
@@ -234,6 +264,7 @@ module.exports = {
   getApproverUserIds,
   getHrApproverUserIds,
   getFinanceUserIds,
+  exists,
   list,
   unreadCount,
   markRead,
