@@ -45,7 +45,9 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Logging
-app.use(morgan('combined'));
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan('combined'));
+}
 
 // Sensitive data handling middleware (must be before routes)
 const { sensitiveDataHandler } = require('./middleware/sensitiveDataHandler');
@@ -58,8 +60,10 @@ app.use(sensitiveDataHandler({
 // Database connection
 const { sequelize, testConnection } = require('./config/database');
 
-// Test database connection on startup
-testConnection();
+// Test database connection on startup (tests import the app without starting a server)
+if (require.main === module) {
+  testConnection();
+}
 
 // Scheduler service
 const schedulerService = require('./services/SchedulerService');
@@ -113,9 +117,11 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Route Not Found. 请求的接口不存在' });
 });
 
-app.listen(PORT, () => {
-  console.log(`HR System backend running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`HR System backend running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+}
 
 module.exports = app;

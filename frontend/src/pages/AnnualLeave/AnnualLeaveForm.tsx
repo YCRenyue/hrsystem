@@ -21,6 +21,7 @@ import { SaveOutlined, ArrowLeftOutlined } from "@ant-design/icons";
 import { useNavigate, useParams } from "react-router-dom";
 import dayjs from "dayjs";
 import api from "../../services/api";
+import { calcRemainingDays, remainingDaysColor } from "../../utils/annualLeave";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -45,10 +46,11 @@ const AnnualLeaveForm: React.FC = () => {
 
   // Recalculate remaining days whenever relevant fields change
   const recalculate = useCallback(() => {
-    const total = parseFloat(form.getFieldValue("total_days") ?? 0) || 0;
-    const used = parseFloat(form.getFieldValue("used_days") ?? 0) || 0;
-    const carryOver = parseFloat(form.getFieldValue("carry_over_days") ?? 0) || 0;
-    setRemainingDays(total + carryOver - used);
+    setRemainingDays(calcRemainingDays(
+      form.getFieldValue("total_days"),
+      form.getFieldValue("used_days"),
+      form.getFieldValue("carry_over_days")
+    ));
   }, [form]);
 
   const fetchEmployees = useCallback(async () => {
@@ -143,8 +145,7 @@ const AnnualLeaveForm: React.FC = () => {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 6 }, (_, i) => currentYear + 1 - i);
 
-  const remainingColor =
-    remainingDays > 5 ? "#52c41a" : remainingDays > 0 ? "#faad14" : "#ff4d4f";
+  const remainingColor = remainingDaysColor(remainingDays);
 
   return (
     <div>

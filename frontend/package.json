@@ -55,5 +55,10 @@
   "devDependencies": {
     "@craco/craco": "^7.1.0",
     "baseline-browser-mapping": "^2.9.11"
+  },
+  "jest": {
+    "moduleNameMapper": {
+      "^axios$": "axios/dist/node/axios.cjs"
+    }
   }
 }

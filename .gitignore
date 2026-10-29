@@ -57,3 +57,10 @@ coverage/
 CommunicationDocs/
 sample_data/员工信息表.xlsx
 sample_data/花名册.xlsx
+
+# Mutation testing output
+backend/reports/
+backend/.stryker-tmp/
+
+# Presentation decks kept locally
+/*.pptx

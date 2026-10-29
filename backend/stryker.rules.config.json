@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "jest",
+  "jest": {
+    "projectType": "custom",
+    "enableFindRelatedTests": true,
+    "config": { "testPathIgnorePatterns": ["/node_modules/", "/helpers/", "/integration/"] }
+  },
+  "coverageAnalysis": "perTest",
+  "concurrency": 4,
+  "timeoutMS": 30000,
+  "reporters": ["clear-text", "progress-append-only", "html", "json"],
+  "htmlReporter": { "fileName": "reports/mutation/rules.html" },
+  "jsonReporter": { "fileName": "reports/mutation/rules.json" },
+  "mutate": [
+    "src/services/punch/workSchedule.js",
+    "src/services/punch/attendancePunchImport.js:1-127",
+    "src/services/attendanceReportService.js:1-198",
+    "src/services/SocialSecurityCalculationService.js",
+    "src/services/AnnualLeaveService.js:16-33",
+    "src/services/BusinessTripService.js:101-139",
+    "src/services/ReimbursementService.js:77-141"
+  ]
+}

@@ -16,6 +16,7 @@ import { PlusOutlined, DeleteOutlined, UploadOutlined, SaveOutlined } from '@ant
 import { useNavigate, useParams } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
 import api from '../../services/api';
+import { findDailyLimitViolations } from '../../utils/reimbursementLimits';
 import {
   reimbursementService,
   ReimbursementCategory,
@@ -144,26 +145,7 @@ const ReimbursementForm: React.FC = () => {
   // 客户端限额校验
   useEffect(() => {
     if (!limits) return;
-    const acc: Record<string, number> = {};
-    const meal: Record<string, number> = {};
-    items.forEach((it) => {
-      if (!it.occurred_on) return;
-      const d = it.occurred_on.format('YYYY-MM-DD');
-      if (it.category === 'accommodation') acc[d] = (acc[d] || 0) + Number(it.amount);
-      if (it.category === 'meal') meal[d] = (meal[d] || 0) + Number(it.amount);
-    });
-    const violMsgs: string[] = [];
-    Object.entries(acc).forEach(([d, t]) => {
-      if (t > limits.daily_limits.accommodation) {
-        violMsgs.push(`${d} 住宿合计 ¥${t.toFixed(2)}，超过上限 ¥${limits.daily_limits.accommodation}`);
-      }
-    });
-    Object.entries(meal).forEach(([d, t]) => {
-      if (t > limits.daily_limits.meal) {
-        violMsgs.push(`${d} 餐费合计 ¥${t.toFixed(2)}，超过上限 ¥${limits.daily_limits.meal}`);
-      }
-    });
-    setViolations(violMsgs);
+    setViolations(findDailyLimitViolations(items, limits.daily_limits));
   }, [items, limits]);
 
   const handleTripChange = (tripId: string) => {

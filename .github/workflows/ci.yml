@@ -20,6 +20,20 @@ jobs:
     name: Backend Checks
     runs-on: ubuntu-24.04
 
+    # Integration tests create and migrate their own hr_system_test_* databases here
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-test-root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-test-root"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -44,11 +58,31 @@ jobs:
       - name: Run backend tests
         run: |
           cd backend
-          npm test -- --runInBand
+          set -o pipefail
+          npm test -- --runInBand --silent 2>&1 | tee jest-output.txt
+        shell: bash
         env:
           NODE_ENV: test
           ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
           JWT_SECRET: ci-test-jwt-secret-not-for-production
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASSWORD: ci-test-root
+
+      - name: Summarize backend test failures
+        if: failure()
+        run: |
+          {
+            echo '## Backend test failures'
+            echo '```'
+            grep -E '●|Tests:|Test Suites:|Expected|Received|Error' backend/jest-output.txt | head -150
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Also as one annotation, which is readable without signing in
+          msg=$(grep -E '●|Tests:|Test Suites:|Expected|Received|Error' backend/jest-output.txt \
+            | head -60 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')
+          echo "::error title=Backend test failures::${msg}"
 
   frontend-build:
     name: Frontend Build
