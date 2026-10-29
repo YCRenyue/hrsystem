@@ -398,7 +398,10 @@ const submit = async (req, res) => {
     throw new ValidationError('请先录入费用明细再提交');
   }
   // 被拒绝后重新提交时，其间可能已有同一出差的其他报销单占用了当天额度
-  await reimbursementService.enforceTripDailyLimits(record.trip_id, record.items.map((item) => item.toJSON()), record.reimbursement_id);
+  const currentItems = record.items.map((item) => item.toJSON());
+  await reimbursementService.enforceTripDailyLimits(
+    record.trip_id, currentItems, record.reimbursement_id
+  );
 
   await reimbursementService.runInTransaction(async (t) => {
     record.status = 'pending';

@@ -15,11 +15,15 @@ afterAll(() => scheduler.stop && scheduler.stop());
 
 const jobs = () => cron.schedule.mock.calls.map(([expr, fn, options]) => ({ expr, fn, options }));
 const triggers = (expr, method) => {
-  const spy = jest.spyOn(scheduler, method).mockResolvedValue();
-  const hits = jobs().filter((j) => j.expr === expr);
-  hits.forEach((j) => j.fn());
-  const called = spy.mock.calls.length > 0;
-  spy.mockRestore();
+  // 同一时刻可能有多个任务；全部换成假实现，避免真的去查数据库
+  const runMethods = Object.getOwnPropertyNames(Object.getPrototypeOf(scheduler))
+    .filter((name) => name.startsWith('run'));
+  const spies = Object.fromEntries(runMethods.map((name) => [
+    name, jest.spyOn(scheduler, name).mockResolvedValue()
+  ]));
+  jobs().filter((j) => j.expr === expr).forEach((j) => j.fn());
+  const called = spies[method].mock.calls.length > 0;
+  Object.values(spies).forEach((spy) => spy.mockRestore());
   return called;
 };
 
