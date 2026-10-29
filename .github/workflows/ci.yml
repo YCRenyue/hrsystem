@@ -58,7 +58,7 @@ jobs:
       - name: Run backend tests
         run: |
           cd backend
-          npm test -- --runInBand
+          npm test -- --runInBand --reporters=default --reporters=github-actions
         env:
           NODE_ENV: test
           ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
