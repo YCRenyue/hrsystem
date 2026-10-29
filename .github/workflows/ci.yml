@@ -58,7 +58,9 @@ jobs:
       - name: Run backend tests
         run: |
           cd backend
-          npm test -- --runInBand --reporters=default --reporters=github-actions
+          set -o pipefail
+          npm test -- --runInBand --silent 2>&1 | tee jest-output.txt
+        shell: bash
         env:
           NODE_ENV: test
           ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
@@ -67,6 +69,16 @@ jobs:
           DB_PORT: 3306
           DB_USER: root
           DB_PASSWORD: ci-test-root
+
+      - name: Summarize backend test failures
+        if: failure()
+        run: |
+          {
+            echo '## Backend test failures'
+            echo '```'
+            grep -E '●|Tests:|Test Suites:|Expected|Received|Error' backend/jest-output.txt | head -150
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   frontend-build:
     name: Frontend Build
