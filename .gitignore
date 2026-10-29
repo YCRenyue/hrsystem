@@ -61,3 +61,6 @@ sample_data/花名册.xlsx
 # Mutation testing output
 backend/reports/mutation/
 backend/.stryker-tmp/
+
+# Presentation decks kept locally
+/*.pptx
