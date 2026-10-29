@@ -79,6 +79,10 @@ jobs:
             grep -E '●|Tests:|Test Suites:|Expected|Received|Error' backend/jest-output.txt | head -150
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          # Also as one annotation, which is readable without signing in
+          msg=$(grep -E '●|Tests:|Test Suites:|Expected|Received|Error' backend/jest-output.txt \
+            | head -60 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')
+          echo "::error title=Backend test failures::${msg}"
 
   frontend-build:
     name: Frontend Build
