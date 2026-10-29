@@ -399,9 +399,7 @@ const submit = async (req, res) => {
   }
   // 被拒绝后重新提交时，其间可能已有同一出差的其他报销单占用了当天额度
   const currentItems = record.items.map((item) => item.toJSON());
-  await reimbursementService.enforceTripDailyLimits(
-    record.trip_id, currentItems, record.reimbursement_id
-  );
+  await reimbursementService.enforceTripDailyLimits(record.trip_id, currentItems, record.reimbursement_id);
 
   await reimbursementService.runInTransaction(async (t) => {
     record.status = 'pending';
